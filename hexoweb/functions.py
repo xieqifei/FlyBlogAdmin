@@ -1441,3 +1441,30 @@ if UPDATE_FROM != "false" and UPDATE_FROM != "true" and UPDATE_FROM != QEXO_VERS
         logging.error(gettext("ELEVATOR_ERROR").format(str(e)))
     save_setting("UPDATE_FROM", QEXO_VERSION)
     save_setting("JUMP_UPDATE", "true")
+
+
+def vercel_analytics(request):
+    """向模板注入 Vercel Analytics 配置（仅 Vercel 部署默认启用）。
+
+    非 Vercel 部署默认不注入，保持页面原样；如需在非 Vercel 环境启用，
+    可设置 VERCEL_ANALYTICS_ENDPOINT 指向自定义采集端点。
+    需在 Vercel 后台开启 Analytics / Speed Insights 才会真正收集数据。
+    """
+    is_vercel = bool(os.environ.get("VERCEL"))
+    override = os.environ.get("VERCEL_ANALYTICS")
+    # 未显式设置时跟随 Vercel 环境自动探测；显式设置则用 _as_bool_value 解析（支持 true/1/yes/是 等）
+    if not _as_bool_value(override, default=is_vercel):
+        return {"VERCEL_ANALYTICS_SRC": ""}
+    if is_vercel:
+        return {
+            "VERCEL_ANALYTICS_SRC": "/_vercel/insights/script.js",
+            "VERCEL_ANALYTICS_SPEED_SRC": "/_vercel/speed-insights/script.js",
+        }
+    # 非 Vercel 部署：仅在显式提供自定义端点时启用
+    endpoint = os.environ.get("VERCEL_ANALYTICS_ENDPOINT")
+    if endpoint:
+        return {
+            "VERCEL_ANALYTICS_SRC": endpoint,
+            "VERCEL_ANALYTICS_SPEED_SRC": endpoint,
+        }
+    return {"VERCEL_ANALYTICS_SRC": ""}
