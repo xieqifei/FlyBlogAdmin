@@ -1,7 +1,8 @@
 import json
 import random
 
-QEXO_VERSION = "3.0.0"
+QEXO_VERSION = "4.2.0"
+QEXO_STATIC = "4.0.1"
 
 DEFAULT_EMOJI = {"微笑": "🙂", "撇嘴": "😦", "色": "😍", "发呆": "😍", "得意": "😎",
                  "流泪": "😭", "害羞": "😊", "闭嘴": "😷", "睡": "😴",
@@ -35,30 +36,35 @@ DEFAULT_EMOJI = {"微笑": "🙂", "撇嘴": "😦", "色": "😍", "发呆": "�
 # ]
 
 DEFAULT_CDN = [
-    {"name": "Jsdelivr", "url": "https://cdn.jsdelivr.net/npm/"},
-    {"name": "Unpkg", "url": "https://unpkg.com/"},
-    {"name": "渺软公益 CDN", "url": "https://npm.onmicrosoft.cn/"},
-    {"name": "初七云", "url": "https://cdn.chuqis.com/npm/"}
+    {"name": "CNPM(国内/不支持.top域名)", "url": "https://registry.npmmirror.com/qexo-static/{version}/files/qexo"},
+    {"name": "Jsdelivr(国际)", "url": "https://cdn.jsdelivr.net/npm/qexo-static@{version}/qexo"},
+    {"name": "Unpkg(国际)", "url": "https://unpkg.com/qexo-static@{version}/qexo"},
+    # {"name": "渺软公益 CDN", "url": "https://npm.onmicrosoft.cn/qexo-static@{version}/qexo"},
+    # {"name": "初七云", "url": "https://cdn.chuqis.com/npm/"}
 ]
 
 DEFAULT_UPDATES = [
     {"name": "master", "url": "https://github.com/Qexo/Qexo/tarball/master/"},
-    {"name": "dev", "url": "https://github.com/Qexo/Qexo/tarball/dev/"}
+    {"name": "dev", "url": "https://github.com/Qexo/Qexo/tarball/dev/"},
+    {"name": "master_cnb", "url": "https://cnb.cool/qexo/Qexo/-/git/archive/master.tar.gz"},
+    {"name": "dev_cnb", "url": "https://cnb.cool/qexo/Qexo/-/git/archive/dev.tar.gz"}
 ]
 
 ALL_SETTINGS = [  # [名称, 默认值, 是否在尝试修复时重置, 简介]
     ["ABBRLINK_ALG", "crc16", False, "短链接算法"],
     ["ABBRLINK_REP", "dec", False, "短链接格式dec/hex"],
-    ["CDN_PREV", "https://npm.onmicrosoft.cn/", True, "调用NPM的CDN前缀"],
+    ["CDN_PREV", "https://unpkg.com/qexo-static@{version}/qexo", True, "调用NPM的CDN前缀"],
     # ["CDNJS", "https://cdn.staticfile.org/", True, "调用CDNJS的CDN前缀"],
     ["INIT", "2", False, "初始化标识"],
-    ["QEXO_ICON", "https://unpkg.com/qexo-static@2.2.3/qexo/images/icon.png", False, "站点ICON"],
-    ["QEXO_LOGO", "https://unpkg.com/qexo-static@2.2.3/qexo/images/qexo.png", False, "站点LOGO"],
-    ["QEXO_LOGO_DARK", "https://unpkg.com/qexo-static@2.2.3/qexo/images/qexo-dark.png", False, "暗色站点LOGO"],
+    ["QEXO_ICON", "/static/qexo-static@" + QEXO_STATIC + "/qexo/images/icon.png", False, "站点ICON"],
+    ["QEXO_LOGO", "/static/qexo-static@" + QEXO_STATIC + "/qexo/images/qexo.png", False, "站点LOGO"],
+    ["QEXO_LOGO_DARK", "https://unpkg.com/qexo-static@" + QEXO_STATIC + "/qexo/images/qexo-dark.png", False,
+     "暗色站点LOGO"],
     ["QEXO_NAME", "博客管理面板", False, "站点名"],
     ["QEXO_SPLIT", "-", False, "站点分隔符"],
     ["VDITOR_EMOJI", json.dumps(DEFAULT_EMOJI), True, "自定义表情"],
-    ["WEBHOOK_APIKEY", ''.join(random.choice("qwertyuiopasdfghjklzxcvbnm1234567890") for x in range(12)), False, "API密钥"],
+    ["WEBHOOK_APIKEY", ''.join(random.choice("qwertyuiopasdfghjklzxcvbnm1234567890") for x in range(12)), False,
+     "API密钥"],
     ["VERCEL_TOKEN", "", False, "Vercel密钥"],
     ["PROJECT_ID", "", False, "Qexo项目ID"],
     ["ALLOW_FRIEND", "否", False, "是否允许友链申请 是/否"],
@@ -74,8 +80,12 @@ ALL_SETTINGS = [  # [名称, 默认值, 是否在尝试修复时重置, 简介]
     ["LOGIN_RECAPTCHA_SERVER_TOKEN", "", False, "用于登录验证的reCaptchaV3服务端密钥"],
     ["LOGIN_RECAPTCHAV2_SITE_TOKEN", "", False, "用于登录验证的reCaptchaV2网站密钥"],
     ["LOGIN_RECAPTCHAV2_SERVER_TOKEN", "", False, "用于登录验证的reCaptchaV2服务端密钥"],
-    ["POST_SIDEBAR", "[{\"search\":\"title\",\"name\":\"标题\",\"icon\":\"fas fa-heading\"},{\"search\":\"abbrlink\",\"name\":\"缩写\",\"icon\":\"fas fa-id-card\"},{\"search\":\"date\",\"name\":\"发布于\",\"icon\":\"fas fa-globe-americas\"},{\"search\":\"updated\",\"name\":\"更新于\",\"icon\":\"fas fa-calendar-alt\"},{\"search\":\"tags\",\"name\":\"标签\",\"icon\":\"fas fa-tags\"},{\"search\":\"categories\",\"name\":\"分类\",\"icon\":\"fas fa-folder-open\"}]", False, "文章侧边栏配置JSON"],
-    ["PAGE_SIDEBAR", "[{\"search\":\"title\",\"name\":\"标题\",\"icon\":\"fas fa-heading\"},{\"search\":\"date\",\"name\":\"发布于\",\"icon\":\"fas fa-globe-americas\"},{\"search\":\"updated\",\"name\":\"更新于\",\"icon\":\"fas fa-calendar-alt\"}]", False, "页面侧边栏配置JSON"],
+    ["POST_SIDEBAR",
+     "[{\"search\":\"title\",\"name\":\"标题\",\"icon\":\"fas fa-heading\"},{\"search\":\"abbrlink\",\"name\":\"缩写\",\"icon\":\"fas fa-id-card\"},{\"search\":\"date\",\"name\":\"发布于\",\"icon\":\"fas fa-globe-americas\"},{\"search\":\"updated\",\"name\":\"更新于\",\"icon\":\"fas fa-calendar-alt\"},{\"search\":\"tags\",\"name\":\"标签\",\"icon\":\"fas fa-tags\"},{\"search\":\"categories\",\"name\":\"分类\",\"icon\":\"fas fa-folder-open\"}]",
+     False, "文章侧边栏配置JSON"],
+    ["PAGE_SIDEBAR",
+     "[{\"search\":\"title\",\"name\":\"标题\",\"icon\":\"fas fa-heading\"},{\"search\":\"date\",\"name\":\"发布于\",\"icon\":\"fas fa-globe-americas\"},{\"search\":\"updated\",\"name\":\"更新于\",\"icon\":\"fas fa-calendar-alt\"}]",
+     False, "页面侧边栏配置JSON"],
     ["TALK_SIDEBAR", "[]", False, "说说侧边栏配置JSON"],
     # ["EXCERPT_POST", "否", False, "是否开启在摘录为空时自动截取文章 是/否"],   # 弃用
     # ["EXCERPT_LENGTH", "200", False, "自动截取文章的长度"],  # 弃用
@@ -84,5 +94,10 @@ ALL_SETTINGS = [  # [名称, 默认值, 是否在尝试修复时重置, 简介]
     ["ALL_UPDATES", json.dumps(DEFAULT_UPDATES), True, "更新源列表"],
     ["UPDATE_FROM", "false", False, "是否更新过"],
     ["JUMP_UPDATE", "false", False, "是否转跳到更新界面"],
-    ["AUTO_EXCERPT_CONFIG", '{"method":"本地","auto":"关闭","save_key":"excerpt","params":{"save_key":"excerpt","length":"200"}}', False, "文章截取配置JSON"]
+    ["AUTO_EXCERPT_CONFIG",
+     '{"method":"本地","auto":"关闭","save_key":"excerpt","params":{"save_key":"excerpt","length":"200"}}', False,
+     "文章截取配置JSON"],
+    ["LANGUAGE", "zh_CN", True, "语言"],
 ]
+
+VDITOR_LANGUAGES = ["zh_CN", "en_US", "zh_TW", "fr_FR", "ja_JP", "ko_KR", "pt_BR", "ru_RU", "sv_SE"]

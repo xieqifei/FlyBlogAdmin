@@ -1,9 +1,16 @@
 {% extends 'layouts/base-fullscreen.html' %}
 
-{% block title %} 登录 {% endblock title %}
+{% block title %} {{ "LOGIN" | gettext }} {% endblock title %}
 
 <!-- Specific CSS goes HERE -->
 {% block stylesheets %}
+<style>
+    /* Remove focus ring/shadow for passkey button */
+    #passkey-login-button:focus {
+        box-shadow: none !important;
+        outline: none !important;
+    }
+</style>
 {% endblock stylesheets %}
 
 {% block content %}
@@ -23,24 +30,32 @@
                                 <div class="input-group input-group-alternative">
                                     <span class="input-group-text"><i
                                             class="ni ni-hat-3"></i></span>
-                                    <input type="text" name="username" class="form-control"
-                                           placeholder="用户名">
+                                    <input type="text" name="username" class="form-control" id="username-field"
+                                           placeholder="{{ "USERNAME" | gettext }}" autocomplete="username webauthn">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <div class="input-group input-group-alternative">
                                     <span class="input-group-text"><i
                                             class="ni ni-lock-circle-open"></i></span>
-                                    <input type="password" name="password" class="form-control"
-                                           placeholder="密码">
+                                    <input type="password" name="password" class="form-control" id="password-field"
+                                           placeholder="{{ "PASSWORD" | gettext }}" autocomplete="current-password">
                                 </div>
                             </div>
                             {% if site_token_v2 %}
                                 <div class="g-recaptcha" data-sitekey="{{ site_token_v2 }}"></div>
                             {% endif %}
+                            <input type="hidden" name="passkeys" id="passkeys"/>
                         </form>
                         <div class="text-center" id="submit-button">
-                            <button onclick="submit()" class="btn btn-primary my-4">登录</button>
+                            <button onclick="submit()" class="btn btn-primary my-4">{{ "LOGIN" | gettext }}</button>
+                        </div>
+                        <!-- Passkey登录按钮 -->
+                        <div class="text-center mt-3" id="passkey-login-container" style="display: none;">
+                            <button type="button" onclick="login_with_passkey()" class="btn btn-outline-dark bg-white text-dark w-100 py-2 shadow-none" id="passkey-login-button" style="font-weight: 500; letter-spacing: 0.5px;">
+                                <i class="fa-solid fa-key me-2"></i>
+                                {{ "PASSKEY_LOGIN" | gettext }}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -68,14 +83,14 @@
 
         function submit() {
             if (!($("input[name='username']").val())) {
-                notyf.error("用户名不能为空! ")
+                notyf.error("{{ "LOGIN_FAILED_1" | gettext }}")
                 return false;
             }
             if (!($("input[name='password']").val())) {
-                notyf.error("密码不能为空! ");
+                notyf.error("{{ "LOGIN_FAILED_2" | gettext }}");
                 return false;
             }
-            $("#submit-button").html("<button class=\"btn btn-white my-4\">······</button>");
+            $("#submit-button").html("<button class=\"btn btn-white my-4\" disabled>······</button>");
             {% if site_token %}
                 grecaptcha.ready(function () {
                 grecaptcha.execute('{{ site_token }}', {action: 'submit'}).then(function (token) {
@@ -83,9 +98,9 @@
         {% if site_token_v2 %}
             let token = grecaptcha.getResponse();
             if (!token) {
-                notyf.error("请完成验证! ");
+                notyf.error("{{ "LOGIN_FAILED_3" | gettext }}");
                 $("#submit-button").html("<button onclick=\"submit()\" class=\"btn " +
-                    "btn-primary my-4\">登录</button>");
+                    "btn-primary my-4\">{{ "LOGIN" | gettext }}</button>");
                 return false;
             }
         {% endif %}
@@ -116,13 +131,13 @@
                         grecaptcha.reset();
                     {% endif %}
                     $("#submit-button").html("<button onclick=\"submit()\" class=\"btn " +
-                        "btn-primary my-4\">登录</button>");
+                        "btn-primary my-4\">{{ "LOGIN" | gettext }}</button>");
                 }
             },
             error: function (res) {
-                notyf.error("网络错误！");
+                notyf.error("{{ "NETWORK_ERROR" | gettext }}");
                 $("#submit-button").html("<button onclick=\"submit()\" class=\"btn " +
-                    "btn-primary my-4\">登录</button>");
+                    "btn-primary my-4\">{{ "LOGIN" | gettext }}</button>");
             }
         })
         {% if site_token %}
@@ -135,6 +150,181 @@
             if (!e) e = window.event;
             if ((e.keyCode || e.which) == 13) {
                 submit();
+            }
+        }
+    </script>
+    <script>
+        // 检测浏览器是否支持Passkey并按需隐藏按钮，同时启用ConditionalUI
+        document.addEventListener('DOMContentLoaded', function(){
+            var container = document.getElementById('passkey-login-container');
+            var passwordField = document.getElementById('password-field');
+            if(!container) return;
+            
+            // 检查后端是否启用了passkey（即是否有用户注册过passkey）
+            var passkey_available = {{ passkey_available|lower }};
+            if(!passkey_available){
+                // 后端没有任何passkey注册，隐藏按钮
+                return;
+            }
+            
+            // 检查浏览器是否支持WebAuthn
+            var basicSupport = !!(window.PublicKeyCredential && navigator.credentials && typeof navigator.credentials.get === 'function');
+            if(!basicSupport){
+                // 浏览器不支持WebAuthn，隐藏按钮
+                return;
+            }
+            
+            // 延后启动 Conditional UI：仅在用户与输入框交互后再启动
+            var startedConditional = false;
+            function startConditionalIfNeeded(){
+                if(startedConditional) return;
+                startedConditional = true;
+                initializeConditionalUI(passwordField);
+            }
+            // 在用户名或密码输入框获得焦点/点击时触发（任一事件一次即可）
+            var usernameField = document.getElementById('username-field');
+            if(passwordField){
+                passwordField.addEventListener('focus', startConditionalIfNeeded, {once:true});
+                passwordField.addEventListener('mousedown', startConditionalIfNeeded, {once:true});
+            }
+            if(usernameField){
+                usernameField.addEventListener('focus', startConditionalIfNeeded, {once:true});
+                usernameField.addEventListener('mousedown', startConditionalIfNeeded, {once:true});
+            }
+            
+            // 检查平台认证器是否可用
+            if(typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function'){
+                PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+                    .then(function(available){ 
+                        // 如果平台认证器可用，显示按钮
+                        if(available) {
+                            container.style.display = 'block';
+                        }
+                    })
+                    .catch(function(){ /* ignore */ });
+            } else {
+                // 如果浏览器支持WebAuthn但不支持检查平台认证器，也显示按钮
+                container.style.display = 'block';
+            }
+        });
+
+        // ConditionalUI 初始化 - 在密码框中显示passkey自动填充
+        async function initializeConditionalUI(passwordField){
+            // 检查浏览器是否支持ConditionalUI
+            if(typeof PublicKeyCredential.isConditionalMediationAvailable !== 'function'){
+                return; // 不支持ConditionalUI
+            }
+            
+            try {
+                const isConditionalAvailable = await PublicKeyCredential.isConditionalMediationAvailable();
+                if(!isConditionalAvailable){
+                    return; // 浏览器不支持ConditionalUI
+                }
+                
+                // 获取passkey开始选项
+                const begin = await fetch('/passkeys/auth/begin', {credentials: 'include'});
+                if(!begin.ok) return;
+                
+                const raw = await begin.json();
+                const options = raw.publicKey || raw;
+                if(!options || !options.challenge) return;
+                
+                const publicKey = preformatGetAssertReq(options);
+
+                // 启动 Conditional UI（只在用户聚焦输入框后触发）
+                navigator.credentials.get({ publicKey, mediation: 'conditional' })
+                    .then(function(cred){
+                        if(cred){
+                            // 用户通过ConditionalUI选择了passkey，进行登录
+                            handlePasskeyAssertion(cred);
+                        }
+                    })
+                    .catch(function(err){
+                        // ConditionalUI被中断或出错，忽略
+                        console.log('ConditionalUI cancelled or unavailable');
+                    });
+            } catch(err){
+                // ConditionalUI初始化失败，静默处理
+                console.log('ConditionalUI init error:', err?.message);
+            }
+        }
+
+        // WebAuthn Base64URL helpers
+        function b64uToBuf(b64url){
+            let pad=b64url.replace(/-/g,'+').replace(/_/g,'/');
+            while(pad.length%4) pad+='=';
+            const bin=atob(pad); const buf=new Uint8Array(bin.length);
+            for(let i=0;i<bin.length;i++) buf[i]=bin.charCodeAt(i);
+            return buf.buffer;
+        }
+        function bufToB64u(buf){
+            const bytes=new Uint8Array(buf); let bin='';
+            for(const b of bytes) bin+=String.fromCharCode(b);
+            return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+        }
+
+        function preformatGetAssertReq(options){
+            const publicKey={...options};
+            publicKey.challenge=b64uToBuf(options.challenge);
+            if(publicKey.allowCredentials){
+                publicKey.allowCredentials=publicKey.allowCredentials.map(c=>({
+                    type:c.type||'public-key', id:b64uToBuf(c.id), transports:c.transports||undefined
+                }));
+            }
+            return publicKey;
+        }
+
+        async function login_with_passkey(){
+            try{
+                const begin = await fetch('/passkeys/auth/begin',{credentials:'include'});
+                if(!begin.ok){ notyf.error('Passkey begin failed'); return; }
+                const raw = await begin.json();
+                const options = raw.publicKey || raw;
+                if(!options || !options.challenge){ notyf.error('Passkey options invalid'); return; }
+                const publicKey = preformatGetAssertReq(options);
+
+                const cred = await navigator.credentials.get({publicKey});
+                if(!cred){ notyf.error('Credential cancelled'); return; }
+
+                handlePasskeyAssertion(cred);
+            }catch(err){
+                notyf.error(err?.message||'{{ "LOGIN_FAILED" | gettext }}');
+            }
+        }
+
+        // 处理passkey assertion并完成登录
+        async function handlePasskeyAssertion(cred){
+            try {
+                const assertion = {
+                    id: cred.id,
+                    rawId: bufToB64u(cred.rawId),
+                    type: cred.type,
+                    response: {
+                        clientDataJSON: bufToB64u(cred.response.clientDataJSON),
+                        authenticatorData: bufToB64u(cred.response.authenticatorData),
+                        signature: bufToB64u(cred.response.signature),
+                        userHandle: cred.response.userHandle ? bufToB64u(cred.response.userHandle) : null,
+                    },
+                    clientExtensionResults: cred.getClientExtensionResults(),
+                };
+
+                // 发送到统一登录API，由 PasskeyModelBackend 验证并登录
+                const form = new FormData();
+                form.append('passkeys', JSON.stringify(assertion));
+                const username = document.getElementById('username-field')?.value || '';
+                if(username) form.append('username', username);
+                form.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+                const resp = await fetch('/api/auth/', {method:'POST', credentials:'include', body: form});
+                const data = await resp.json().catch(()=>({status:false,msg:'Invalid response'}));
+                if(data.status){
+                    notyf.success(data.msg||'{{ "LOGIN_SUCCESS" | gettext }}');
+                    setTimeout(()=>{ window.location = get_direct_link(); }, 300);
+                }else{
+                    notyf.error(data.msg||'{{ "LOGIN_FAILED" | gettext }}');
+                }
+            } catch(err) {
+                notyf.error(err?.message||'{{ "LOGIN_FAILED" | gettext }}');
             }
         }
     </script>

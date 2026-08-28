@@ -35,7 +35,9 @@
             <div class="ms-md-auto pe-md-3 d-flex align-items-center">
                 {% if 'new' in segment %}
                     <input type="text" name="filename" class="form-control rounded-pill me-3"
-                           placeholder="{% if 'page' in segment %}页面{% else %}文章{% endif %}名称">
+                           placeholder="
+                                   
+                                   {% if 'page' in segment %}{{ "PAGE" | gettext }}{% else %}{{ "POST" | gettext }}{% endif %}{{ "NAME" | gettext }}">
                 {% endif %}
                 {% if 'page' in segment %}
                     <form id="navbar-search-main" class="input-group" action="/pages.html"
@@ -68,23 +70,41 @@
                 <span class="input-group-text text-body"><i class="fas fa-search"
                                                             aria-hidden="true"></i></span>
                 {% if 'page' in segment %}
-                    <input class="form-control" placeholder="搜索页面..." type="text" name="s">
+                    <input class="form-control"
+                           placeholder="{{ "SEARCH_PAGE" | gettext }}..."
+                           type="text" name="s">
                 {% elif 'images' in segment %}
-                    <input class="form-control" placeholder="搜索图片..." type="text" name="s">
+                    <input class="form-control"
+                           placeholder="{{ "SEARCH_IMAGE" | gettext }}..."
+                           type="text" name="s">
                 {% elif 'configs' in segment %}
-                    <input class="form-control" placeholder="搜索配置..." type="text" name="s">
+                    <input class="form-control"
+                           placeholder="{{ "SEARCH_CONFIG" | gettext }}..."
+                           type="text" name="s">
                 {% elif 'friends' in segment %}
-                    <input class="form-control" placeholder="搜索友链..." type="text" name="s">
+                    <input class="form-control"
+                           placeholder="{{ "SEARCH_FLINK" | gettext }}..."
+                           type="text" name="s">
                 {% elif 'custom' in segment %}
-                    <input class="form-control" placeholder="搜索字段..." type="text" name="s">
+                    <input class="form-control"
+                           placeholder="{{ "SEARCH_CUSTOM" | gettext }}..."
+                           type="text" name="s">
                 {% elif 'talks' in segment %}
-                    <input class="form-control" placeholder="搜索说说..." type="text" name="s">
+                    <input class="form-control"
+                           placeholder="{{ "SEARCH_TALK" | gettext }}..."
+                           type="text" name="s">
                 {% elif 'userscripts' in segment %}
-                    <input class="form-control" placeholder="搜索命令..." type="text" name="s">
+                    <input class="form-control"
+                           placeholder="{{ "SEARCH_SCRIPT" | gettext }}..."
+                           type="text" name="s">
                 {% elif 'advanced' in segment %}
-                    <input class="form-control" placeholder="搜索设置..." type="text" name="s">
+                    <input class="form-control"
+                           placeholder="{{ "SEARCH_SETTINGS" | gettext }}..."
+                           type="text" name="s">
                 {% else %}
-                    <input class="form-control" placeholder="搜索文章..." type="text" name="s">
+                    <input class="form-control"
+                           placeholder="{{ "SEARCH_POST" | gettext }}..."
+                           type="text" name="s">
                 {% endif %}
                 </form>
             </div>
@@ -103,21 +123,20 @@
                     <ul class="dropdown-menu  dropdown-menu-end  px-2 py-3 me-sm-n4"
                         aria-labelledby="dropdownMenuButton">
                         <div class="dropdown-header noti-title">
-                            <a class="font-weight-bold">欢迎</a>
+                            <a class="font-weight-bold">{{ "WELCOME" | gettext }}</a>
                         </div>
                         <a href="/settings.html" class="dropdown-item">
                             <i class="ni ni-single-02"></i>
-                            <span>设置</span>
+                            <span>{{ "SETTINGS" | gettext }}</span>
                         </a>
-
                         <a target="_blank" href="https://www.oplog.cn/qexo" class="dropdown-item">
                             <i class="ni ni-support-16"></i>
-                            <span>支持</span>
+                            <span>{{ "SUPPORT" | gettext }}</span>
                         </a>
                         <div class="dropdown-divider"></div>
                         <a href="/logout/" class="dropdown-item">
                             <i class="ni ni-user-run text-red"></i>
-                            <span>注销</span>
+                            <span>{{ "LOGOUT" | gettext }}</span>
                         </a>
                     </ul>
                 </li>
@@ -135,6 +154,24 @@
                         <i class="fa fa-cog cursor-pointer"></i>
                     </a>
                 </li>
+                <li class="nav-item dropdown pe-3 d-flex align-items-center">
+                    <a href="#" class="nav-link text-white p-0" role="button"
+                       data-bs-toggle="dropdown"
+                       aria-haspopup="true" aria-expanded="false">
+                        <i class="fa-solid fa-earth-americas"></i>
+                    </a>
+                    <ul class="dropdown-menu  dropdown-menu-end px-2 py-3 me-sm-n4"
+                        aria-labelledby="dropdownMenuButton">
+                        <div class="dropdown-header noti-title">
+                            <a class="font-weight-bold">{{ "CHANGE_LANGUAGE" | gettext }}</a>
+                        </div>
+                        {% for i in all_languages %}
+                            <a href="javascript:change_lang('{{ i.name }}')" class="dropdown-item">
+                                <span>{{ i.name_local }}</span>
+                            </a>
+                        {% endfor %}
+                    </ul>
+                </li>
                 <li class="nav-item dropdown pe-2 d-flex align-items-center">
                     <a href="#" class="nav-link text-white p-0" role="button"
                        data-bs-toggle="dropdown"
@@ -143,24 +180,55 @@
                         <div id="msg-point" style=""></div>
                     </a>
                     <style>
-                        @media (min-width: 992px) {
+                        #notification-board {
+                            width: fit-content;
+                            min-width: 18rem;
+                            max-width: min(90vw, 32rem);
+                        }
+
+                        @media (min-width: 1200px) {
                             #notification-board {
-                                width: 350px;
+                                min-width: 24rem;
+                                max-width: min(80vw, 46rem);
+                            }
+                        }
+
+                        #notification-board .dropdown-item,
+                        #notification-board .notification-item {
+                            white-space: normal;
+                        }
+
+                        #notification-board .notification-content {
+                            min-width: 0;
+                            flex: 1;
+                        }
+
+                        #notification-board .notification-label,
+                        #notification-board .notification-text,
+                        #notification-board .notification-time {
+                            overflow-wrap: anywhere;
+                            word-break: break-word;
+                        }
+
+                        @media (max-width: 991.98px) {
+                            #notification-board {
+                                min-width: min(18rem, 90vw);
+                                max-width: 90vw;
                             }
                         }
                     </style>
                     <ul class="dropdown-menu  dropdown-menu-end  px-2 py-3 me-sm-n4"
                         aria-labelledby="dropdownMenuButton" id="notification-board">
                         <li class="mb-2">
-                            <a class="dropdown-item border-radius-md" href="#">
+                            <a class="dropdown-item border-radius-md notification-item" href="#">
                                 <div class="d-flex py-1">
                                     <div class="avatar avatar-sm me-3 my-auto"
                                          style="color: #172b4d;">
                                         <i class="fa-solid fa-cloud"></i>
                                     </div>
-                                    <div class="d-flex flex-column justify-content-center">
-                                        <span class="text-sm mb-1">
-                                            消息获取中...
+                                    <div class="d-flex flex-column justify-content-center notification-content">
+                                        <span class="text-sm mb-1 notification-text">
+                                            {{ "MSG_LOADING" | gettext }}
                                         </span>
                                     </div>
                                 </div>

@@ -1,7 +1,10 @@
 {% extends 'layouts/base.html' %}
 
-{% block title %} {% if search %}搜索友链: {{ search }}{% else %}友情链接
-{% endif %} {% endblock title %}
+{% block title %}
+    {% if search %}{{ "SEARCH_FLINK" | gettext }}:
+        {{ search }}{% else %}{{ "FLINK_LABEL" | gettext }}
+    {% endif %}
+{% endblock title %}
 
 {% block content %}
     <div class="container-fluid py-4">
@@ -9,9 +12,10 @@
             <div class="col-12">
                 <div class="card mb-4">
                     <div class="card-header pb-0">
-                        <h6>{% if search %}搜索友链: {{ search }}{% else %}
-                            友情链接{% endif %}
-                            (<span id="post-number">{{ post_number }}</span>个)
+                        <h6>{% if search %}{{ "SEARCH_FLINK" | gettext }}:
+                            {{ search }}{% else %}{{ "FLINK_LABEL" | gettext }}
+                        {% endif %}
+                            (<span id="post-number">{{ post_number }}</span>{{ "MEASURE_LINK" | gettext }})
                             <a href="javascript:query_new()" class="text-primary text-lg">
                                 <i class="fa-solid fa-user-plus"></i>
                             </a>
@@ -24,23 +28,22 @@
                                 <thead>
                                 <tr>
                                     <th class="text-secondary text-xxs font-weight-bolder opacity-7">
-                                        <span class="px-1 text-secondary">名称</span>
+                                        <span class="px-1 text-secondary">{{ "NAME" | gettext }}</span>
                                     </th>
                                     <th class="text-secondary text-xxs font-weight-bolder opacity-7">
-                                        <span class="text-secondary">链接</span>
-                                    </th>
-                                    <th class="text-center text-secondary text-xxs
-                                    font-weight-bolder opacity-7">
-                                        <span class="text-secondary">图片</span>
+                                        <span class="text-secondary">{{ "LINK" | gettext }}</span>
                                     </th>
                                     <th class="text-center text-secondary text-xxs font-weight-bolder opacity-7">
-                                        <span class="text-secondary">状态</span>
+                                        <span class="text-secondary">{{ "IMAGE" | gettext }}</span>
+                                    </th>
+                                    <th class="text-center text-secondary text-xxs font-weight-bolder opacity-7">
+                                        <span class="text-secondary">{{ "STATUS" | gettext }}</span>
                                     </th>
                                     <th class="text-secondary text-xxs font-weight-bolder opacity-7">
-                                        <span class="text-secondary">描述</span>
+                                        <span class="text-secondary">{{ "DESCRIPTION" | gettext }}</span>
                                     </th>
                                     <th class="text-secondary text-xxs font-weight-bolder opacity-7">
-                                        <span class="text-secondary">操作</span>
+                                        <span class="text-secondary">{{ "OPERATION" | gettext }}</span>
                                     </th>
                                 </tr>
                                 </thead>
@@ -50,29 +53,7 @@
                         </div>
                     </div>
                     <div class="card-footer py-4">
-                        <ul class="pagination justify-content-end mb-0">
-                            <li class="page-item" id="prev-page">
-                                <a class="page-link"
-                                   href="javascript:prev_page()">
-                                    <i class="fas fa-angle-left"></i>
-                                    <span class="sr-only">上一页</span>
-                                </a>
-                            </li>
-                            {% for i in page_number|get_range %}
-                                <li class="page-item" id="page-{{ i }}">
-                                    <a class="page-link"
-                                       href="javascript:change_page({{ i }})">{{ i }}</a>
-                                </li>
-                            {% endfor %}
-
-                            <li class="page-item" id="next-page">
-                                <a class="page-link"
-                                   href="javascript:next_page()">
-                                    <i class="fas fa-angle-right"></i>
-                                    <span class="sr-only">下一页</span>
-                                </a>
-                            </li>
-                        </ul>
+                        <ul class="pagination justify-content-end mb-0" id="page-changer"></ul>
                     </div>
                 </div>
             </div>
@@ -86,7 +67,7 @@
         <div class="modal-dialog">
             <div class="modal-content bg-white">
                 <div class="modal-header" style="border: none;">
-                    <h5 class="modal-title fs-5" id="exampleModalLabel">提示</h5>
+                    <h5 class="modal-title fs-5" id="exampleModalLabel">{{ "TIPS" | gettext }}</h5>
                     <button type="button" data-bs-dismiss="modal"
                             aria-label="Close" style="box-sizing: content-box;width: 1em;height:
                             1em;padding: .25em;color: #8392ab;border: 0;border-radius: .375rem;
@@ -95,13 +76,15 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    确认要删除 <a id="delfile"></a> 吗？此操作不可撤回
+                    {{ "DEL_CONFIRM_1" | gettext }} <a
+                        id="delfile"></a> {{ "DEL_CONFIRM_2" | gettext }}
                 </div>
                 <div class="modal-footer" style="border: none;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消
+                    <button type="button" class="btn btn-secondary"
+                            data-bs-dismiss="modal">{{ "CANCEL" | gettext }}
                     </button>
                     <button type="button" class="btn btn-primary" onclick="delete_file()"
-                            data-bs-dismiss="modal">确定
+                            data-bs-dismiss="modal">{{ "CONFIRM" | gettext }}
                     </button>
                 </div>
             </div>
@@ -188,18 +171,90 @@
                     .replaceAll("@@status@@", status)
                     .replaceAll("@@time@@", page_posts[i].time);
             }
-            $("#page-" + _page).removeClass("active");
-            $("#page-" + _page).children().removeClass("text-white");
-            $("#page-" + page).addClass("active");
-            $("#page-" + page).children().addClass("text-white");
+
+            let list_temp = `<li class="page-item" id="page-@@page@@">
+                    <a class="page-link @@active@@"
+                       href="javascript:change_page(@@page@@)">@@page@@</a>
+                </li>`;
+            let max_page;
+            if (window.innerWidth > 1200) {
+                max_page = 7;
+            } else if (window.innerWidth > 768) {
+                max_page = 5;
+            } else {
+                max_page = 3;
+            }
+            // 计算总页数和每侧保留的中间页数
+            const totalPages = Math.ceil(posts.length / 15);
+            if (totalPages <= max_page) {
+                startPage = 1;
+                endPage = totalPages;
+            } else {
+                const innerSlots = max_page - 2;              // 中间可展示的页码数
+                const halfInner = Math.floor(innerSlots / 2);
+                // 靠前
+                if (page - halfInner <= 2) {
+                    startPage = 2;
+                    endPage = 1 + innerSlots;
+                    // 靠后
+                } else if (page + halfInner >= totalPages - 1) {
+                    startPage = totalPages - innerSlots;
+                    endPage = totalPages - 1;
+                    // 居中
+                } else {
+                    startPage = page - halfInner;
+                    endPage = page + halfInner;
+                }
+            }
+
+            let page_list = `<li class="page-item" id="prev-page">
+                    <a class="page-link" href="javascript:prev_page()">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>`;
+
+            // 仅当 startPage>1 时才渲染“首页”及前置省略号
+            if (startPage > 1) {
+                page_list += list_temp
+                    .replaceAll('@@page@@', 1)
+                    .replaceAll('@@active@@', page === 1 ? 'active text-white' : '');
+                if (startPage > 2) {
+                    page_list += `<li class="page-item disabled"><a class="page-link">…</a></li>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const active = i === page ? 'active text-white' : '';
+                page_list += list_temp
+                    .replaceAll('@@page@@', i)
+                    .replaceAll('@@active@@', active);
+            }
+
+            // 仅当 endPage<totalPages 时才渲染后置省略号及“末页”
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    page_list += `<li class="page-item disabled"><a class="page-link">…</a></li>`;
+                }
+                page_list += list_temp
+                    .replaceAll('@@page@@', totalPages)
+                    .replaceAll('@@active@@', page === totalPages ? 'active text-white' : '');
+            }
+
+            page_list += `<li class="page-item" id="next-page">
+                    <a class="page-link" href="javascript:next_page()">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>`;
+
             $("#posts-list").html(list);
+            $("#page-changer").html(page_list);
             _page = page;
             if (page <= 1) {
                 $("#prev-page").addClass("disabled");
             } else {
                 $("#prev-page").removeClass("disabled");
             }
-            if (page >={{ page_number }}) {
+            if (page >= {{ page_number }}) {
                 $("#next-page").addClass("disabled");
             } else {
                 $("#next-page").removeClass("disabled");
@@ -210,15 +265,15 @@
             if (_page > 1) {
                 change_page(_page - 1);
             } else {
-                notyf.error("已是第一页");
+                notyf.error("{{ "NO_PREV_PAGE" | gettext }}");
             }
         }
 
         function next_page() {
-            if (_page <{{ page_number }}) {
+            if (_page < {{ page_number }}) {
                 change_page(_page + 1);
             } else {
-                notyf.error("已是最后一页");
+                notyf.error("{{ "NO_NEXT_PAGE" | gettext }}");
             }
         }
 
@@ -237,7 +292,7 @@
 
 
         function delete_file() {
-            let loading = new KZ_Loading('正在删除中...');
+            let loading = new KZ_Loading('{{ "DELETING" | gettext }}');
             loading.show();
             $.ajax({
                 url: '/api/del_friend/',
@@ -247,7 +302,7 @@
                 success: function (res) {
                     loading.destroy();
                     if (res.status) {
-                        notyf.success('删除成功！');
+                        notyf.success('{{ "DEL_SUCCESS" | gettext }}');
                         for (let i = 0; i < posts.length; i++) {
                             if (posts[i]["time"] === del_file) {
                                 posts.splice(i, 1);
@@ -262,19 +317,9 @@
                 },
                 error: function (res) {
                     loading.destroy();
-                    notyf.error("网络错误！");
+                    notyf.error("{{ "NETWORK_ERROR" | gettext }}");
                 }
             })
-        }
-
-        function excerpt_by_local(content, length) {
-            let excerpt = content.replace(/<img[^>]*>/g, "");
-            excerpt = excerpt.replace(/<iframe[^>]*>/g, "");
-            excerpt = excerpt.replace(/<script[^>]*>/g, "");
-            excerpt = excerpt.replace(/<style[^>]*>/g, "");
-            excerpt = excerpt.replace(/<[^>]*>/g, "");
-            excerpt = excerpt.replace(/\n/g, " ");
-            return excerpt.substring(0, length) + (content.length > length ? "..." : "");
         }
 
         function query_edit(time) {
@@ -291,31 +336,31 @@
                     break;
                 }
             }
-            let html = `<div class="form-group"><label class="form-control-label">名称</label><input type="text"
+            let html = `<div class="form-group"><label class="form-control-label">{{ "NAME" | gettext }}</label><input type="text"
                                                                                                  name="name"
                                                                                                  id="edit-name"
                                                                                                  value="${name}"
                                                                                                  class="form-control ${color}">
                         </div>
-                        <div class="form-group"><label class="form-control-label">链接</label><input type="text"
+                        <div class="form-group"><label class="form-control-label">{{ "LINK" | gettext }}</label><input type="text"
                                                                                                  name="url"
                                                                                                  id="edit-url"
                                                                                                  value="${url}"
                                                                                                  class="form-control ${color}">
                         </div>
-                        <div class="form-group"><label class="form-control-label">图片链接</label><input type="text"
+                        <div class="form-group"><label class="form-control-label">{{ "IMAGE_LINK" | gettext }}</label><input type="text"
                                                                                                      name="image"
                                                                                                      id="edit-image"
                                                                                                      value="${image}"
                                                                                                      class="form-control ${color}">
                         </div>
-                        <div class="form-group"><label class="form-control-label">描述</label><input type="text"
+                        <div class="form-group"><label class="form-control-label">{{ "DESCRIPTION" | gettext }}</label><input type="text"
                                                                                                  name="description"
                                                                                                  id="edit-description"
                                                                                                  value="${description}"
                                                                                                  class="form-control ${color}">
                         </div>
-                        <div class="form-group"><label class="form-control-label">状态</label><select
+                        <div class="form-group"><label class="form-control-label">{{ "STATUS" | gettext }}</label><select
                                 class="form-control ${color}" id="edit-status">`;
             if (status) {
                 html += "<option selected>显示</option><option>隐藏</option></select></div>";
@@ -323,13 +368,19 @@
                 html += "<option>显示</option><option selected>隐藏</option></select></div>";
             }
             $("#query-modal-body").html(html);
-            $("#queryLabel").html("编辑友链");
+            $("#queryLabel").html("{{ "EDIT_FLINK" | gettext }}");
             let footer = "<button type=\"button\" class=\"btn btn-secondary\" " +
-                "data-bs-dismiss=\"modal\">取消</button><button type=\"button\" class=\"btn " +
+                "data-bs-dismiss=\"modal\">{{ "CANCEL" | gettext }}</button><button type=\"button\" class=\"btn " +
                 "btn-primary\" data-bs-dismiss=\"modal\" onclick=\"edit_friend(" + index + ")" +
-                "\">确定</button>";
+                "\">{{ "CONFIRM" | gettext }}</button>";
             $("#query-modal-footer").html(footer);
             $("#query").modal("show");
+        }
+
+        function compare() {
+            return function (a, b) {
+                return a.time < b.time ? 1 : -1;
+            }
         }
 
 
@@ -339,7 +390,7 @@
             let url = $("#edit-url").val();
             let image = $("#edit-image").val();
             let status = $("#edit-status").val();
-            let loading = new KZ_Loading('正在保存中...');
+            let loading = new KZ_Loading('{{ "SAVING" | gettext }}');
             loading.show();
             $.ajax({
                 url: '/api/edit_friend/',
@@ -366,7 +417,7 @@
                 },
                 error: function (res) {
                     loading.destroy();
-                    notyf.error("网络错误！");
+                    notyf.error("{{ "NETWORK_ERROR" | gettext }}");
                 }
             })
         }
@@ -374,33 +425,33 @@
 
         function query_new() {
             let color = checkIfDark() ? "bg-gradient-dark text-white" : "bg-white text-dark";
-            let html = `<div class="form-group"><label class="form-control-label">名称</label><input type="text"
+            let html = `<div class="form-group"><label class="form-control-label">{{ "NAME" | gettext }}</label><input type="text"
                                                                                                  name="name"
                                                                                                  id="edit-name"
                                                                                                  class="form-control ${color}">
                         </div>
-                        <div class="form-group"><label class="form-control-label">链接</label><input type="text"
+                        <div class="form-group"><label class="form-control-label">{{ "LINK" | gettext }}</label><input type="text"
                                                                                                  name="url"
                                                                                                  id="edit-url"
                                                                                                  class="form-control ${color}">
                         </div>
-                        <div class="form-group"><label class="form-control-label">图片链接</label><input type="text"
+                        <div class="form-group"><label class="form-control-label">{{ "IMAGE_LINK" | gettext }}</label><input type="text"
                                                                                                      name="image"
                                                                                                      id="edit-image"
                                                                                                      class="form-control ${color}">
                         </div>
-                        <div class="form-group"><label class="form-control-label">描述</label><input type="text"
+                        <div class="form-group"><label class="form-control-label">{{ "DESCRIPTION" | gettext }}</label><input type="text"
                                                                                                  name="description"
                                                                                                  id="edit-description"
                                                                                                  class="form-control ${color}">
                         </div>
-                        <div class="form-group"><label class="form-control-label">状态</label><select
+                        <div class="form-group"><label class="form-control-label">{{ "STATUS" | gettext }}</label><select
                                 class="form-control ${color}" id="edit-status"><option>显示</option><option>隐藏</option></select></div>`;
             $("#query-modal-body").html(html);
-            $("#queryLabel").html("新增友链");
+            $("#queryLabel").html("{{ "NEW_FLINK" | gettext }}");
             let footer = "<button type=\"button\" class=\"btn btn-secondary\" " +
-                "data-bs-dismiss=\"modal\">取消</button><button type=\"button\" class=\"btn " +
-                "btn-primary\" data-bs-dismiss=\"modal\" onclick=\"new_friend()\">确定</button>"
+                "data-bs-dismiss=\"modal\">{{ "CANCEL" | gettext }}</button><button type=\"button\" class=\"btn " +
+                "btn-primary\" data-bs-dismiss=\"modal\" onclick=\"new_friend()\">{{ "CONFIRM" | gettext }}</button>"
             $("#query-modal-footer").html(footer);
             $("#query").modal("show");
         }
@@ -410,7 +461,7 @@
             let description = $("#edit-description").val();
             let url = $("#edit-url").val();
             let image = $("#edit-image").val();
-            let loading = new KZ_Loading('正在保存中...');
+            let loading = new KZ_Loading('{{ "SAVING" | gettext }}');
             let status = $("#edit-status").val()
             loading.show();
             $.ajax({
@@ -442,26 +493,26 @@
                 },
                 error: function (res) {
                     loading.destroy();
-                    notyf.error("网络错误！");
+                    notyf.error("{{ "NETWORK_ERROR" | gettext }}");
                 }
             })
         }
 
 
         function query_clean() {
-            let html = "确认要清理隐藏的链接吗？该操作不可回退";
+            let html = "{{ "CONFIRM_CLEAN_FLINK" | gettext }}";
             $("#query-modal-body").html(html);
-            $("#queryLabel").html("提示");
+            $("#queryLabel").html("{{ "TIPS" | gettext }}");
             let footer = "<button type=\"button\" class=\"btn btn-secondary\" " +
-                "data-bs-dismiss=\"modal\">取消</button><button type=\"button\" class=\"btn " +
-                "btn-primary\" data-bs-dismiss=\"modal\" onclick=\"clean_friend()\">确定</button>"
+                "data-bs-dismiss=\"modal\">{{ "CANCEL" | gettext }}</button><button type=\"button\" class=\"btn " +
+                "btn-primary\" data-bs-dismiss=\"modal\" onclick=\"clean_friend()\">{{ "CONFIRM" | gettext }}</button>"
             $("#query-modal-footer").html(footer);
             $("#query").modal("show");
         }
 
 
         function clean_friend() {
-            let loading = new KZ_Loading("正在清理中");
+            let loading = new KZ_Loading();
             loading.show();
             $.ajax({
                 url: '/api/clean_friend/',
@@ -478,7 +529,7 @@
                 },
                 error: function (res) {
                     loading.destroy();
-                    notyf.error("网络错误！");
+                    notyf.error("{{ "NETWORK_ERROR" | gettext }}");
                 }
             })
         }
