@@ -12,6 +12,16 @@ urllib3.disable_warnings()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def _env_flag(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+STATELESS_MODE = _env_flag("QEXO_STATELESS")
+
 LOGIN_REDIRECT_URL = "home"  # Route defined in home/urls.py
 LOGOUT_REDIRECT_URL = "home"  # Route defined in home/urls.py
 
@@ -19,7 +29,10 @@ LOGOUT_REDIRECT_URL = "home"  # Route defined in home/urls.py
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-mrf1flh+i8*!ao73h6)ne#%gowhtype!ld#+(j^r*!^11al2vz'
+_DEVELOPMENT_SECRET_KEY = 'django-insecure-mrf1flh+i8*!ao73h6)ne#%gowhtype!ld#+(j^r*!^11al2vz'
+SECRET_KEY = os.environ.get("QEXO_SECRET_KEY") or os.environ.get("SECRET_KEY") or _DEVELOPMENT_SECRET_KEY
+if STATELESS_MODE and SECRET_KEY == _DEVELOPMENT_SECRET_KEY:
+    raise exceptions.InitError("无数据库模式必须设置 QEXO_SECRET_KEY 或 SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -32,17 +45,26 @@ LOCAL_CONFIG = False
 # after DATABASES and USE_MONGODB are fully resolved.
 INSTALLED_APPS = []
 
-MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
+if STATELESS_MODE:
+    MIDDLEWARE = [
+        'django.middleware.security.SecurityMiddleware',
+        'stateless_editor.middleware.NoStoreMiddleware',
+        'django.middleware.common.CommonMiddleware',
+        'django.middleware.csrf.CsrfViewMiddleware',
+        'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    ]
+else:
+    MIDDLEWARE = [
+        'corsheaders.middleware.CorsMiddleware',
+        'django.middleware.common.CommonMiddleware',
+        'django.middleware.security.SecurityMiddleware',
+        'django.contrib.sessions.middleware.SessionMiddleware',
+        'django.middleware.common.CommonMiddleware',
+        'django.middleware.csrf.CsrfViewMiddleware',
+        'django.contrib.auth.middleware.AuthenticationMiddleware',
+        'django.contrib.messages.middleware.MessageMiddleware',
+        'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    ]
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
@@ -55,19 +77,24 @@ AUTHENTICATION_BACKENDS = [
 
 ROOT_URLCONF = 'core.urls'
 
+_template_context_processors = [
+    'django.template.context_processors.debug',
+    'django.template.context_processors.request',
+]
+if not STATELESS_MODE:
+    _template_context_processors.extend([
+        'django.contrib.auth.context_processors.auth',
+        'django.contrib.messages.context_processors.messages',
+        'hexoweb.functions.vercel_analytics',
+    ])
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-                'hexoweb.functions.vercel_analytics',
-            ],
+            'context_processors': _template_context_processors,
         },
     },
 ]
@@ -79,7 +106,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 errors = ""
 
-if os.environ.get("MONGODB_HOST"):  # 使用MONGODB
+if STATELESS_MODE:
+    # No models, migrations, authentication tables, or server-side sessions are
+    # used in this mode. Django installs its dummy backend for an empty config.
+    DATABASES = {}
+elif os.environ.get("MONGODB_HOST"):  # 使用MONGODB
     logging.info("使用环境变量中的MongoDB数据库")
     for env in ["MONGODB_HOST", "MONGODB_PORT", "MONGODB_PASS"]:
         if env not in os.environ:
@@ -209,7 +240,7 @@ def _build_installed_apps(use_mongodb):
     ]
 
 
-INSTALLED_APPS = _build_installed_apps(USE_MONGODB)
+INSTALLED_APPS = [] if STATELESS_MODE else _build_installed_apps(USE_MONGODB)
 
 def _load_allowed_hosts(local_config):
     if local_config:
@@ -331,6 +362,13 @@ else:
 
 SESSION_COOKIE_AGE = 86400
 SESSION_ENGINE = get_session_engine(bool(os.environ.get("VERCEL")))
+
+# Stateless editor sessions live entirely in a signed, HTTP-only cookie.
+STATELESS_SESSION_AGE = int(os.environ.get("QEXO_SESSION_AGE", "604800"))
+STATELESS_COOKIE_SECURE = _env_flag("QEXO_COOKIE_SECURE", bool(os.environ.get("VERCEL")))
+CSRF_COOKIE_SECURE = STATELESS_MODE and STATELESS_COOKIE_SECURE
+SECURE_SSL_REDIRECT = STATELESS_MODE and _env_flag("QEXO_SSL_REDIRECT", bool(os.environ.get("VERCEL")))
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Passkeys / WebAuthn Configuration
 def get_fido_server_id(request=None):

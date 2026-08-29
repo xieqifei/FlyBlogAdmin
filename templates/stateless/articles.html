@@ -1,0 +1,38 @@
+{% extends "stateless/base.html" %}
+{% block title %}文章 · Qexo Editor{% endblock %}
+{% block content %}
+<section class="stack">
+    <div class="row">
+        <div class="grow">
+            <h1>文章</h1>
+            {% if repository %}<div class="muted">{{ repository }} · {{ branch }}</div>{% endif %}
+        </div>
+        <a class="button" href="{% url 'edit_article' %}">新建文章</a>
+    </div>
+    {% if saved %}<div class="notice success">文章已提交到 GitHub。</div>{% endif %}
+    {% if deleted %}<div class="notice success">文章已从 GitHub 删除。</div>{% endif %}
+    {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+    <form class="row" method="get">
+        <input class="grow" name="q" value="{{ query }}" placeholder="按文件路径搜索">
+        <button type="submit">搜索</button>
+        {% if query %}<a class="button secondary" href="{% url 'home' %}">清除</a>{% endif %}
+    </form>
+    <div class="card">
+        {% if articles %}
+        <ul class="articles">
+            {% for article in articles %}
+            <li>
+                <div>
+                    <strong>{{ article.name }}</strong>
+                    <div class="article-path muted">{{ article.path }} · {{ article.size|filesizeformat }}</div>
+                </div>
+                <a href="{% url 'edit_article' %}?path={{ article.path|urlencode }}">编辑</a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% elif not error %}
+        <div class="muted">没有找到文章。</div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -46,6 +46,34 @@ Qexo 是一个快速、强大、美观的在线 静态博客编辑器。使用 G
   - Automatic update Easy and convenient, keep the latest
   - Customized Fields / Site Statistics / Page Management / Configuration Editing
   - Comment Notification / Image Upload / Logo Generation / API Expansion
+
+## 无数据库精简模式
+
+只需要通过网页维护 GitHub 中 Markdown 文章时，可以启用无数据库模式。该模式不加载 Django 用户、Session、缓存或 Qexo 动态功能的数据表，只提供单管理员登录和文章的列表、新建、编辑、删除。原有数据库模式保持不变。
+
+必需环境变量：
+
+| 名称 | 说明 |
+| --- | --- |
+| `QEXO_STATELESS` | 设为 `1` 启用无数据库模式 |
+| `QEXO_SECRET_KEY` | 用于签名登录 Cookie 的长期随机密钥；轮换后所有登录失效 |
+| `ADMIN_USERNAME` | 管理员用户名 |
+| `ADMIN_PASSWORD_HASH` | Django 格式的密码哈希，禁止填写明文密码 |
+| `QEXO_GITHUB_TOKEN` | 仅授予目标仓库 Contents 读写权限的 GitHub Token |
+| `QEXO_GITHUB_REPOSITORY` | 目标仓库，格式为 `owner/repository` |
+| `QEXO_GITHUB_BRANCH` | 写入分支，例如 `main` |
+| `QEXO_POSTS_PATH` | 文章目录，例如 Hexo 的 `source/_posts` |
+| `DOMAINS` | 允许访问的域名 JSON 列表，例如 `["editor.example.com"]` |
+
+可选的 `QEXO_SESSION_AGE` 设置登录 Cookie 秒数（默认 7 天），`QEXO_POST_EXTENSIONS` 设置可编辑扩展名（默认 `.md,.markdown`）。非 Vercel 的 HTTPS 反向代理部署应设置 `QEXO_COOKIE_SECURE=1` 和 `QEXO_SSL_REDIRECT=1`；Vercel 会默认启用这两项安全设置。
+
+可在安装依赖的本地环境中交互式生成密码哈希，密码不会进入命令历史：
+
+```bash
+python3 -c 'from django.conf import settings; settings.configure(); from django.contrib.auth.hashers import make_password; from getpass import getpass; print(make_password(getpass("Password: ")))'
+```
+
+所有敏感值都应保存在部署平台的 Secret/加密环境变量中，不要写进 Git 仓库或前端代码。更新 `ADMIN_PASSWORD_HASH` 后，已有登录 Cookie 会自动失效；轮换 `QEXO_SECRET_KEY` 也会使全部登录失效。保存已有文章时会提交当前 GitHub blob SHA；若远端文章已变化，GitHub 会拒绝覆盖并在编辑页保留未保存内容。
 ## Acknowledgements 鸣谢
 - [Ace](https://ace.c9.io/)
 - [Argon-Dashboard-Django](https://github.com/creativetimofficial/argon-dashboard-django)

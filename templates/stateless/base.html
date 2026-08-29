@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>{% block title %}Qexo Editor{% endblock %}</title>
+    <style>
+        :root { color-scheme: light dark; --bg: #f5f7fb; --card: #fff; --text: #172033; --muted: #697386; --line: #d9dfeb; --primary: #315efb; --danger: #c93838; --success: #18794e; }
+        @media (prefers-color-scheme: dark) { :root { --bg: #11151d; --card: #1b2230; --text: #edf2fb; --muted: #a9b4c8; --line: #374156; --primary: #7c9cff; --danger: #ff7777; --success: #66d9a3; } }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        a { color: var(--primary); text-decoration: none; }
+        .shell { width: min(1080px, calc(100% - 32px)); margin: 32px auto; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+        .brand { color: var(--text); font-size: 21px; font-weight: 750; }
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; box-shadow: 0 10px 28px rgb(23 32 51 / 6%); }
+        .stack { display: grid; gap: 16px; }
+        .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .grow { flex: 1 1 260px; }
+        label { display: grid; gap: 7px; font-weight: 650; }
+        input, textarea { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; background: var(--card); color: var(--text); font: inherit; }
+        input:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent); border-color: var(--primary); }
+        textarea { min-height: 62vh; resize: vertical; font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; tab-size: 2; }
+        button, .button { border: 0; border-radius: 9px; padding: 10px 15px; background: var(--primary); color: white; cursor: pointer; font: inherit; font-weight: 700; }
+        .button.secondary, button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+        button.danger { background: var(--danger); }
+        .notice { border-radius: 9px; padding: 11px 13px; background: color-mix(in srgb, var(--primary) 10%, var(--card)); }
+        .notice.error { color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, var(--card)); }
+        .notice.success { color: var(--success); background: color-mix(in srgb, var(--success) 9%, var(--card)); }
+        .muted { color: var(--muted); }
+        .articles { list-style: none; padding: 0; margin: 0; }
+        .articles li { display: flex; justify-content: space-between; gap: 14px; padding: 13px 2px; border-bottom: 1px solid var(--line); }
+        .articles li:last-child { border-bottom: 0; }
+        .article-path { overflow-wrap: anywhere; }
+        .login { width: min(430px, calc(100% - 32px)); margin: 10vh auto; }
+        .inline { display: inline; }
+        h1 { margin: 0; font-size: 24px; }
+        p { margin-top: 0; }
+        @media (max-width: 600px) { .shell { margin: 18px auto; } .card { padding: 16px; } .topbar { align-items: flex-start; } textarea { min-height: 55vh; } }
+    </style>
+</head>
+<body>
+{% block body %}
+<main class="shell">
+    <header class="topbar">
+        <a class="brand" href="{% url 'home' %}">Qexo Editor</a>
+        <form class="inline" method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="secondary" type="submit">退出登录</button>
+        </form>
+    </header>
+    {% block content %}{% endblock %}
+</main>
+{% endblock %}
+</body>
+</html>

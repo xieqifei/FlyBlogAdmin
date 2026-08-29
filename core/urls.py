@@ -1,11 +1,15 @@
-from hexoweb.views import *
-from django.urls import path, re_path, include
-# from django.contrib import admin
-from django.views.static import serve
-import hexoweb.pub as pub
-from django.views.generic import TemplateView
+from django.conf import settings
+from django.urls import include, path, re_path
 
-urlpatterns = [
+
+if settings.STATELESS_MODE:
+    urlpatterns = [path('', include('stateless_editor.urls'))]
+else:
+    from django.views.generic import TemplateView
+    from hexoweb.views import *
+    import hexoweb.pub as pub
+
+    urlpatterns = [
     # path('admin/', admin.site.urls),
     # re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT},
     #         name='static'),
@@ -106,8 +110,8 @@ urlpatterns = [
     path('pub/get_all_talks/', pub.get_all_talks, name='pub_get_all_talks'),
 
     re_path(r'^(?!api)^(?!static)^(?!pub).*$\.*', pages, name='pages'),
-]
+    ]
 
-handler404 = page_404
-handler500 = page_500
-handler403 = page_403
+    handler404 = page_404
+    handler500 = page_500
+    handler403 = page_403
