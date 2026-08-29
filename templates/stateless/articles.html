@@ -11,6 +11,14 @@
     .article-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
     .article-label { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--muted); font-size: 12px; }
     @media (max-width: 600px) { .article-controls { align-items: stretch; } .article-controls button, .article-controls .button { width: 100%; text-align: center; } }
+    .settings-button {
+        display: inline-grid;
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        place-items: center;
+    }
+    .settings-button svg { width: 20px; height: 20px; }
 </style>
 {% endblock %}
 {% block content %}
@@ -20,6 +28,12 @@
             <h1>文章</h1>
             {% if repository %}<div class="muted">{{ repository }} · {{ branch }}</div>{% endif %}
         </div>
+        <a class="button secondary settings-button" href="{% url 'setup' %}" aria-label="打开设置与配置引导" title="设置与配置引导">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.97 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.52-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06a1.7 1.7 0 0 0 1.88.34H9A1.7 1.7 0 0 0 10 3.08V3h4v.08a1.7 1.7 0 0 0 1.03 1.52 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.8 7l-.06.06a1.7 1.7 0 0 0-.34 1.88v.03A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"></path>
+            </svg>
+        </a>
         <a class="button" href="{% url 'edit_article' %}">新建文章</a>
     </div>
     {% if saved %}<div class="notice success">文章已提交到 GitHub。</div>{% endif %}

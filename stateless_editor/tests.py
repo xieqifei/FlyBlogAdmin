@@ -504,6 +504,21 @@ class ArticleViewTests(SimpleTestCase):
 
         self.assertEqual([article["title"] for article in response.context["articles"]], ["Apple"])
 
+    def test_home_has_accessible_settings_link_to_setup_guide(self):
+        fake_client = Mock()
+        fake_client.list_articles.return_value = []
+        fake_client.config.repository = "owner/blog"
+        fake_client.config.branch = "main"
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("home"))
+
+        self.assertContains(response, f'href="{reverse("setup")}"')
+        self.assertContains(response, 'aria-label="打开设置与配置引导"')
+
+        guide = self.client.get(reverse("setup"))
+        self.assertEqual(guide.status_code, 200)
+        self.assertContains(guide, "QEXO_GITHUB_TOKEN")
+
     def test_edit_page_accepts_quick_create_title(self):
         response = self.client.get(reverse("edit_article") + "?title=Quick")
 
