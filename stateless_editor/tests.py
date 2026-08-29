@@ -159,7 +159,7 @@ class GitHubContentClientTests(SimpleTestCase):
         self.session.request.return_value = FakeResponse(200, {
             "truncated": False,
             "tree": [
-                {"path": "source/_posts/hello.md", "type": "blob", "size": 12},
+                {"path": "source/_posts/hello.md", "type": "blob", "size": 12, "sha": "blob-1"},
                 {"path": "source/_posts/notes/nested.markdown", "type": "blob", "size": 24},
                 {"path": "source/_posts/image.png", "type": "blob", "size": 48},
                 {"path": "README.md", "type": "blob", "size": 96},
@@ -169,6 +169,7 @@ class GitHubContentClientTests(SimpleTestCase):
         articles = self.client.list_articles()
 
         self.assertEqual([item["path"] for item in articles], ["hello.md", "notes/nested.markdown"])
+        self.assertEqual(articles[0]["sha"], "blob-1")
         request_headers = self.session.request.call_args.kwargs["headers"]
         self.assertEqual(request_headers["Authorization"], "Bearer secret-token")
 
@@ -186,6 +187,18 @@ class GitHubContentClientTests(SimpleTestCase):
 
         self.assertEqual(article["content"], "你好，Qexo")
         self.assertEqual(article["sha"], "abc123")
+
+    def test_reads_article_last_modified_from_latest_commit(self):
+        self.session.request.return_value = FakeResponse(200, [{
+            "commit": {"committer": {"date": "2026-08-29T12:30:00Z"}},
+        }])
+
+        modified = self.client.get_article_last_modified("notes/hello world.md")
+
+        self.assertEqual(modified, "2026-08-29T12:30:00Z")
+        request_url = self.session.request.call_args.args[1]
+        self.assertIn("path=source%2F_posts%2Fnotes%2Fhello%20world.md", request_url)
+        self.assertIn("per_page=1", request_url)
 
     def test_update_includes_sha_for_conflict_protection(self):
         self.session.request.return_value = FakeResponse(200, {"commit": {"sha": "new"}})
@@ -421,6 +434,75 @@ class ArticleViewTests(SimpleTestCase):
         self.assertContains(response, "新建文章")
         self.assertNotContains(response, "快捷创建")
         self.assertNotContains(response, 'id="quick-title"')
+
+    def test_home_sorts_and_filters_articles_by_front_matter(self):
+        fake_client = Mock()
+        fake_client.config.repository = "owner/blog"
+        fake_client.config.branch = "main"
+        fake_client.list_articles.return_value = [
+            {"path": "older.md", "name": "older", "size": 10},
+            {"path": "newer.md", "name": "newer", "size": 20},
+            {"path": "draft.md", "name": "draft", "size": 30},
+        ]
+        fake_client.get_article.side_effect = lambda path: {"content": {
+            "older.md": "---\ntitle: Alpha\ndate: 2025-01-01\nupdated: 2026-01-02\ncategories: [Tech]\ntags: [Django]\n---\n",
+            "newer.md": "---\ntitle: Beta\ndate: 2026-03-01\nupdated: 2026-03-02\ncategories: [Tech]\ntags: [Python]\n---\n",
+            "draft.md": "---\ntitle: Gamma\ndate: 2026-04-01\nupdated: 2026-04-02\ncategories: [Life]\ntags: [Travel]\n---\n",
+        }[path]}
+
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("home"), {
+                "sort": "published",
+                "category": "Tech",
+                "tag": "Python",
+            })
+
+        self.assertEqual([article["title"] for article in response.context["articles"]], ["Beta"])
+        self.assertEqual(response.context["categories"], ["Life", "Tech"])
+        self.assertEqual(response.context["tags"], ["Django", "Python", "Travel"])
+        self.assertContains(response, "发布日期（最新优先）")
+        self.assertContains(response, "分类 · Tech")
+        fake_client.get_article_last_modified.assert_not_called()
+
+    def test_home_falls_back_to_github_commit_for_modified_sort(self):
+        fake_client = Mock()
+        fake_client.config.repository = "owner/blog"
+        fake_client.config.branch = "main"
+        fake_client.list_articles.return_value = [
+            {"path": "alpha.md", "name": "alpha", "size": 10},
+            {"path": "beta.md", "name": "beta", "size": 20},
+        ]
+        fake_client.get_article.side_effect = lambda path: {
+            "content": f"---\ntitle: {path[:-3].title()}\ndate: 2026-01-01\n---\n"
+        }
+        fake_client.get_article_last_modified.side_effect = {
+            "alpha.md": "2026-01-03T00:00:00Z",
+            "beta.md": "2026-01-04T00:00:00Z",
+        }.get
+
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("home"))
+
+        self.assertEqual([article["title"] for article in response.context["articles"]], ["Beta", "Alpha"])
+        self.assertEqual(fake_client.get_article_last_modified.call_count, 2)
+
+    def test_home_name_sort_uses_front_matter_title_and_searches_it(self):
+        fake_client = Mock()
+        fake_client.config.repository = "owner/blog"
+        fake_client.config.branch = "main"
+        fake_client.list_articles.return_value = [
+            {"path": "z-file.md", "name": "z-file", "size": 10},
+            {"path": "a-file.md", "name": "a-file", "size": 20},
+        ]
+        fake_client.get_article.side_effect = lambda path: {"content": {
+            "z-file.md": "---\ntitle: Apple\nupdated: 2026-01-01\n---\n",
+            "a-file.md": "---\ntitle: Zebra\nupdated: 2026-01-01\n---\n",
+        }[path]}
+
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("home"), {"sort": "name", "q": "app"})
+
+        self.assertEqual([article["title"] for article in response.context["articles"]], ["Apple"])
 
     def test_edit_page_accepts_quick_create_title(self):
         response = self.client.get(reverse("edit_article") + "?title=Quick")

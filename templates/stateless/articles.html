@@ -1,5 +1,18 @@
 {% extends "stateless/base.html" %}
 {% block title %}文章 · Qexo Editor{% endblock %}
+{% block head %}
+<style>
+    .article-controls { align-items: end; }
+    .article-controls label { min-width: 150px; flex: 1 1 150px; }
+    .article-controls .search-field { flex: 2 1 260px; }
+    .article-controls select { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; background: var(--card); color: var(--text); font: inherit; }
+    .article-details { display: grid; gap: 5px; }
+    .article-meta { display: flex; flex-wrap: wrap; gap: 7px 12px; font-size: 13px; }
+    .article-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+    .article-label { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 600px) { .article-controls { align-items: stretch; } .article-controls button, .article-controls .button { width: 100%; text-align: center; } }
+</style>
+{% endblock %}
 {% block content %}
 <section class="stack">
     <div class="row">
@@ -12,19 +25,51 @@
     {% if saved %}<div class="notice success">文章已提交到 GitHub。</div>{% endif %}
     {% if deleted %}<div class="notice success">文章已从 GitHub 删除。</div>{% endif %}
     {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
-    <form class="row" method="get">
-        <input class="grow" name="q" value="{{ query }}" placeholder="按文件路径搜索">
-        <button type="submit">搜索</button>
-        {% if query %}<a class="button secondary" href="{% url 'home' %}">清除</a>{% endif %}
+    {% if metadata_warning %}<div class="notice">部分文章的元数据未能读取，这些文章仍会显示，但日期或分类标签可能不完整。</div>{% endif %}
+    <form class="row article-controls" method="get">
+        <label class="search-field">搜索
+            <input name="q" value="{{ query }}" placeholder="按文章名称或文件路径搜索">
+        </label>
+        <label>排序
+            <select name="sort">
+                <option value="modified"{% if sort == "modified" %} selected{% endif %}>编辑日期（最新优先）</option>
+                <option value="published"{% if sort == "published" %} selected{% endif %}>发布日期（最新优先）</option>
+                <option value="name"{% if sort == "name" %} selected{% endif %}>名称（A–Z）</option>
+            </select>
+        </label>
+        <label>分类
+            <select name="category">
+                <option value="">全部分类</option>
+                {% for option in categories %}<option value="{{ option }}"{% if category == option %} selected{% endif %}>{{ option }}</option>{% endfor %}
+            </select>
+        </label>
+        <label>标签
+            <select name="tag">
+                <option value="">全部标签</option>
+                {% for option in tags %}<option value="{{ option }}"{% if tag == option %} selected{% endif %}>{{ option }}</option>{% endfor %}
+            </select>
+        </label>
+        <button type="submit">应用</button>
+        {% if query or category or tag or sort != "modified" %}<a class="button secondary" href="{% url 'home' %}">清除</a>{% endif %}
     </form>
     <div class="card">
         {% if articles %}
         <ul class="articles">
             {% for article in articles %}
             <li>
-                <div>
-                    <strong>{{ article.name }}</strong>
+                <div class="article-details">
+                    <strong>{{ article.title }}</strong>
                     <div class="article-path muted">{{ article.path }} · {{ article.size|filesizeformat }}</div>
+                    <div class="article-meta muted">
+                        <span>编辑：{{ article.modified_date|default:"未设置" }}</span>
+                        <span>发布：{{ article.published_date|default:"未设置" }}</span>
+                    </div>
+                    {% if article.categories or article.tags %}
+                    <div class="article-labels">
+                        {% for label in article.categories %}<span class="article-label">分类 · {{ label }}</span>{% endfor %}
+                        {% for label in article.tags %}<span class="article-label">标签 · {{ label }}</span>{% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 <a href="{% url 'edit_article' %}?path={{ article.path|urlencode }}">编辑</a>
             </li>

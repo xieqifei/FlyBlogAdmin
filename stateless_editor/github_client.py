@@ -76,7 +76,7 @@ class GitHubContentClient:
             "User-Agent": "Qexo-Stateless-Editor",
         }
 
-    def _request(self, method, path, expected, payload=None):
+    def _request(self, method, path, expected, payload=None, response_type=dict):
         try:
             response = self.session.request(
                 method,
@@ -103,7 +103,7 @@ class GitHubContentClient:
             data = response.json()
         except ValueError as exc:
             raise GitHubError("GitHub 返回了无法解析的数据") from exc
-        if not isinstance(data, dict):
+        if not isinstance(data, response_type):
             raise GitHubError("GitHub 返回了意外的数据格式")
         return data
 
@@ -151,6 +151,7 @@ class GitHubContentClient:
                 "path": article_path,
                 "name": PurePosixPath(article_path).stem,
                 "size": item.get("size", 0),
+                "sha": item.get("sha", ""),
             })
         return sorted(articles, key=lambda item: item["path"].lower())
 
@@ -170,6 +171,23 @@ class GitHubContentClient:
         except (ValueError, UnicodeDecodeError) as exc:
             raise GitHubError("文章不是有效的 UTF-8 文本") from exc
         return {"path": self.normalize_article_path(article_path), "sha": data.get("sha", ""), "content": content}
+
+    def get_article_last_modified(self, article_path):
+        """Return the latest commit date for an article on the configured branch."""
+        full_path = quote(self._full_path(article_path), safe="")
+        branch = quote(self.config.branch, safe="")
+        data = self._request(
+            "GET",
+            f"/repos/{self.config.repository}/commits?sha={branch}&path={full_path}&per_page=1",
+            {200},
+            response_type=list,
+        )
+        if not data:
+            return ""
+        commit = data[0].get("commit", {}) if isinstance(data[0], dict) else {}
+        committer = commit.get("committer", {}) if isinstance(commit, dict) else {}
+        author = commit.get("author", {}) if isinstance(commit, dict) else {}
+        return str(committer.get("date") or author.get("date") or "")
 
     def save_article(self, article_path, content, sha="", message=""):
         normalized = self.normalize_article_path(article_path)
