@@ -4,11 +4,6 @@
       "src": "core/wsgi.py",
       "use": "@vercel/python",
       "config": { "runtime": "python3.12" }
-    },
-    {
-      "src": "vercel.sh",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "." }
     }
   ],
   "rewrites": [

@@ -1,11 +1,6 @@
 #!/bin/sh
 set -e
 
-echo "Applying database migrations..."
-cp configs.example.py configs.py
-python manage.py makemigrations
-python manage.py migrate --noinput
-
 WORKERS=${WORKERS:-4}
 THREADS=${THREADS:-4}
 TIMEOUT=${TIMEOUT:-600}

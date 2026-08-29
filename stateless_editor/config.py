@@ -13,7 +13,6 @@ def configuration_status():
         for name in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL")
     )
     return {
-        "QEXO_STATELESS": True,
         "QEXO_SECRET_KEY": _has_value("QEXO_SECRET_KEY") or _has_value("SECRET_KEY"),
         "ADMIN_USERNAME": _has_value("ADMIN_USERNAME"),
         "ADMIN_PASSWORD": password_configured,

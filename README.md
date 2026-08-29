@@ -28,11 +28,6 @@ Qexo 是一个快速、强大、美观的在线 静态博客编辑器。使用 G
 
   Support multiple image uploading, uploading is just a click away!
 ![](https://s2.loli.net/2024/07/19/q3LlJutFDCvpbMh.png)
-- **Cache function ~ speed is the most important thing**
-
-    Supports caching articles, pages and configuration indexes to database, ensuring your high-speed access.
-
-    Webhook fully automatic cache clearing, always keep your data up-to-date.
 - **Smaller than a sparrow ~ complete in every way** 
 
   - Modularized Architecture
@@ -47,15 +42,16 @@ Qexo 是一个快速、强大、美观的在线 静态博客编辑器。使用 G
   - Customized Fields / Site Statistics / Page Management / Configuration Editing
   - Comment Notification / Image Upload / Logo Generation / API Expansion
 
-## 无数据库精简模式
+## 无数据库模式
 
-只需要通过网页维护 GitHub 中 Markdown 文章时，可以启用无数据库模式。该模式不加载 Django 用户、Session、缓存或 Qexo 动态功能的数据表，只提供单管理员登录和文章的列表、新建、编辑、删除。原有数据库模式保持不变。首次部署时只需先设置 `QEXO_STATELESS=1`；若其余必需变量未齐全，访问网站会进入 `/setup/` 配置引导页，可直接生成签名密钥和密码哈希，并查看 GitHub Token、仓库、域名等变量的获取步骤。
+此分支固定运行无数据库 GitHub 文章编辑器，不加载 Django 用户、Session、缓存、Passkeys 或任何 Qexo 动态功能数据表，只提供单管理员登录和文章的列表、新建、编辑、删除。MySQL、PostgreSQL、MongoDB、PlanetScale 及 `configs.py` 均不再需要；旧数据库环境变量即使残留也不会被读取。
+
+首次部署不需要模式开关。若必需变量未齐全，访问网站会进入 `/setup/` 配置引导页，可直接生成签名密钥和密码哈希，并查看 GitHub Token、仓库、域名等变量的获取步骤。
 
 必需环境变量：
 
 | 名称 | 说明 |
 | --- | --- |
-| `QEXO_STATELESS` | 设为 `1` 启用无数据库模式 |
 | `QEXO_SECRET_KEY` | 用于签名登录 Cookie 的长期随机密钥；轮换后所有登录失效 |
 | `ADMIN_USERNAME` | 管理员用户名 |
 | `ADMIN_PASSWORD_HASH` | 推荐：由 `/setup/` 生成的 Django 格式密码哈希 |
@@ -81,7 +77,6 @@ python3 -c 'from django.conf import settings; settings.configure(); from django.
 - [Bootstrap](https://getbootstrap.com/)
 - [Notyf](https://github.com/caroso1222/notyf)
 - [Django](https://github.com/django/django)
-- [django-mongodb-backend](https://github.com/mongodb-labs/django-mongodb-backend)
 - [HexoPlusPlus](https://github.com/HexoPlusPlus/HexoPlusPlus)
 - [jQuery](https://jquery.com/)
 - [OnePush](https://github.com/y1ndan/onepush)

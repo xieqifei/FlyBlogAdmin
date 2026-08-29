@@ -24,7 +24,7 @@
             <div class="muted">Vercel：项目 → Settings → Environment Variables，选择 Production/Preview 环境并保存；变量变更后必须重新部署。</div>
         </div>
         <ul class="checklist">
-            <li class="{% if configuration_status.QEXO_STATELESS %}ok{% else %}missing{% endif %}">✓ <code>QEXO_STATELESS</code>：填写 <code>1</code>。</li>
+            <li class="ok">✓ 无数据库模式已永久启用，无需配置数据库或 <code>QEXO_STATELESS</code>。</li>
             <li class="{% if configuration_status.QEXO_SECRET_KEY %}ok{% else %}missing{% endif %}">{% if configuration_status.QEXO_SECRET_KEY %}✓{% else %}○{% endif %} <code>QEXO_SECRET_KEY</code>：长期随机签名密钥。</li>
             <li class="{% if configuration_status.ADMIN_USERNAME %}ok{% else %}missing{% endif %}">{% if configuration_status.ADMIN_USERNAME %}✓{% else %}○{% endif %} <code>ADMIN_USERNAME</code>：你自己选择的登录用户名。</li>
             <li class="{% if configuration_status.ADMIN_PASSWORD %}ok{% else %}missing{% endif %}">{% if configuration_status.ADMIN_PASSWORD %}✓{% else %}○{% endif %} <code>ADMIN_PASSWORD_HASH</code>（推荐）或 <code>ADMIN_PASSWORD</code>。</li>

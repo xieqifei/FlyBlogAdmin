@@ -14,8 +14,6 @@ RUN if [ "$CN" = "true" ]; then \
         pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn; \
     fi
 
-RUN apk add --no-cache build-base musl-dev musl libpq-dev libffi-dev openssl-dev cargo bzip2-dev
-
 RUN python -m pip install --upgrade pip && \
     pip install --prefer-binary -r requirements.txt && \
     chmod +x /app/entrypoint.sh
@@ -27,7 +25,6 @@ WORKDIR /app
 COPY --from=build /app /app
 COPY --from=build /usr/local/lib/python3.12 /usr/local/lib/python3.12
 COPY --from=build /usr/local/bin /usr/local/bin
-RUN apk add --no-cache libpq
 
 EXPOSE 8000
 

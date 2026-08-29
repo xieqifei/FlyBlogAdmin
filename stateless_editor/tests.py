@@ -1,6 +1,5 @@
 import base64
 import os
-from unittest import skipUnless
 from unittest.mock import Mock, patch
 
 from django.conf import settings
@@ -22,7 +21,6 @@ class FakeResponse:
 
 
 @override_settings(STATELESS_COOKIE_SECURE=False)
-@skipUnless(settings.STATELESS_MODE, "requires QEXO_STATELESS=1")
 class AuthenticationTests(SimpleTestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
@@ -135,7 +133,6 @@ class AuthenticationTests(SimpleTestCase):
         self.assertEqual(response["Cache-Control"], "no-store, max-age=0")
 
 
-@skipUnless(settings.STATELESS_MODE, "requires QEXO_STATELESS=1")
 class GitHubContentClientTests(SimpleTestCase):
     def setUp(self):
         self.config = GitHubConfig(
@@ -213,7 +210,6 @@ class GitHubContentClientTests(SimpleTestCase):
 
 
 @override_settings(STATELESS_COOKIE_SECURE=False)
-@skipUnless(settings.STATELESS_MODE, "requires QEXO_STATELESS=1")
 class ArticleViewTests(SimpleTestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
@@ -244,7 +240,6 @@ class ArticleViewTests(SimpleTestCase):
 
 
 @override_settings(STATELESS_COOKIE_SECURE=False)
-@skipUnless(settings.STATELESS_MODE, "requires QEXO_STATELESS=1")
 class SetupGuideTests(SimpleTestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
@@ -310,3 +305,15 @@ class SetupGuideTests(SimpleTestCase):
 
         self.assertContains(response, "两次输入的密码不一致")
         self.assertEqual(response.context["password_hash"], "")
+
+
+class StatelessSettingsTests(SimpleTestCase):
+    def test_database_mode_cannot_be_enabled_by_environment_variables(self):
+        self.assertTrue(settings.STATELESS_MODE)
+        self.assertEqual(settings.DATABASES["default"]["ENGINE"], "django.db.backends.dummy")
+        self.assertEqual(settings.INSTALLED_APPS, [])
+
+    def test_setup_does_not_require_a_mode_switch(self):
+        from .config import configuration_status
+
+        self.assertNotIn("QEXO_STATELESS", configuration_status())

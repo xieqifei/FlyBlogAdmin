@@ -3,7 +3,6 @@
 .idea
 tmp
 venv
-configs.py
 *.sqlite3
 *.db
 .env
