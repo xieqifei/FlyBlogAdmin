@@ -88,6 +88,9 @@
         <div class="variable"><h3><code>QEXO_POSTS_PATH</code></h3><div class="muted">文章目录。Hexo 通常是 <code>source/_posts</code>（默认值），Hugo 常见为 <code>content/posts</code>，以你的仓库结构为准。</div></div>
         <div class="variable"><h3><code>QEXO_POST_EXTENSIONS</code></h3><div class="muted">可编辑扩展名，默认 <code>.md,.markdown</code>。</div></div>
         <div class="variable"><h3><code>QEXO_SESSION_AGE</code></h3><div class="muted">登录有效秒数，默认 <code>604800</code>（7 天）。Vercel 默认启用安全 Cookie 和 HTTPS 跳转；其他 HTTPS 部署可设置 <code>QEXO_COOKIE_SECURE=1</code>、<code>QEXO_SSL_REDIRECT=1</code>。</div></div>
+        <div class="variable"><h3><code>QEXO_LLM_API_KEY</code> / <code>QEXO_LLM_MODEL</code></h3><div class="muted">可选的 AI 文章优化配置。设置后编辑页会启用 AI 处理，密钥只在服务端使用。</div></div>
+        <div class="variable"><h3><code>QEXO_LLM_BASE_URL</code></h3><div class="muted">OpenAI 兼容 API 地址，默认 <code>https://api.openai.com/v1</code>。自托管或第三方兼容服务可覆盖此值。</div></div>
+        <div class="variable"><h3><code>QEXO_LLM_API_STYLE</code></h3><div class="muted">可选 <code>auto</code>、<code>chat</code> 或 <code>responses</code>，默认 <code>auto</code>，会自动在 chat/completions 与 Responses API 之间切换。</div></div>
     </section>
 
     <section class="card stack">

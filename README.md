@@ -61,8 +61,14 @@ Qexo 是一个快速、强大、美观的在线 静态博客编辑器。使用 G
 | `QEXO_GITHUB_BRANCH` | 写入分支，例如 `main` |
 | `QEXO_POSTS_PATH` | 文章目录，例如 Hexo 的 `source/_posts` |
 | `DOMAINS` | 允许访问的域名 JSON 列表，例如 `["editor.example.com"]` |
+| `QEXO_LLM_API_KEY` | 可选：AI 服务 API Key |
+| `QEXO_LLM_MODEL` | 可选：AI 模型名称 |
+| `QEXO_LLM_BASE_URL` | 可选：OpenAI 兼容 API 地址，默认 `https://api.openai.com/v1` |
+| `QEXO_LLM_API_STYLE` | 可选：`auto`、`chat` 或 `responses`，默认 `auto` |
 
 可选的 `QEXO_SESSION_AGE` 设置登录 Cookie 秒数（默认 7 天），`QEXO_POST_EXTENSIONS` 设置可编辑扩展名（默认 `.md,.markdown`）。非 Vercel 的 HTTPS 反向代理部署应设置 `QEXO_COOKIE_SECURE=1` 和 `QEXO_SSL_REDIRECT=1`；Vercel 会默认启用这两项安全设置。
+
+AI 文章优化为可选功能。设置 `QEXO_LLM_API_KEY` 和 `QEXO_LLM_MODEL` 后在编辑页即可使用优化、校对、精简、扩写与自定义要求。默认使用 OpenAI 兼容的 `chat/completions` 接口，可通过 `QEXO_LLM_BASE_URL` 指向其他兼容服务；如服务只提供 Responses API，可设置 `QEXO_LLM_API_STYLE=responses`。AI 内容由服务端请求，密钥不会发送到浏览器。
 
 可直接在 `/setup/` 引导页生成密码哈希；也可在安装依赖的本地环境中交互式生成，密码不会进入命令历史：
 

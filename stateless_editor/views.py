@@ -1,10 +1,14 @@
+import json
+import os
 import secrets
+from pathlib import PurePosixPath
 from urllib.parse import urlencode
 
 from django.contrib.auth.hashers import make_password
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.timezone import localdate
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .auth import (
@@ -18,10 +22,28 @@ from .auth import (
 )
 from .config import configuration_complete, configuration_status, missing_configuration
 from .github_client import ConfigurationError, GitHubContentClient, GitHubError, InvalidArticlePath
+from .front_matter import article_path_from_title, build_article, parse_article, split_list
+from .llm_client import LLMClient, LLMConfigurationError, LLMError
 
 
 def _client():
     return GitHubContentClient()
+
+
+def _ai_configured():
+    return bool(
+        os.environ.get("QEXO_LLM_API_KEY", "").strip()
+        and os.environ.get("QEXO_LLM_MODEL", "").strip()
+    )
+
+
+def _render_editor(request, article, editor, error="", status=200):
+    return render(request, "stateless/edit.html", {
+        "article": article,
+        "editor": editor,
+        "error": error,
+        "ai_configured": _ai_configured(),
+    }, status=status)
 
 
 @require_http_methods(["GET", "POST"])
@@ -111,31 +133,67 @@ def article_list(request):
 @login_required
 def edit_article(request):
     article_path = request.GET.get("path", "")
-    article = {"path": "", "sha": "", "content": "---\ntitle: \n---\n\n"}
+    article = {"path": "", "sha": "", "content": ""}
     error = request.GET.get("error", "")
     if article_path:
         try:
             article = _client().get_article(article_path)
         except (ConfigurationError, GitHubError, InvalidArticlePath) as exc:
             error = str(exc)
-    return render(request, "stateless/edit.html", {"article": article, "error": error})
+    editor = parse_article(article["content"])
+    if article_path:
+        if not editor["title"]:
+            editor["title"] = PurePosixPath(article_path).stem
+    else:
+        editor["date"] = editor["date"] or localdate().isoformat()
+        title = request.GET.get("title", "").strip()
+        if title:
+            editor["title"] = title
+    return _render_editor(request, article, editor, error)
 
 
 @require_POST
 @login_required
 def save_article(request):
+    title = request.POST.get("title", "").strip()
+    body = request.POST.get("body", "")
+    metadata = {
+        "title": title,
+        "date": request.POST.get("date", "").strip(),
+        "tags": split_list(request.POST.get("tags", "")),
+        "categories": split_list(request.POST.get("categories", "")),
+        "cover": request.POST.get("cover", "").strip(),
+        "description": request.POST.get("description", "").strip(),
+    }
     article_path = request.POST.get("path", "").strip()
-    content = request.POST.get("content", "")
+    if not title:
+        return _render_editor(request, {
+            "path": article_path,
+            "sha": request.POST.get("sha", "").strip(),
+            "content": "",
+        }, {
+            "front_matter": request.POST.get("front_matter", ""),
+            "body": body,
+            **metadata,
+        }, "请填写文章标题", status=400)
+    if not article_path:
+        article_path = article_path_from_title(title)
+    content = build_article(request.POST.get("front_matter", ""), body, metadata)
     sha = request.POST.get("sha", "").strip()
     commit_message = request.POST.get("commit_message", "").strip()
     try:
         client = _client()
         client.save_article(article_path, content, sha=sha, message=commit_message)
     except (ConfigurationError, GitHubError, InvalidArticlePath) as exc:
-        return render(request, "stateless/edit.html", {
-            "article": {"path": article_path, "sha": sha, "content": content},
-            "error": str(exc),
-        }, status=400)
+        return _render_editor(request, {
+            "path": article_path,
+            "sha": sha,
+            "content": content,
+        }, {
+            "front_matter": request.POST.get("front_matter", ""),
+            "body": body,
+            **metadata,
+        }, str(exc), status=400)
     return redirect(reverse("home") + "?saved=1")
 
 
@@ -150,6 +208,37 @@ def delete_article(request):
         query = urlencode({"path": article_path, "error": str(exc)})
         return redirect(reverse("edit_article") + "?" + query)
     return redirect(reverse("home") + "?deleted=1")
+
+
+@require_POST
+@login_required
+def optimize_article(request):
+    try:
+        payload = json.loads(request.body)
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"error": "请求格式无效"}, status=400)
+    content = str(payload.get("content", "")).strip()
+    mode = str(payload.get("mode", "optimize"))
+    custom_instruction = str(payload.get("instruction", "")).strip()[:500]
+    instructions = {
+        "optimize": "优化表达与文章结构，使语言自然流畅、逻辑清晰，并保持原有语气。",
+        "proofread": "校对错别字、语法和标点，只做必要修改。",
+        "shorten": "在保留关键信息的前提下精简内容，删除重复和空泛表达。",
+        "expand": "在不杜撰事实的前提下补足论述和衔接，让内容更完整。",
+        "custom": custom_instruction,
+    }
+    instruction = instructions.get(mode, "")
+    if not content or len(content) > 100_000:
+        return JsonResponse({"error": "请选择正文，且内容不能超过 100000 个字符"}, status=400)
+    if not instruction:
+        return JsonResponse({"error": "请输入 AI 编辑要求"}, status=400)
+    try:
+        optimized = LLMClient().optimize(content, instruction)
+    except LLMConfigurationError as exc:
+        return JsonResponse({"error": str(exc)}, status=503)
+    except LLMError as exc:
+        return JsonResponse({"error": str(exc)}, status=502)
+    return JsonResponse({"content": optimized})
 
 
 @require_GET

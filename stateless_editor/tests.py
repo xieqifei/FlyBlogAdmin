@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 from unittest.mock import Mock, patch
 
@@ -8,7 +9,9 @@ from django.test import Client, SimpleTestCase, override_settings
 from django.urls import reverse
 
 from .auth import COOKIE_NAME
+from .front_matter import article_path_from_title, build_article, parse_article, split_list
 from .github_client import GitHubConfig, GitHubContentClient, GitHubError, InvalidArticlePath
+from .llm_client import LLMClient, LLMConfigurationError
 
 
 class FakeResponse:
@@ -24,6 +27,7 @@ class FakeResponse:
 class AuthenticationTests(SimpleTestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
+            "QEXO_SECRET_KEY": "test-secret-key",
             "ADMIN_USERNAME": "owner",
             "ADMIN_PASSWORD_HASH": make_password("correct horse battery staple"),
             "QEXO_GITHUB_TOKEN": "test-token",
@@ -209,20 +213,145 @@ class GitHubContentClientTests(SimpleTestCase):
         self.assertNotIn("secret-token", str(caught.exception))
 
 
+class FrontMatterTests(SimpleTestCase):
+    def test_parse_article_keeps_managed_fields_and_body(self):
+        content = (
+            "---\n"
+            "layout: post\n"
+            "title: \"Hello World\"\n"
+            "date: 2026-08-30\n"
+            "tags:\n"
+            "  - AI\n"
+            "  - Markdown\n"
+            "categories:\n"
+            "  - Notes\n"
+            "cover: https://example.com/cover.jpg\n"
+            "description: 摘要\n"
+            "custom: keep-me\n"
+            "---\n\n"
+            "# 正文\n"
+        )
+
+        parsed = parse_article(content)
+
+        self.assertEqual(parsed["title"], "Hello World")
+        self.assertEqual(parsed["date"], "2026-08-30")
+        self.assertEqual(parsed["tags"], ["AI", "Markdown"])
+        self.assertEqual(parsed["categories"], ["Notes"])
+        self.assertEqual(parsed["cover"], "https://example.com/cover.jpg")
+        self.assertEqual(parsed["description"], "摘要")
+        self.assertEqual(parsed["body"], "# 正文")
+        self.assertIn("custom: keep-me", parsed["front_matter"])
+
+    def test_build_article_updates_managed_fields_and_preserves_custom_fields(self):
+        parsed = parse_article(
+            "---\nlayout: post\ntitle: Old\ndate: 2026-08-30\n"
+            "tags:\n  - Old\ncustom: keep-me\n---\n\nbody\n"
+        )
+
+        rebuilt = build_article(parsed["front_matter"], parsed["body"], {
+            "title": "New Title",
+            "date": "2026-08-31",
+            "tags": ["AI", "Markdown"],
+            "categories": ["Notes"],
+            "cover": "",
+            "description": "摘要",
+        })
+
+        self.assertIn("title: \"New Title\"", rebuilt)
+        self.assertIn("date: \"2026-08-31\"", rebuilt)
+        self.assertIn("- \"AI\"", rebuilt)
+        self.assertIn("- \"Markdown\"", rebuilt)
+        self.assertIn("- \"Notes\"", rebuilt)
+        self.assertIn("custom: keep-me", rebuilt)
+        self.assertNotIn("Old", rebuilt)
+        self.assertTrue(rebuilt.startswith("---\n"))
+        self.assertTrue(rebuilt.endswith("body"))
+
+    def test_parse_article_without_front_matter_returns_body(self):
+        parsed = parse_article("plain body")
+
+        self.assertEqual(parsed["front_matter"], "")
+        self.assertEqual(parsed["body"], "plain body")
+        self.assertEqual(parsed["title"], "")
+
+    def test_split_list_handles_commas_and_newlines(self):
+        self.assertEqual(split_list("AI, Markdown，写作\nHexo"), ["AI", "Markdown", "写作", "Hexo"])
+
+    def test_article_path_from_title_generates_slug(self):
+        self.assertEqual(article_path_from_title("Hello World! 2026"), "hello-world-2026.md")
+        self.assertEqual(article_path_from_title("你好 世界"), "你好-世界.md")
+        self.assertRegex(article_path_from_title("   "), r"^article-\d{4}-\d{2}-\d{2}\.md$")
+
+
 @override_settings(STATELESS_COOKIE_SECURE=False)
 class ArticleViewTests(SimpleTestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
+            "QEXO_SECRET_KEY": "test-secret-key",
             "ADMIN_USERNAME": "owner",
             "ADMIN_PASSWORD_HASH": make_password("password-for-tests"),
             "QEXO_GITHUB_TOKEN": "test-token",
             "QEXO_GITHUB_REPOSITORY": "owner/blog",
             "DOMAINS": '["testserver"]',
+            "QEXO_LLM_API_KEY": "test-llm-key",
+            "QEXO_LLM_MODEL": "test-model",
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
         self.client = Client()
         self.client.post(reverse("login"), {"username": "owner", "password": "password-for-tests"})
+
+    def test_edit_page_uses_metadata_form_and_body_editor(self):
+        fake_client = Mock()
+        fake_client.get_article.return_value = {
+            "path": "hello.md",
+            "sha": "sha-1",
+            "content": "---\ntitle: Hello\ntags:\n  - AI\n---\n\n# Body\n",
+        }
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("edit_article") + "?path=hello.md")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="title"')
+        self.assertContains(response, 'name="body"')
+        self.assertContains(response, 'name="front_matter"')
+        self.assertContains(response, 'name="tags"')
+        self.assertNotContains(response, 'name="content"')
+        self.assertContains(response, "# Body")
+
+    def test_edit_page_accepts_quick_create_title(self):
+        response = self.client.get(reverse("edit_article") + "?title=Quick")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'value="Quick"')
+        self.assertNotContains(response, 'name="path"')
+
+    def test_save_new_article_generates_path_and_writes_metadata(self):
+        fake_client = Mock()
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.post(reverse("save_article"), {
+                "title": "Hello World",
+                "date": "2026-08-30",
+                "tags": "AI, Markdown",
+                "categories": "Notes",
+                "cover": "",
+                "description": "摘要",
+                "front_matter": "",
+                "body": "# 正文",
+                "commit_message": "",
+            })
+
+        self.assertRedirects(response, reverse("home") + "?saved=1", fetch_redirect_response=False)
+        saved_path = fake_client.save_article.call_args.args[0]
+        saved_content = fake_client.save_article.call_args.args[1]
+        self.assertEqual(saved_path, "hello-world.md")
+        self.assertIn('title: "Hello World"', saved_content)
+        self.assertIn('date: "2026-08-30"', saved_content)
+        self.assertIn('- "AI"', saved_content)
+        self.assertIn('- "Markdown"', saved_content)
+        self.assertIn('- "Notes"', saved_content)
+        self.assertIn("# 正文", saved_content)
 
     def test_save_failure_preserves_unsaved_content(self):
         fake_client = Mock()
@@ -231,12 +360,113 @@ class ArticleViewTests(SimpleTestCase):
             response = self.client.post(reverse("save_article"), {
                 "path": "hello.md",
                 "sha": "stale-sha",
-                "content": "unsaved text",
+                "title": "Unsaved",
+                "front_matter": "",
+                "body": "unsaved text",
+                "tags": "AI",
+                "categories": "Notes",
             })
 
         self.assertEqual(response.status_code, 400)
         self.assertContains(response, "unsaved text", status_code=400)
+        self.assertContains(response, "Unsaved", status_code=400)
         self.assertContains(response, "冲突", status_code=400)
+
+    def test_save_requires_title(self):
+        response = self.client.post(reverse("save_article"), {
+            "front_matter": "",
+            "body": "正文",
+        })
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "请填写文章标题", status_code=400)
+
+
+class LLMClientTests(SimpleTestCase):
+    def test_chat_completion_returns_optimized_text(self):
+        session = Mock()
+        session.post.return_value = FakeResponse(200, {
+            "choices": [{"message": {"content": "优化后正文"}}],
+        })
+        client = LLMClient(
+            api_key="key",
+            model="model",
+            base_url="https://api.example.com/v1",
+            api_style="chat",
+            session=session,
+        )
+
+        result = client.optimize("原文", "优化表达")
+
+        self.assertEqual(result, "优化后正文")
+        request_url = session.post.call_args.args[0]
+        self.assertEqual(request_url, "https://api.example.com/v1/chat/completions")
+        payload = session.post.call_args.kwargs["json"]
+        self.assertIn("优化表达", payload["messages"][1]["content"])
+        self.assertNotIn("原文", payload["messages"][1]["content"].split("待编辑内容：")[0])
+
+    def test_auto_mode_falls_back_to_responses_api(self):
+        session = Mock()
+        session.post.side_effect = [
+            FakeResponse(404, {}),
+            FakeResponse(200, {"output_text": "优化后正文"}),
+        ]
+        client = LLMClient(
+            api_key="key",
+            model="model",
+            base_url="https://api.example.com/v1",
+            api_style="auto",
+            session=session,
+        )
+
+        result = client.optimize("原文", "优化表达")
+
+        self.assertEqual(result, "优化后正文")
+        self.assertEqual(session.post.call_count, 2)
+        self.assertEqual(session.post.call_args.args[0], "https://api.example.com/v1/responses")
+
+    def test_missing_credentials_raises_configuration_error(self):
+        with patch.dict(os.environ, {
+            "QEXO_LLM_API_KEY": "",
+            "QEXO_LLM_MODEL": "",
+            "QEXO_LLM_BASE_URL": "https://api.example.com/v1",
+            "QEXO_LLM_API_STYLE": "auto",
+        }):
+            with self.assertRaises(LLMConfigurationError):
+                LLMClient()
+
+
+@override_settings(STATELESS_COOKIE_SECURE=False)
+class LLMViewTests(SimpleTestCase):
+    def setUp(self):
+        self.environment = patch.dict(os.environ, {
+            "QEXO_SECRET_KEY": "test-secret-key",
+            "ADMIN_USERNAME": "owner",
+            "ADMIN_PASSWORD_HASH": make_password("password-for-tests"),
+            "QEXO_GITHUB_TOKEN": "test-token",
+            "QEXO_GITHUB_REPOSITORY": "owner/blog",
+            "DOMAINS": '["testserver"]',
+            "QEXO_LLM_API_KEY": "test-llm-key",
+            "QEXO_LLM_MODEL": "test-model",
+            "QEXO_LLM_BASE_URL": "https://api.example.com/v1",
+        })
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+        self.client = Client()
+        self.client.post(reverse("login"), {"username": "owner", "password": "password-for-tests"})
+
+    def test_optimize_endpoint_returns_ai_rewritten_body(self):
+        fake_llm = Mock()
+        fake_llm.optimize.return_value = "优化后正文"
+        with patch("stateless_editor.views.LLMClient", return_value=fake_llm):
+            response = self.client.post(
+                reverse("optimize_article"),
+                data=json.dumps({"content": "原文", "mode": "optimize"}),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["content"], "优化后正文")
 
 
 @override_settings(STATELESS_COOKIE_SECURE=False)
