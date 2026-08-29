@@ -73,7 +73,7 @@ class GitHubContentClient:
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {self.config.token}",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "Qexo-Stateless-Editor",
+            "User-Agent": "Blog-Admin",
         }
 
     def _request(self, method, path, expected, payload=None, response_type=dict):
@@ -155,6 +155,18 @@ class GitHubContentClient:
             })
         return sorted(articles, key=lambda item: item["path"].lower())
 
+    @staticmethod
+    def _decode_content(data, expected_type=None):
+        if expected_type and data.get("type") != expected_type:
+            raise GitHubError("目标不是可编辑的文本文件")
+        if data.get("encoding") != "base64":
+            raise GitHubError("目标不是可编辑的文本文件")
+        try:
+            encoded_content = "".join(data.get("content", "").split())
+            return base64.b64decode(encoded_content, validate=True).decode("utf-8")
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise GitHubError("文章不是有效的 UTF-8 文本") from exc
+
     def get_article(self, article_path):
         full_path = quote(self._full_path(article_path), safe="/")
         branch = quote(self.config.branch, safe="")
@@ -163,13 +175,7 @@ class GitHubContentClient:
             f"/repos/{self.config.repository}/contents/{full_path}?ref={branch}",
             {200},
         )
-        if data.get("type") != "file" or data.get("encoding") != "base64":
-            raise GitHubError("目标不是可编辑的文本文件")
-        try:
-            encoded_content = "".join(data.get("content", "").split())
-            content = base64.b64decode(encoded_content, validate=True).decode("utf-8")
-        except (ValueError, UnicodeDecodeError) as exc:
-            raise GitHubError("文章不是有效的 UTF-8 文本") from exc
+        content = self._decode_content(data, expected_type="file")
         return {"path": self.normalize_article_path(article_path), "sha": data.get("sha", ""), "content": content}
 
     def get_article_last_modified(self, article_path):
@@ -189,10 +195,26 @@ class GitHubContentClient:
         author = commit.get("author", {}) if isinstance(commit, dict) else {}
         return str(committer.get("date") or author.get("date") or "")
 
+    def get_article_blob(self, sha, article_path):
+        """Read a tree blob directly, avoiding a second path/ref lookup."""
+        normalized = self.normalize_article_path(article_path)
+        if not re.fullmatch(r"[0-9a-fA-F]{7,64}", str(sha or "")):
+            raise GitHubError("文章 Blob SHA 无效")
+        data = self._request(
+            "GET",
+            f"/repos/{self.config.repository}/git/blobs/{quote(str(sha), safe='')}",
+            {200},
+        )
+        return {
+            "path": normalized,
+            "sha": data.get("sha", sha),
+            "content": self._decode_content(data),
+        }
+
     def save_article(self, article_path, content, sha="", message=""):
         normalized = self.normalize_article_path(article_path)
         full_path = quote(self._full_path(normalized), safe="/")
-        commit_message = message.strip() or f"Update {normalized} from Qexo"
+        commit_message = message.strip() or f"Update {normalized} from Blog Admin"
         payload = {
             "message": commit_message[:200],
             "content": base64.b64encode(content.encode("utf-8")).decode("ascii"),
@@ -212,7 +234,7 @@ class GitHubContentClient:
         if not sha:
             raise InvalidArticlePath("删除文章必须提供当前 SHA")
         full_path = quote(self._full_path(normalized), safe="/")
-        commit_message = message.strip() or f"Delete {normalized} from Qexo"
+        commit_message = message.strip() or f"Delete {normalized} from Blog Admin"
         payload = {
             "message": commit_message[:200],
             "sha": sha,

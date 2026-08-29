@@ -18,6 +18,7 @@ from .front_matter import (
 )
 from .github_client import GitHubConfig, GitHubContentClient, GitHubError, InvalidArticlePath
 from .llm_client import LLMClient, LLMConfigurationError
+from .search_index import ArticleCatalog, article_document, invalidate_catalog, markdown_text
 
 
 class FakeResponse:
@@ -215,7 +216,21 @@ class GitHubContentClientTests(SimpleTestCase):
         self.client.save_article("hello.md", "content", message="   ")
 
         payload = self.session.request.call_args.kwargs["json"]
-        self.assertEqual(payload["message"], "Update hello.md from Qexo")
+        self.assertEqual(payload["message"], "Update hello.md from Blog Admin")
+
+    def test_reads_article_directly_from_tree_blob(self):
+        encoded = base64.b64encode("---\ntitle: Blob\n---\n\n正文".encode()).decode()
+        self.session.request.return_value = FakeResponse(200, {
+            "encoding": "base64",
+            "sha": "a" * 40,
+            "content": encoded,
+        })
+
+        article = self.client.get_article_blob("a" * 40, "hello.md")
+
+        self.assertEqual(article["path"], "hello.md")
+        self.assertIn("正文", article["content"])
+        self.assertIn("/git/blobs/" + "a" * 40, self.session.request.call_args.args[1])
 
     def test_rejects_paths_outside_article_directory(self):
         for path in ("../secret.md", "/absolute.md", "folder\\file.md", "image.png"):
@@ -239,6 +254,7 @@ class FrontMatterTests(SimpleTestCase):
             "layout: post\n"
             "title: \"Hello World\"\n"
             "date: 2026-08-30\n"
+            "updated: 2026-08-31 18:00:00\n"
             "tags:\n"
             "  - AI\n"
             "  - Markdown\n"
@@ -255,6 +271,7 @@ class FrontMatterTests(SimpleTestCase):
 
         self.assertEqual(parsed["title"], "Hello World")
         self.assertEqual(parsed["date"], "2026-08-30")
+        self.assertEqual(parsed["updated"], "2026-08-31 18:00:00")
         self.assertEqual(parsed["tags"], ["AI", "Markdown"])
         self.assertEqual(parsed["categories"], ["Notes"])
         self.assertEqual(parsed["cover"], "https://example.com/cover.jpg")
@@ -370,6 +387,7 @@ class ArticleViewTests(SimpleTestCase):
             "DOMAINS": '["testserver"]',
             "QEXO_LLM_API_KEY": "test-llm-key",
             "QEXO_LLM_MODEL": "test-model",
+            "QEXO_SEARCH_CACHE_SECONDS": "0",
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -435,74 +453,94 @@ class ArticleViewTests(SimpleTestCase):
         self.assertNotContains(response, "快捷创建")
         self.assertNotContains(response, 'id="quick-title"')
 
-    def test_home_sorts_and_filters_articles_by_front_matter(self):
+    def test_articles_api_filters_and_sorts_by_front_matter(self):
+        invalidate_catalog()
         fake_client = Mock()
-        fake_client.config.repository = "owner/blog"
-        fake_client.config.branch = "main"
+        fake_client.config = GitHubConfig(
+            token="token", repository="owner/filter-blog", branch="main",
+            posts_path="source/_posts", extensions=(".md",),
+        )
         fake_client.list_articles.return_value = [
-            {"path": "older.md", "name": "older", "size": 10},
-            {"path": "newer.md", "name": "newer", "size": 20},
-            {"path": "draft.md", "name": "draft", "size": 30},
+            {
+                "path": "older.md", "sha": "a" * 40, "size": 10,
+                "content": "---\ntitle: Alpha\ndate: 2025-01-01\nupdated: 2026-01-02\ncategories: [Tech]\ntags: [Django]\n---\n",
+            },
+            {
+                "path": "newer.md", "sha": "b" * 40, "size": 20,
+                "content": "---\ntitle: Beta\ndate: 2026-03-01\nupdated: 2026-03-02\ncategories: [Tech]\ntags: [Python]\n---\n",
+            },
+            {
+                "path": "draft.md", "sha": "c" * 40, "size": 30,
+                "content": "---\ntitle: Gamma\ndate: 2026-04-01\nupdated: 2026-04-02\ncategories: [Life]\ntags: [Travel]\n---\n",
+            },
         ]
-        fake_client.get_article.side_effect = lambda path: {"content": {
-            "older.md": "---\ntitle: Alpha\ndate: 2025-01-01\nupdated: 2026-01-02\ncategories: [Tech]\ntags: [Django]\n---\n",
-            "newer.md": "---\ntitle: Beta\ndate: 2026-03-01\nupdated: 2026-03-02\ncategories: [Tech]\ntags: [Python]\n---\n",
-            "draft.md": "---\ntitle: Gamma\ndate: 2026-04-01\nupdated: 2026-04-02\ncategories: [Life]\ntags: [Travel]\n---\n",
-        }[path]}
 
         with patch("stateless_editor.views._client", return_value=fake_client):
-            response = self.client.get(reverse("home"), {
+            response = self.client.get(reverse("articles_api"), {
                 "sort": "published",
                 "category": "Tech",
                 "tag": "Python",
             })
 
-        self.assertEqual([article["title"] for article in response.context["articles"]], ["Beta"])
-        self.assertEqual(response.context["categories"], ["Life", "Tech"])
-        self.assertEqual(response.context["tags"], ["Django", "Python", "Travel"])
-        self.assertContains(response, "发布日期（最新优先）")
-        self.assertContains(response, "分类 · Tech")
+        payload = response.json()
+        self.assertEqual([item["title"] for item in payload["articles"]], ["Beta"])
+        self.assertEqual(payload["categories"], ["Life", "Tech"])
+        self.assertEqual(payload["tags"], ["Django", "Python", "Travel"])
+        self.assertEqual(payload["search_mode"], "none")
         fake_client.get_article_last_modified.assert_not_called()
 
-    def test_home_falls_back_to_github_commit_for_modified_sort(self):
+    def test_articles_api_falls_back_to_github_commit_for_modified_sort(self):
+        invalidate_catalog()
         fake_client = Mock()
-        fake_client.config.repository = "owner/blog"
-        fake_client.config.branch = "main"
+        fake_client.config = GitHubConfig(
+            token="token", repository="owner/commit-blog", branch="main",
+            posts_path="source/_posts", extensions=(".md",),
+        )
         fake_client.list_articles.return_value = [
-            {"path": "alpha.md", "name": "alpha", "size": 10},
-            {"path": "beta.md", "name": "beta", "size": 20},
+            {
+                "path": "alpha.md", "sha": "a" * 40, "size": 10,
+                "content": "---\ntitle: Alpha\ndate: 2026-01-01\n---\n",
+            },
+            {
+                "path": "beta.md", "sha": "b" * 40, "size": 20,
+                "content": "---\ntitle: Beta\ndate: 2026-01-01\n---\n",
+            },
         ]
-        fake_client.get_article.side_effect = lambda path: {
-            "content": f"---\ntitle: {path[:-3].title()}\ndate: 2026-01-01\n---\n"
-        }
         fake_client.get_article_last_modified.side_effect = {
             "alpha.md": "2026-01-03T00:00:00Z",
             "beta.md": "2026-01-04T00:00:00Z",
         }.get
 
         with patch("stateless_editor.views._client", return_value=fake_client):
-            response = self.client.get(reverse("home"))
+            response = self.client.get(reverse("articles_api"), {"sort": "modified"})
 
-        self.assertEqual([article["title"] for article in response.context["articles"]], ["Beta", "Alpha"])
+        payload = response.json()
+        self.assertEqual([item["title"] for item in payload["articles"]], ["Beta", "Alpha"])
         self.assertEqual(fake_client.get_article_last_modified.call_count, 2)
 
-    def test_home_name_sort_uses_front_matter_title_and_searches_it(self):
+    def test_articles_api_name_sort_uses_front_matter_title_and_searches_it(self):
+        invalidate_catalog()
         fake_client = Mock()
-        fake_client.config.repository = "owner/blog"
-        fake_client.config.branch = "main"
+        fake_client.config = GitHubConfig(
+            token="token", repository="owner/name-blog", branch="main",
+            posts_path="source/_posts", extensions=(".md",),
+        )
         fake_client.list_articles.return_value = [
-            {"path": "z-file.md", "name": "z-file", "size": 10},
-            {"path": "a-file.md", "name": "a-file", "size": 20},
+            {
+                "path": "z-file.md", "sha": "a" * 40, "size": 10,
+                "content": "---\ntitle: Apple\nupdated: 2026-01-01\n---\n",
+            },
+            {
+                "path": "a-file.md", "sha": "b" * 40, "size": 20,
+                "content": "---\ntitle: Zebra\nupdated: 2026-01-01\n---\n",
+            },
         ]
-        fake_client.get_article.side_effect = lambda path: {"content": {
-            "z-file.md": "---\ntitle: Apple\nupdated: 2026-01-01\n---\n",
-            "a-file.md": "---\ntitle: Zebra\nupdated: 2026-01-01\n---\n",
-        }[path]}
 
         with patch("stateless_editor.views._client", return_value=fake_client):
-            response = self.client.get(reverse("home"), {"sort": "name", "q": "app"})
+            response = self.client.get(reverse("articles_api"), {"sort": "name", "q": "app"})
 
-        self.assertEqual([article["title"] for article in response.context["articles"]], ["Apple"])
+        payload = response.json()
+        self.assertEqual([item["title"] for item in payload["articles"]], ["Apple"])
 
     def test_home_has_accessible_settings_link_to_setup_guide(self):
         fake_client = Mock()
@@ -547,11 +585,99 @@ class ArticleViewTests(SimpleTestCase):
         self.assertEqual(saved_path, "hello-world.md")
         self.assertIn('title: "Hello World"', saved_content)
         self.assertIn('date: "2026-08-30"', saved_content)
+        self.assertIn("updated:", saved_content)
         self.assertIn('- "AI"', saved_content)
         self.assertIn('- "Markdown"', saved_content)
         self.assertIn('- "Notes"', saved_content)
         self.assertIn("# 正文", saved_content)
         self.assertNotIn("message", fake_client.save_article.call_args.kwargs)
+
+    def test_home_uses_lazy_loading_and_blog_admin_brand(self):
+        fake_client = Mock()
+        fake_client.config.repository = "owner/blog"
+        fake_client.config.branch = "main"
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("home"))
+
+        self.assertContains(response, "Blog Admin")
+        self.assertContains(response, "IntersectionObserver")
+        self.assertContains(response, 'id="back-to-top"')
+        fake_client.list_articles.assert_not_called()
+
+    def test_articles_api_paginates_and_returns_article_metadata(self):
+        fake_client = Mock()
+        fake_client.get_article_last_modified.return_value = "2026-08-04T00:00:00Z"
+        fake_client.config = GitHubConfig(
+            token="token", repository="owner/blog", branch="main",
+            posts_path="source/_posts", extensions=(".md",),
+        )
+        fake_client.list_articles.return_value = [
+            {
+                "path": "one.md", "sha": "1" * 40, "size": 100,
+                "content": (
+                    "---\ntitle: 第一篇\ndate: 2026-08-01\nupdated: 2026-08-02\n"
+                    "categories: [技术]\ntags: [Python]\n---\n\n正文一"
+                ),
+            },
+            {
+                "path": "two.md", "sha": "2" * 40, "size": 200,
+                "content": "---\ntitle: 第二篇\ndate: 2026-08-03\n---\n\n正文二",
+            },
+        ]
+
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("articles_api") + "?sort=name&page=1&page_size=1")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["pagination"], {
+            "page": 1, "page_size": 1, "total": 2, "has_more": True,
+        })
+        self.assertEqual(payload["articles"][0]["title"], "第一篇")
+        self.assertEqual(payload["articles"][0]["categories"], ["技术"])
+        self.assertEqual(payload["articles"][0]["tags"], ["Python"])
+        self.assertEqual(payload["articles"][0]["updated_at"], "2026-08-02")
+
+    def test_articles_api_searches_full_text_with_vector_index(self):
+        invalidate_catalog()
+        fake_client = Mock()
+        fake_client.get_article_last_modified.return_value = "2026-01-01T00:00:00Z"
+        fake_client.config = GitHubConfig(
+            token="token", repository="owner/search-blog", branch="main",
+            posts_path="source/_posts", extensions=(".md",),
+        )
+        fake_client.list_articles.return_value = [
+            {"path": "garden.md", "size": 10, "content": "---\ntitle: 花园\n---\n\n番茄种植记录"},
+            {"path": "python.md", "size": 10, "content": "---\ntitle: 编程\n---\n\n使用 Python 编写搜索服务"},
+        ]
+
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("articles_api") + "?q=Python")
+
+        payload = response.json()
+        self.assertEqual(payload["search_mode"], "full_text_vector")
+        self.assertEqual([item["title"] for item in payload["articles"]], ["编程"])
+        self.assertGreater(payload["articles"][0]["score"], 0)
+
+    def test_graph_api_connects_articles_to_categories_and_tags(self):
+        invalidate_catalog()
+        fake_client = Mock()
+        fake_client.get_article_last_modified.return_value = "2026-01-01T00:00:00Z"
+        fake_client.config = GitHubConfig(
+            token="token", repository="owner/graph-blog", branch="main",
+            posts_path="source/_posts", extensions=(".md",),
+        )
+        fake_client.list_articles.return_value = [{
+            "path": "graph.md", "size": 10,
+            "content": "---\ntitle: 图谱文章\ncategories: [技术]\ntags: [知识图谱]\n---\n\n正文",
+        }]
+
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("graph_api"))
+
+        payload = response.json()
+        self.assertEqual({node["type"] for node in payload["nodes"]}, {"article", "category", "tag"})
+        self.assertEqual(len(payload["edges"]), 2)
 
     def test_save_preserves_nested_categories_and_custom_fields(self):
         fake_client = Mock()
@@ -606,6 +732,28 @@ class ArticleViewTests(SimpleTestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertContains(response, "请填写文章标题", status_code=400)
+
+
+class SearchIndexTests(SimpleTestCase):
+    def test_markdown_is_reduced_to_safe_searchable_text(self):
+        self.assertEqual(markdown_text("# [标题](https://example.com) <b>正文</b>"), "标题 正文")
+
+    def test_exact_title_match_ranks_before_body_vector_match(self):
+        documents = [
+            article_document(
+                {"path": "title.md", "size": 1},
+                "---\ntitle: Python 搜索\n---\n\n简短正文",
+            ),
+            article_document(
+                {"path": "body.md", "size": 1},
+                "---\ntitle: 其他\n---\n\nPython Python 搜索实现",
+            ),
+        ]
+
+        results = ArticleCatalog(documents).search("Python 搜索")
+
+        self.assertEqual(results[0][0]["path"], "title.md")
+        self.assertGreater(results[0][1], results[1][1])
 
 
 class LLMClientTests(SimpleTestCase):

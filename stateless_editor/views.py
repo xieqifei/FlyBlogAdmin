@@ -1,18 +1,15 @@
-import hashlib
 import json
 import os
 import secrets
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlencode, urlsplit
 
 from django.contrib.auth.hashers import make_password
-from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.utils.timezone import localdate
+from django.utils.timezone import localdate, localtime
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .auth import (
@@ -34,13 +31,13 @@ from .front_matter import (
     split_list,
 )
 from .llm_client import LLMClient, LLMConfigurationError, LLMError
+from .search_index import get_catalog, invalidate_catalog, public_article
 
 
 STACKEDIT_SCRIPT_PATH = (
     Path(__file__).resolve().parent
     / "static/stateless/vendor/stackedit/stackedit.js"
 )
-ARTICLE_SUMMARY_CACHE_SECONDS = 300
 
 
 def _client():
@@ -62,93 +59,6 @@ def _stackedit_url():
     return "https://stackedit.io/app"
 
 
-def _flatten_labels(value):
-    if isinstance(value, (list, tuple)):
-        labels = []
-        for item in value:
-            labels.extend(_flatten_labels(item))
-        return labels
-    text = str(value or "").strip()
-    return [text] if text else []
-
-
-def _front_matter_modified_date(editor):
-    custom_fields = {
-        str(field.get("name", "")).casefold(): str(field.get("value", "")).strip()
-        for field in editor.get("custom_fields", [])
-        if isinstance(field, dict)
-    }
-    for name in ("updated", "lastmod", "last_modified", "modified"):
-        if custom_fields.get(name):
-            return custom_fields[name]
-    return ""
-
-
-def _article_summary_cache_key(client, article):
-    sha = str(article.get("sha") or "").strip()
-    if not sha:
-        return ""
-    identity = "\0".join((
-        client.config.repository,
-        client.config.branch,
-        article["path"],
-        sha,
-    ))
-    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
-    return f"qexo:article-summary:{digest}"
-
-
-def _load_article_summary(client, article):
-    cache_key = _article_summary_cache_key(client, article)
-    cached = cache.get(cache_key) if cache_key else None
-    if isinstance(cached, dict):
-        return {**article, **cached}
-
-    summary = {
-        **article,
-        "title": article["name"],
-        "published_date": "",
-        "modified_date": "",
-        "categories": [],
-        "tags": [],
-        "metadata_error": False,
-    }
-    try:
-        content = client.get_article(article["path"])["content"]
-        editor = parse_article(content)
-        summary.update({
-            "title": editor.get("title") or article["name"],
-            "published_date": str(editor.get("date") or "").strip(),
-            "modified_date": _front_matter_modified_date(editor),
-            "categories": _flatten_labels(editor.get("categories", [])),
-            "tags": _flatten_labels(editor.get("tags", [])),
-        })
-    except (GitHubError, KeyError, TypeError):
-        summary["metadata_error"] = True
-
-    if not summary["modified_date"]:
-        try:
-            summary["modified_date"] = client.get_article_last_modified(article["path"])
-        except (GitHubError, AttributeError, TypeError):
-            summary["metadata_error"] = True
-    if cache_key and not summary["metadata_error"]:
-        cache.set(cache_key, {
-            key: summary[key]
-            for key in (
-                "title", "published_date", "modified_date", "categories", "tags", "metadata_error",
-            )
-        }, ARTICLE_SUMMARY_CACHE_SECONDS)
-    return summary
-
-
-def _load_article_summaries(client, articles):
-    if not articles:
-        return []
-    worker_count = min(8, len(articles))
-    with ThreadPoolExecutor(max_workers=worker_count) as executor:
-        return list(executor.map(lambda article: _load_article_summary(client, article), articles))
-
-
 def _date_sort_value(value):
     text = str(value or "").strip()
     if not text:
@@ -159,6 +69,44 @@ def _date_sort_value(value):
         return float("-inf")
 
 
+def _label_options(documents, key):
+    labels = {
+        str(label).strip()
+        for document in documents
+        for label in document[key]
+        if str(label).strip()
+    }
+    return sorted(labels, key=str.casefold)
+
+
+def _article_results(catalog, query, sort, category, tag):
+    if query:
+        results = [(document, score) for document, score in catalog.search(query)]
+    else:
+        results = [(document, None) for document in catalog.documents]
+
+    if category:
+        lowered_category = category.casefold()
+        results = [
+            item for item in results
+            if any(str(label).casefold() == lowered_category for label in item[0]["categories"])
+        ]
+    if tag:
+        lowered_tag = tag.casefold()
+        results = [
+            item for item in results
+            if any(str(label).casefold() == lowered_tag for label in item[0]["tags"])
+        ]
+
+    if sort == "name":
+        results.sort(key=lambda item: (item[0]["title"].casefold(), item[0]["path"].casefold()))
+    elif sort == "published":
+        results.sort(key=lambda item: _date_sort_value(item[0]["created_at"]), reverse=True)
+    elif sort == "modified":
+        results.sort(key=lambda item: _date_sort_value(item[0]["updated_at"]), reverse=True)
+    return results
+
+
 def _render_editor(request, article, editor, error="", status=200):
     return render(request, "stateless/edit.html", {
         "article": article,
@@ -167,6 +115,14 @@ def _render_editor(request, article, editor, error="", status=200):
         "ai_configured": _ai_configured(),
         "stackedit_url": _stackedit_url(),
     }, status=status)
+
+
+def _positive_integer(value, default, maximum):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(1, min(parsed, maximum))
 
 
 @require_http_methods(["GET", "POST"])
@@ -230,65 +186,89 @@ def logout_view(request):
 @login_required
 def article_list(request):
     query = request.GET.get("q", "").strip()
-    sort = request.GET.get("sort", "modified")
-    if sort not in {"modified", "published", "name"}:
-        sort = "modified"
+    sort = request.GET.get("sort", "relevance" if query else "modified")
+    if sort not in {"modified", "published", "name", "relevance"}:
+        sort = "relevance" if query else "modified"
     category = request.GET.get("category", "").strip()
     tag = request.GET.get("tag", "").strip()
     error = ""
-    articles = []
-    categories = []
-    tags = []
-    metadata_warning = False
     repository = ""
     branch = ""
     try:
         client = _client()
-        articles = _load_article_summaries(client, client.list_articles())
-        metadata_warning = any(article["metadata_error"] for article in articles)
-        categories = sorted(
-            {label for article in articles for label in article["categories"]},
-            key=str.casefold,
-        )
-        tags = sorted(
-            {label for article in articles for label in article["tags"]},
-            key=str.casefold,
-        )
-        if query:
-            lowered_query = query.casefold()
-            articles = [
-                article for article in articles
-                if lowered_query in article["path"].casefold()
-                or lowered_query in article["title"].casefold()
-            ]
-        if category:
-            articles = [article for article in articles if category in article["categories"]]
-        if tag:
-            articles = [article for article in articles if tag in article["tags"]]
-        articles.sort(key=lambda article: (article["title"].casefold(), article["path"].casefold()))
-        if sort == "modified":
-            articles.sort(key=lambda article: _date_sort_value(article["modified_date"]), reverse=True)
-        elif sort == "published":
-            articles.sort(key=lambda article: _date_sort_value(article["published_date"]), reverse=True)
         repository = client.config.repository
         branch = client.config.branch
-    except (ConfigurationError, GitHubError) as exc:
+    except ConfigurationError as exc:
         error = str(exc)
     return render(request, "stateless/articles.html", {
-        "articles": articles,
         "query": query,
         "sort": sort,
         "category": category,
         "tag": tag,
-        "categories": categories,
-        "tags": tags,
-        "metadata_warning": metadata_warning,
         "error": error,
         "repository": repository,
         "branch": branch,
         "saved": request.GET.get("saved") == "1",
         "deleted": request.GET.get("deleted") == "1",
     })
+
+
+@require_GET
+@login_required
+def articles_api(request):
+    query = request.GET.get("q", "").strip()[:200]
+    sort = request.GET.get("sort", "relevance" if query else "modified")
+    if sort not in {"modified", "published", "name", "relevance"}:
+        sort = "relevance" if query else "modified"
+    category = request.GET.get("category", "").strip()
+    tag = request.GET.get("tag", "").strip()
+    page = _positive_integer(request.GET.get("page"), 1, 100_000)
+    page_size = _positive_integer(request.GET.get("page_size"), 20, 50)
+    refresh = request.GET.get("refresh") == "1"
+    try:
+        client = _client()
+        catalog = get_catalog(client, refresh=refresh)
+        results = _article_results(catalog, query, sort, category, tag)
+        total = len(results)
+        start = (page - 1) * page_size
+        page_results = results[start:start + page_size]
+        payload = {
+            "status": True,
+            "articles": [public_article(document, score) for document, score in page_results],
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "has_more": start + len(page_results) < total,
+            },
+            "search_mode": "full_text_vector" if query else "none",
+            "metadata_warning": any(document.get("metadata_error") for document in catalog.documents),
+        }
+        if page == 1:
+            payload["categories"] = _label_options(catalog.documents, "categories")
+            payload["tags"] = _label_options(catalog.documents, "tags")
+        return JsonResponse(payload)
+    except (ConfigurationError, GitHubError) as exc:
+        return JsonResponse({"status": False, "error": str(exc)}, status=502)
+
+
+@require_GET
+@login_required
+def graph_view(request):
+    return render(request, "stateless/graph.html")
+
+
+@require_GET
+@login_required
+def graph_api(request):
+    try:
+        graph = get_catalog(
+            _client(),
+            refresh=request.GET.get("refresh") == "1",
+        ).graph()
+        return JsonResponse({"status": True, **graph})
+    except (ConfigurationError, GitHubError) as exc:
+        return JsonResponse({"status": False, "error": str(exc)}, status=502)
 
 
 @require_GET
@@ -322,6 +302,7 @@ def save_article(request):
     metadata = {
         "title": title,
         "date": request.POST.get("date", "").strip(),
+        "updated": localtime().isoformat(timespec="seconds"),
         "tags": split_list(request.POST.get("tags", "")),
         "categories": split_list(request.POST.get("categories", "")),
         "cover": request.POST.get("cover", "").strip(),
@@ -373,6 +354,7 @@ def save_article(request):
             "sha": sha,
             "content": content,
         }, posted_editor, str(exc), status=400)
+    invalidate_catalog(client.config)
     return redirect(reverse("home") + "?saved=1")
 
 
@@ -382,10 +364,12 @@ def delete_article(request):
     article_path = request.POST.get("path", "").strip()
     sha = request.POST.get("sha", "").strip()
     try:
-        _client().delete_article(article_path, sha)
+        client = _client()
+        client.delete_article(article_path, sha)
     except (ConfigurationError, GitHubError, InvalidArticlePath) as exc:
         query = urlencode({"path": article_path, "error": str(exc)})
         return redirect(reverse("edit_article") + "?" + query)
+    invalidate_catalog(client.config)
     return redirect(reverse("home") + "?deleted=1")
 
 

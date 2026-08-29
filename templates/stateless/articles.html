@@ -1,24 +1,27 @@
 {% extends "stateless/base.html" %}
-{% block title %}文章 · Qexo Editor{% endblock %}
+{% block title %}文章 · Blog Admin{% endblock %}
 {% block head %}
 <style>
     .article-controls { align-items: end; }
     .article-controls label { min-width: 150px; flex: 1 1 150px; }
     .article-controls .search-field { flex: 2 1 260px; }
     .article-controls select { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; background: var(--card); color: var(--text); font: inherit; }
-    .article-details { display: grid; gap: 5px; }
-    .article-meta { display: flex; flex-wrap: wrap; gap: 7px 12px; font-size: 13px; }
-    .article-labels { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-    .article-label { border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--muted); font-size: 12px; }
-    @media (max-width: 600px) { .article-controls { align-items: stretch; } .article-controls button, .article-controls .button { width: 100%; text-align: center; } }
-    .settings-button {
-        display: inline-grid;
-        width: 42px;
-        height: 42px;
-        padding: 0;
-        place-items: center;
-    }
+    .article-main { min-width: 0; }
+    .article-title { display: block; font-size: 17px; }
+    .article-meta { display: flex; gap: 7px 14px; flex-wrap: wrap; margin-top: 5px; }
+    .article-excerpt { margin-top: 7px; max-width: 780px; }
+    .chip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; font-size: 12px; color: var(--muted); }
+    .article-actions { flex: 0 0 auto; align-self: center; }
+    .load-row { display: grid; place-items: center; gap: 8px; padding-top: 16px; }
+    #load-more[hidden] { display: none; }
+    .settings-button { display: inline-grid; width: 42px; height: 42px; padding: 0; place-items: center; }
     .settings-button svg { width: 20px; height: 20px; }
+    @media (max-width: 600px) {
+        .article-controls { align-items: stretch; }
+        .article-controls button, .article-controls .button { width: 100%; text-align: center; }
+        .articles li { align-items: flex-start; }
+        .article-meta { display: grid; gap: 4px; }
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -39,71 +42,186 @@
     {% if saved %}<div class="notice success">文章已提交到 GitHub。</div>{% endif %}
     {% if deleted %}<div class="notice success">文章已从 GitHub 删除。</div>{% endif %}
     {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
-    {% if metadata_warning %}<div class="notice">部分文章的元数据未能读取，这些文章仍会显示，但日期或分类标签可能不完整。</div>{% endif %}
-    <form class="row article-controls" method="get">
+    <div class="notice" id="metadata-warning" hidden>部分文章的元数据未能读取，这些文章仍会显示，但日期或分类标签可能不完整。</div>
+    <form class="row article-controls" method="get" role="search">
         <label class="search-field">搜索
-            <input name="q" value="{{ query }}" placeholder="按文章名称或文件路径搜索">
+            <input name="q" value="{{ query }}" maxlength="200" placeholder="搜索标题、分类、标签和正文">
         </label>
         <label>排序
             <select name="sort">
+                <option value="relevance"{% if sort == "relevance" %} selected{% endif %}>相关度（搜索时）</option>
                 <option value="modified"{% if sort == "modified" %} selected{% endif %}>编辑日期（最新优先）</option>
                 <option value="published"{% if sort == "published" %} selected{% endif %}>发布日期（最新优先）</option>
                 <option value="name"{% if sort == "name" %} selected{% endif %}>名称（A–Z）</option>
             </select>
         </label>
         <label>分类
-            <select name="category">
+            <select name="category" id="category-filter">
                 <option value="">全部分类</option>
-                {% for option in categories %}<option value="{{ option }}"{% if category == option %} selected{% endif %}>{{ option }}</option>{% endfor %}
             </select>
         </label>
         <label>标签
-            <select name="tag">
+            <select name="tag" id="tag-filter">
                 <option value="">全部标签</option>
-                {% for option in tags %}<option value="{{ option }}"{% if tag == option %} selected{% endif %}>{{ option }}</option>{% endfor %}
             </select>
         </label>
         <button type="submit">应用</button>
+        <button class="secondary" id="refresh-list" type="button">刷新索引</button>
         {% if query or category or tag or sort != "modified" %}<a class="button secondary" href="{% url 'home' %}">清除</a>{% endif %}
     </form>
-    <div class="card">
-        {% if articles %}
-        <ul class="articles">
-            {% for article in articles %}
-            <li>
-                <div class="article-details">
-                    <strong>{{ article.title }}</strong>
-                    <div class="article-path muted">{{ article.path }} · {{ article.size|filesizeformat }}</div>
-                    <div class="article-meta muted">
-                        <span>编辑：{{ article.modified_date|default:"未设置" }}</span>
-                        <span>发布：{{ article.published_date|default:"未设置" }}</span>
-                    </div>
-                    {% if article.categories or article.tags %}
-                    <div class="article-labels">
-                        {% for label in article.categories %}<span class="article-label">分类 · {{ label }}</span>{% endfor %}
-                        {% for label in article.tags %}<span class="article-label">标签 · {{ label }}</span>{% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-                <a href="{% url 'edit_article' %}?path={{ article.path|urlencode }}">编辑</a>
-            </li>
-            {% endfor %}
-        </ul>
-        {% elif not error %}
-        <div class="muted">没有找到文章。</div>
-        {% endif %}
+    <div class="card" id="article-browser" data-api="{% url 'articles_api' %}" data-edit="{% url 'edit_article' %}" data-query="{{ query }}" data-sort="{{ sort }}" data-category="{{ category }}" data-tag="{{ tag }}">
+        <ul class="articles" id="article-list"></ul>
+        <div class="load-row">
+            <div id="list-status" class="muted" role="status">正在载入文章…</div>
+            <button id="load-more" class="secondary" type="button" hidden>加载更多</button>
+            <div id="load-sentinel" aria-hidden="true"></div>
+        </div>
     </div>
 </section>
 <script>
-document.addEventListener('keydown', function (event) {
-    if ((event.metaKey || event.ctrlKey) && !event.altKey && (event.key === 'n' || event.key === 'N')) {
-        event.preventDefault();
-        var input = document.getElementById('quick-title');
-        if (input) {
-            input.focus();
-            input.select();
+(() => {
+    const browser = document.getElementById('article-browser');
+    const list = document.getElementById('article-list');
+    const status = document.getElementById('list-status');
+    const loadMore = document.getElementById('load-more');
+    const refresh = document.getElementById('refresh-list');
+    const categorySelect = document.getElementById('category-filter');
+    const tagSelect = document.getElementById('tag-filter');
+    const metadataWarning = document.getElementById('metadata-warning');
+    const editUrl = browser.dataset.edit;
+    let page = 1;
+    let loading = false;
+    let hasMore = true;
+    let generation = 0;
+
+    function appendText(parent, className, text) {
+        if (!text) return;
+        const element = document.createElement('span');
+        element.className = className;
+        element.textContent = text;
+        parent.appendChild(element);
+    }
+
+    function appendArticle(article) {
+        const item = document.createElement('li');
+        const main = document.createElement('div');
+        main.className = 'article-main grow';
+        const title = document.createElement('strong');
+        title.className = 'article-title';
+        title.textContent = article.title || '未命名文章';
+        main.appendChild(title);
+
+        const taxonomies = document.createElement('div');
+        taxonomies.className = 'article-meta';
+        (article.categories || []).forEach(value => appendText(taxonomies, 'chip', '分类 · ' + value));
+        (article.tags || []).forEach(value => appendText(taxonomies, 'chip', '标签 · ' + value));
+        if (!taxonomies.childElementCount) appendText(taxonomies, 'muted', '未设置分类或标签');
+        main.appendChild(taxonomies);
+
+        const dates = document.createElement('div');
+        dates.className = 'article-meta muted';
+        appendText(dates, '', '创建：' + (article.created_at || '未提供'));
+        appendText(dates, '', '编辑：' + (article.updated_at || '未提供'));
+        main.appendChild(dates);
+        if (article.excerpt) {
+            const excerpt = document.createElement('div');
+            excerpt.className = 'article-excerpt muted';
+            excerpt.textContent = article.excerpt;
+            main.appendChild(excerpt);
+        }
+
+        const link = document.createElement('a');
+        link.className = 'article-actions';
+        link.textContent = '编辑';
+        link.href = editUrl + '?' + new URLSearchParams({ path: article.path }).toString();
+        item.append(main, link);
+        list.appendChild(item);
+    }
+
+    function setFilterOptions(select, values, current) {
+        const placeholder = select.options[0];
+        select.replaceChildren(placeholder);
+        values.forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+        });
+        if (current) select.value = current;
+    }
+
+    async function loadPage(forceRefresh = false) {
+        if (loading || !hasMore) return;
+        loading = true;
+        const requestGeneration = generation;
+        status.textContent = forceRefresh ? '正在刷新索引…' : '正在载入文章…';
+        loadMore.hidden = true;
+        const parameters = new URLSearchParams({
+            page: String(page),
+            page_size: '20',
+            q: browser.dataset.query || '',
+            sort: browser.dataset.sort || 'modified',
+            category: browser.dataset.category || '',
+            tag: browser.dataset.tag || ''
+        });
+        if (forceRefresh) parameters.set('refresh', '1');
+        try {
+            const response = await fetch(browser.dataset.api + '?' + parameters.toString(), {
+                headers: { Accept: 'application/json' }
+            });
+            const data = await response.json();
+            if (!response.ok || !data.status) throw new Error(data.error || '载入失败');
+            if (requestGeneration !== generation) return;
+            if (page === 1) {
+                if (Array.isArray(data.categories)) setFilterOptions(categorySelect, data.categories, browser.dataset.category);
+                if (Array.isArray(data.tags)) setFilterOptions(tagSelect, data.tags, browser.dataset.tag);
+                metadataWarning.hidden = !data.metadata_warning;
+            }
+            data.articles.forEach(appendArticle);
+            hasMore = data.pagination.has_more;
+            page += 1;
+            if (!data.pagination.total) {
+                status.textContent = browser.dataset.query ? '没有找到匹配文章。' : '还没有文章。';
+            } else if (hasMore) {
+                status.textContent = `已载入 ${list.children.length} / ${data.pagination.total} 篇`;
+                loadMore.hidden = false;
+            } else {
+                status.textContent = `共 ${data.pagination.total} 篇，已全部载入`;
+            }
+        } catch (error) {
+            if (requestGeneration === generation) {
+                status.textContent = error.message || '载入失败';
+                loadMore.hidden = false;
+            }
+        } finally {
+            if (requestGeneration === generation) loading = false;
         }
     }
-});
+
+    function resetAndLoad() {
+        generation += 1;
+        list.replaceChildren();
+        page = 1;
+        hasMore = true;
+        loading = false;
+        loadPage(true);
+    }
+
+    loadMore.addEventListener('click', () => loadPage(false));
+    refresh.addEventListener('click', resetAndLoad);
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+            if (entries.some(entry => entry.isIntersecting)) loadPage(false);
+        }, { rootMargin: '240px' });
+        observer.observe(document.getElementById('load-sentinel'));
+    }
+    document.addEventListener('keydown', event => {
+        if ((event.metaKey || event.ctrlKey) && !event.altKey && (event.key === 'n' || event.key === 'N')) {
+            event.preventDefault();
+            window.location.assign('{% url 'edit_article' %}');
+        }
+    });
+    loadPage(false);
+})();
 </script>
 {% endblock %}

@@ -1,5 +1,5 @@
 {% extends "stateless/base.html" %}
-{% block title %}{% if article.sha %}编辑{% else %}新建{% endif %}文章 · Qexo Editor{% endblock %}
+{% block title %}{% if article.sha %}编辑{% else %}新建{% endif %}文章 · Blog Admin{% endblock %}
 {% block head %}
 <style>
     .editor-shell { max-width: 1180px; }
@@ -51,6 +51,11 @@
             <label>日期
                 <input name="date" value="{{ editor.date }}" placeholder="2026-08-30 12:00:00">
             </label>
+            {% if editor.updated %}
+            <label>最近编辑
+                <input value="{{ editor.updated }}" readonly aria-readonly="true">
+            </label>
+            {% endif %}
             <label>标签（每行一个）
                 <textarea name="tags" rows="2" placeholder="AI&#10;Markdown">{{ editor.tags_text }}</textarea>
             </label>

@@ -6,7 +6,7 @@ from datetime import date, datetime
 import yaml
 
 
-MANAGED_FIELDS = ("title", "date", "tags", "categories", "cover", "description")
+MANAGED_FIELDS = ("title", "date", "updated", "tags", "categories", "cover", "description")
 FIELD_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*$")
 FIELD_PATTERN = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):(?:\s*(.*))?$")
 

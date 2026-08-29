@@ -1,10 +1,10 @@
 {% extends "stateless/base.html" %}
-{% block title %}首次配置 · Qexo Editor{% endblock %}
+{% block title %}首次配置 · Blog Admin{% endblock %}
 {% block body %}
 <main class="setup stack">
     <header class="topbar">
         <div>
-            <a class="brand" href="{% url 'setup' %}">Qexo Editor</a>
+            <a class="brand" href="{% url 'setup' %}">Blog Admin</a>
             <div class="muted">无数据库模式首次配置</div>
         </div>
         {% if configuration_complete %}<a class="button secondary" href="{% url 'home' %}">返回编辑器</a>{% endif %}

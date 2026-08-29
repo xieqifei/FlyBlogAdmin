@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
-    <title>{% block title %}Qexo Editor{% endblock %}</title>
+    <title>{% block title %}Blog Admin{% endblock %}</title>
     {% block head %}{% endblock %}
     <style>
         :root { color-scheme: light dark; --bg: #f5f7fb; --card: #fff; --text: #172033; --muted: #697386; --line: #d9dfeb; --primary: #315efb; --danger: #c93838; --success: #18794e; }
@@ -34,6 +34,9 @@
         .articles li { display: flex; justify-content: space-between; gap: 14px; padding: 13px 2px; border-bottom: 1px solid var(--line); }
         .articles li:last-child { border-bottom: 0; }
         .article-path { overflow-wrap: anywhere; }
+        .topbar-actions { display: flex; align-items: center; gap: 10px; }
+        .back-to-top { position: fixed; right: 22px; bottom: 22px; width: 46px; height: 46px; padding: 0; border-radius: 50%; display: none; place-items: center; z-index: 20; box-shadow: 0 8px 24px rgb(23 32 51 / 22%); font-size: 22px; }
+        .back-to-top.visible { display: grid; }
         .login { width: min(430px, calc(100% - 32px)); margin: 10vh auto; }
         .setup { width: min(920px, calc(100% - 32px)); margin: 32px auto; }
         .setup h2 { margin: 0; font-size: 19px; }
@@ -59,14 +62,31 @@
 {% block body %}
 <main class="shell">
     <header class="topbar">
-        <a class="brand" href="{% url 'home' %}">Qexo Editor</a>
-        <form class="inline" method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button class="secondary" type="submit">退出登录</button>
-        </form>
+        <a class="brand" href="{% url 'home' %}">Blog Admin</a>
+        <div class="topbar-actions">
+            <a class="button secondary" href="{% url 'graph' %}">关系图谱</a>
+            <form class="inline" method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="secondary" type="submit">退出登录</button>
+            </form>
+        </div>
     </header>
     {% block content %}{% endblock %}
 </main>
+<button id="back-to-top" class="back-to-top" type="button" aria-label="回到顶部" title="回到顶部">↑</button>
+<script>
+(function () {
+    var button = document.getElementById('back-to-top');
+    function updateVisibility() {
+        button.classList.toggle('visible', window.scrollY > 360);
+    }
+    window.addEventListener('scroll', updateVisibility, { passive: true });
+    button.addEventListener('click', function () {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    updateVisibility();
+})();
+</script>
 {% endblock %}
 </body>
 </html>

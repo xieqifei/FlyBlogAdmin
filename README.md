@@ -71,7 +71,11 @@ Qexo 是一个快速、强大、美观的在线 静态博客编辑器。使用 G
 
 AI 文章优化为可选功能。设置 `QEXO_LLM_API_KEY` 和 `QEXO_LLM_MODEL` 后在编辑页即可使用优化、校对、精简、扩写与自定义要求。默认使用 OpenAI 兼容的 `chat/completions` 接口，可通过 `QEXO_LLM_BASE_URL` 指向其他兼容服务；如服务只提供 Responses API，可设置 `QEXO_LLM_API_STYLE=responses`。AI 内容由服务端请求，密钥不会发送到浏览器。
 
-正文通过 [StackEdit](https://github.com/benweet/stackedit) 编辑，并使用其官方推荐的 `stackedit.js` 嵌入协议。默认打开 `stackedit.io`；私有文章或内网部署建议自行部署 StackEdit，并通过 `QEXO_STACKEDIT_URL` 指向该实例。标题、日期、标签、分类及其他 Front Matter 仍在 Qexo 的表单中维护，历史文章的多行值、层级分类和自定义字段会完整显示。
+正文通过 [StackEdit](https://github.com/benweet/stackedit) 编辑，并使用其官方推荐的 `stackedit.js` 嵌入协议。默认打开 `stackedit.io`；私有文章或内网部署建议自行部署 StackEdit，并通过 `QEXO_STACKEDIT_URL` 指向该实例。标题、日期、标签、分类及其他 Front Matter 仍在 Blog Admin 的表单中维护，历史文章的多行值、层级分类和自定义字段会完整显示。
+
+文章首页按 20 篇一页懒加载，并显示 Front Matter 中的标题、分类、标签、创建日期及最近编辑日期。Blog Admin 保存文章时会自动更新 `updated` 字段；历史文章若没有 `updated`，会依次兼容 `lastmod`、`modified`、`updated_at`、`last_modified`，最后回退到创建日期。右上角的“关系图谱”以文章、分类和标签为节点展示关联。
+
+全文搜索无需外部数据库或第三方 AI 服务：首次搜索时会在服务端读取文章正文，自动生成兼容中英文的稀疏 TF-IDF 向量，并将标题、分类、标签、摘要和正文的精确匹配与余弦相似度合并排序。该方案是词法向量检索，不会把私有文章发送给嵌入服务；它不等同于大模型语义 Embedding，但在当前无数据库部署模型下可直接运行。索引默认在进程内缓存 300 秒，文章通过 Blog Admin 保存或删除后会立即失效，也可在首页手动刷新；可用 `QEXO_SEARCH_CACHE_SECONDS` 调整为 0–3600 秒。
 
 可直接在 `/setup/` 引导页生成密码哈希；也可在安装依赖的本地环境中交互式生成，密码不会进入命令历史：
 

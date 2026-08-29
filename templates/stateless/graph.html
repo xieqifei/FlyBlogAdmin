@@ -1,0 +1,178 @@
+{% extends "stateless/base.html" %}
+{% block title %}关系图谱 · Blog Admin{% endblock %}
+{% block head %}
+<style>
+    .graph-card { padding: 12px; overflow: auto; }
+    .graph-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .graph-legend { display: flex; gap: 12px; flex-wrap: wrap; }
+    .legend-dot { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 50%; }
+    .graph-canvas { width: 100%; min-width: 720px; height: auto; display: block; }
+    .graph-edge { stroke: var(--line); stroke-width: 1.2; }
+    .graph-node text { fill: var(--text); font: 12px system-ui, sans-serif; paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
+    .graph-node.article { cursor: pointer; }
+    .graph-node.article circle { fill: var(--primary); }
+    .graph-node.category circle { fill: #d97706; }
+    .graph-node.tag circle { fill: #059669; }
+    .graph-node.dimmed, .graph-edge.dimmed { opacity: 0.1; }
+</style>
+{% endblock %}
+{% block content %}
+<section class="stack">
+    <div class="row">
+        <div class="grow">
+            <h1>文章关系图谱</h1>
+            <div class="muted">文章通过分类与标签相连；点击文章节点可直接编辑。</div>
+        </div>
+        <a class="button secondary" href="{% url 'home' %}">返回文章</a>
+    </div>
+    <div class="graph-toolbar">
+        <input id="graph-filter" class="grow" maxlength="100" placeholder="筛选文章、分类或标签">
+        <button id="graph-refresh" class="secondary" type="button">刷新图谱</button>
+        <div class="graph-legend muted">
+            <span><i class="legend-dot" style="background:var(--primary)"></i>文章</span>
+            <span><i class="legend-dot" style="background:#d97706"></i>分类</span>
+            <span><i class="legend-dot" style="background:#059669"></i>标签</span>
+        </div>
+    </div>
+    <div class="card graph-card">
+        <div id="graph-status" class="muted" role="status">正在构建图谱…</div>
+        <svg id="graph" class="graph-canvas" viewBox="0 0 1000 700" role="img" aria-label="文章、分类和标签关系图" hidden></svg>
+    </div>
+</section>
+<script>
+(() => {
+    const svg = document.getElementById('graph');
+    const status = document.getElementById('graph-status');
+    const filter = document.getElementById('graph-filter');
+    const refresh = document.getElementById('graph-refresh');
+    const apiUrl = '{% url 'graph_api' %}';
+    const editUrl = '{% url 'edit_article' %}';
+    const namespace = 'http://www.w3.org/2000/svg';
+    let graph = { nodes: [], edges: [] };
+
+    function element(name, attributes = {}) {
+        const node = document.createElementNS(namespace, name);
+        Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
+        return node;
+    }
+
+    function positions(nodes) {
+        const grouped = {
+            article: nodes.filter(node => node.type === 'article'),
+            taxonomy: nodes.filter(node => node.type !== 'article')
+        };
+        const result = new Map();
+        [['article', 225], ['taxonomy', 315]].forEach(([kind, radius]) => {
+            const members = grouped[kind];
+            members.forEach((node, index) => {
+                const angle = (Math.PI * 2 * index / Math.max(members.length, 1)) - Math.PI / 2;
+                result.set(node.id, {
+                    x: 500 + Math.cos(angle) * radius,
+                    y: 350 + Math.sin(angle) * radius
+                });
+            });
+        });
+        return result;
+    }
+
+    function render() {
+        svg.replaceChildren();
+        if (!graph.nodes.length) {
+            svg.hidden = true;
+            status.hidden = false;
+            status.textContent = '暂无可展示的文章关系。';
+            return;
+        }
+        const layout = positions(graph.nodes);
+        const edgeLayer = element('g');
+        graph.edges.forEach(edge => {
+            const source = layout.get(edge.source);
+            const target = layout.get(edge.target);
+            if (!source || !target) return;
+            const line = element('line', {
+                x1: source.x, y1: source.y, x2: target.x, y2: target.y,
+                class: 'graph-edge', 'data-source': edge.source, 'data-target': edge.target
+            });
+            edgeLayer.appendChild(line);
+        });
+        svg.appendChild(edgeLayer);
+
+        const nodeLayer = element('g');
+        graph.nodes.forEach(node => {
+            const point = layout.get(node.id);
+            const group = element('g', {
+                class: 'graph-node ' + node.type,
+                transform: `translate(${point.x} ${point.y})`,
+                'data-id': node.id,
+                'data-label': node.label.toLocaleLowerCase()
+            });
+            group.appendChild(element('circle', { r: node.type === 'article' ? 8 : 6 }));
+            const label = element('text', { x: 11, y: 4 });
+            label.textContent = node.label.length > 24 ? node.label.slice(0, 23) + '…' : node.label;
+            group.appendChild(label);
+            const title = element('title');
+            title.textContent = node.label;
+            group.appendChild(title);
+            if (node.type === 'article') {
+                group.setAttribute('tabindex', '0');
+                group.setAttribute('role', 'link');
+                const open = () => window.location.assign(editUrl + '?' + new URLSearchParams({ path: node.path }));
+                group.addEventListener('click', open);
+                group.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        open();
+                    }
+                });
+            }
+            nodeLayer.appendChild(group);
+        });
+        svg.appendChild(nodeLayer);
+        status.hidden = true;
+        svg.hidden = false;
+        applyFilter();
+    }
+
+    function applyFilter() {
+        const query = filter.value.trim().toLocaleLowerCase();
+        const matched = new Set();
+        svg.querySelectorAll('.graph-node').forEach(node => {
+            const visible = !query || node.dataset.label.includes(query);
+            node.classList.toggle('dimmed', !visible);
+            if (visible) matched.add(node.dataset.id);
+        });
+        svg.querySelectorAll('.graph-edge').forEach(edge => {
+            edge.classList.toggle(
+                'dimmed',
+                Boolean(query) && !matched.has(edge.dataset.source) && !matched.has(edge.dataset.target)
+            );
+        });
+    }
+
+    async function load(force = false) {
+        status.hidden = false;
+        status.textContent = force ? '正在刷新图谱…' : '正在构建图谱…';
+        refresh.disabled = true;
+        try {
+            const response = await fetch(apiUrl + (force ? '?refresh=1' : ''), {
+                headers: { Accept: 'application/json' }
+            });
+            const data = await response.json();
+            if (!response.ok || !data.status) throw new Error(data.error || '图谱载入失败');
+            graph = { nodes: data.nodes, edges: data.edges };
+            render();
+        } catch (error) {
+            svg.hidden = true;
+            status.hidden = false;
+            status.textContent = error.message || '图谱载入失败';
+        } finally {
+            refresh.disabled = false;
+        }
+    }
+
+    filter.addEventListener('input', applyFilter);
+    refresh.addEventListener('click', () => load(true));
+    load(false);
+})();
+</script>
+{% endblock %}
