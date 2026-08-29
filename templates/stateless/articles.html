@@ -9,10 +9,6 @@
         </div>
         <a class="button" href="{% url 'edit_article' %}">新建文章</a>
     </div>
-    <form class="card row" method="get" action="{% url 'edit_article' %}">
-        <input class="grow" id="quick-title" name="title" placeholder="文章标题" maxlength="200" required>
-        <button type="submit">快捷创建</button>
-    </form>
     {% if saved %}<div class="notice success">文章已提交到 GitHub。</div>{% endif %}
     {% if deleted %}<div class="notice success">文章已从 GitHub 删除。</div>{% endif %}
     {% if error %}<div class="notice error">{{ error }}</div>{% endif %}

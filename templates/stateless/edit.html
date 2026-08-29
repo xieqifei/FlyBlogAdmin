@@ -6,36 +6,29 @@
     .meta-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; }
     .meta-grid .wide { grid-column: 1 / -1; }
     .meta-grid label { min-width: 0; }
-    .meta-grid textarea { min-height: 0; resize: vertical; }
+    .meta-grid textarea { min-height: 68px; resize: vertical; }
     .path-line { display: flex; align-items: center; gap: 10px; min-height: 28px; }
-    .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-    .tool-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .tool-group + .tool-group { padding-left: 10px; border-left: 1px solid var(--line); }
-    .tool-button { width: 34px; height: 34px; padding: 0; border-radius: 8px; background: transparent; color: var(--text); border: 1px solid transparent; font-weight: 700; }
-    .tool-button:hover { border-color: var(--line); background: color-mix(in srgb, var(--primary) 8%, transparent); }
-    .tool-button.wide { width: auto; padding: 0 10px; }
-    .editor-area { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 14px; }
-    .editor-area.split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-    .editor-area textarea { min-height: 66vh; height: 66vh; }
-    .preview { min-height: 66vh; max-height: 66vh; overflow: auto; border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px; background: var(--card); color: var(--text); }
-    .preview h1, .preview h2, .preview h3, .preview h4, .preview h5, .preview h6 { line-height: 1.3; margin: 0.8em 0 0.35em; }
-    .preview h1:first-child, .preview h2:first-child, .preview h3:first-child { margin-top: 0; }
-    .preview pre { overflow: auto; padding: 12px; border-radius: 8px; background: color-mix(in srgb, var(--text) 7%, var(--card)); }
-    .preview code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .preview blockquote { margin: 0; padding-left: 12px; border-left: 3px solid var(--primary); color: var(--muted); }
-    .preview img { max-width: 100%; border-radius: 8px; }
-    .preview a { color: var(--primary); }
-    .preview ul, .preview ol { padding-left: 22px; }
+    .custom-fields { border-top: 1px solid var(--line); padding-top: 14px; }
+    .custom-fields summary { cursor: pointer; font-weight: 700; }
+    .custom-list { display: grid; gap: 10px; margin-top: 12px; }
+    .custom-row { display: grid; grid-template-columns: minmax(150px, 0.7fr) minmax(260px, 2fr) auto; gap: 8px; align-items: start; }
+    .custom-row textarea { min-height: 44px; resize: vertical; }
+    .custom-row button { min-width: 42px; }
+    .editor-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .editor-toolbar .stackedit-launch { background: #2f6f9f; }
+    .ai-group { display: flex; align-items: center; gap: 8px; flex: 1 1 520px; flex-wrap: wrap; }
     .ai-group select, .ai-group input { width: auto; min-width: 130px; }
     .ai-group input { flex: 1 1 220px; }
     .ai-group.disabled { opacity: 0.55; pointer-events: none; }
     #ai-status { min-width: 56px; font-weight: 600; }
-    #ai-status.error { color: var(--danger); }
+    #ai-status.error, #stackedit-status.error { color: var(--danger); }
+    .source-editor { margin-top: 14px; }
+    .source-editor summary { cursor: pointer; color: var(--muted); }
+    .source-editor textarea { min-height: 58vh; height: 58vh; margin-top: 10px; }
     @media (max-width: 760px) {
         .meta-grid { grid-template-columns: 1fr; }
-        .editor-area.split { grid-template-columns: 1fr; }
-        .toolbar { align-items: stretch; }
-        .tool-group + .tool-group { padding-left: 0; border-left: 0; }
+        .custom-row { grid-template-columns: 1fr; }
+        .editor-toolbar { align-items: stretch; }
     }
 </style>
 {% endblock %}
@@ -49,51 +42,49 @@
     <form id="article-form" class="card stack" method="post" action="{% url 'save_article' %}">
         {% csrf_token %}
         <input type="hidden" name="sha" value="{{ article.sha }}">
-        {% if article.path %}<input type="hidden" name="path" value="{{ article.path }}">{% endif %}
+        {% if article.path %}<input type="hidden" id="article-path" name="path" value="{{ article.path }}">{% endif %}
         <input type="hidden" name="front_matter" value="{{ editor.front_matter }}">
         <div class="meta-grid">
             <label>标题
                 <input id="article-title" name="title" value="{{ editor.title }}" maxlength="200" required {% if not article.path %}autofocus{% endif %}>
             </label>
             <label>日期
-                <input type="date" name="date" value="{{ editor.date }}">
+                <input name="date" value="{{ editor.date }}" placeholder="2026-08-30 12:00:00">
             </label>
-            <label>标签
-                <input name="tags" value="{{ editor.tags|join:", " }}" placeholder="标签1, 标签2">
+            <label>标签（每行一个）
+                <textarea name="tags" rows="2" placeholder="AI&#10;Markdown">{{ editor.tags_text }}</textarea>
             </label>
-            <label>分类
-                <input name="categories" value="{{ editor.categories|join:", " }}" placeholder="分类1, 分类2">
+            <label>分类（每行一个）
+                <textarea name="categories" rows="2" placeholder="Notes&#10;层级分类可写 [ &quot;技术&quot;, &quot;前端&quot; ]">{{ editor.categories_text }}</textarea>
             </label>
             <label>封面
                 <input name="cover" value="{{ editor.cover }}" placeholder="https://">
             </label>
             <label class="wide">摘要
-                <textarea name="description" rows="2">{{ editor.description }}</textarea>
+                <textarea name="description" rows="3">{{ editor.description }}</textarea>
             </label>
         </div>
         <div class="path-line">
             <span class="muted">路径</span>
             {% if article.path %}<code>{{ article.path }}</code>{% else %}<code id="path-preview"></code>{% endif %}
         </div>
-        <div class="toolbar">
-            <div class="tool-group" aria-label="Markdown 格式">
-                <button type="button" class="tool-button" data-format="bold" title="加粗"><strong>B</strong></button>
-                <button type="button" class="tool-button" data-format="italic" title="斜体"><em>I</em></button>
-                <button type="button" class="tool-button" data-format="strike" title="删除线"><s>S</s></button>
-                <button type="button" class="tool-button wide" data-format="h1" title="一级标题">H1</button>
-                <button type="button" class="tool-button wide" data-format="h2" title="二级标题">H2</button>
-                <button type="button" class="tool-button wide" data-format="h3" title="三级标题">H3</button>
-                <button type="button" class="tool-button wide" data-format="quote" title="引用">&quot;</button>
-                <button type="button" class="tool-button wide" data-format="code" title="行内代码">&lt;/&gt;</button>
-                <button type="button" class="tool-button wide" data-format="codeblock" title="代码块">&lt;code&gt;</button>
-                <button type="button" class="tool-button wide" data-format="link" title="链接">链接</button>
-                <button type="button" class="tool-button wide" data-format="image" title="图片">图片</button>
-                <button type="button" class="tool-button wide" data-format="ul" title="无序列表">•</button>
-                <button type="button" class="tool-button wide" data-format="ol" title="有序列表">1.</button>
-                <button type="button" class="tool-button wide" data-format="task" title="任务列表">☑</button>
-                <button type="button" class="tool-button wide" data-format="hr" title="分隔线">―</button>
+        <details class="custom-fields"{% if editor.custom_fields %} open{% endif %}>
+            <summary>其他元数据（历史文章字段会完整显示在这里）</summary>
+            <div id="custom-list" class="custom-list">
+                {% for field in editor.custom_fields %}
+                <div class="custom-row" data-custom-row>
+                    <input name="custom_key" value="{{ field.name }}" placeholder="字段名，例如 mathjax">
+                    <textarea name="custom_value" rows="1" placeholder="字段内容；列表或对象可使用 JSON">{{ field.value }}</textarea>
+                    <button type="button" class="secondary" data-remove-custom aria-label="删除字段">−</button>
+                </div>
+                {% endfor %}
             </div>
-            <div class="tool-group ai-group{% if not ai_configured %} disabled{% endif %}">
+            <button type="button" id="add-custom" class="secondary">添加元数据</button>
+        </details>
+        <div class="editor-toolbar">
+            <button type="button" id="open-stackedit" class="stackedit-launch">打开 StackEdit 编辑器</button>
+            <span id="stackedit-status" class="muted">正文将完整载入 StackEdit，关闭后自动同步回来。</span>
+            <div class="ai-group{% if not ai_configured %} disabled{% endif %}">
                 <select id="ai-mode" aria-label="AI 处理方式">
                     <option value="optimize">优化</option>
                     <option value="proofread">校对</option>
@@ -102,21 +93,17 @@
                     <option value="custom">自定义</option>
                 </select>
                 <input id="ai-instruction" placeholder="补充要求" maxlength="500" {% if not ai_configured %}disabled{% endif %}>
-                <button type="button" id="ai-run" class="wide" {% if not ai_configured %}disabled{% endif %}>AI 处理</button>
+                <button type="button" id="ai-run" {% if not ai_configured %}disabled{% endif %}>AI 处理</button>
                 <span id="ai-status" class="muted"></span>
             </div>
-            <button type="button" id="toggle-preview" class="secondary wide">分栏</button>
         </div>
-        <div id="editor-area" class="editor-area">
+        <details class="source-editor">
+            <summary>源码编辑（StackEdit 不可用时的回退方式）</summary>
             <textarea id="body" name="body" spellcheck="false" placeholder="正文">{{ editor.body }}</textarea>
-            <div id="preview" class="preview" hidden></div>
-        </div>
-        <label>提交说明（可选）
-            <input name="commit_message" maxlength="200" placeholder="默认：Update 文件名 from Qexo">
-        </label>
+        </details>
         <div class="row">
             <button type="submit">保存并提交</button>
-            <span class="muted">保存会直接在目标分支产生 Git 提交。</span>
+            <span class="muted">保存会使用系统生成的提交说明，并直接写入目标分支。</span>
         </div>
     </form>
     {% if article.sha %}
@@ -129,193 +116,23 @@
     </form>
     {% endif %}
 </section>
+<template id="custom-field-template">
+    <div class="custom-row" data-custom-row>
+        <input name="custom_key" placeholder="字段名，例如 mathjax">
+        <textarea name="custom_value" rows="1" placeholder="字段内容；列表或对象可使用 JSON"></textarea>
+        <button type="button" class="secondary" data-remove-custom aria-label="删除字段">−</button>
+    </div>
+</template>
+<script src="{% url 'stackedit_script' %}"></script>
 <script>
     (function () {
         var body = document.getElementById('body');
-        var preview = document.getElementById('preview');
-        var editorArea = document.getElementById('editor-area');
-        var togglePreview = document.getElementById('toggle-preview');
         var titleInput = document.getElementById('article-title');
+        var pathInput = document.getElementById('article-path');
         var pathPreview = document.getElementById('path-preview');
         var form = document.getElementById('article-form');
-
-        function escapeHtml(value) {
-            return String(value)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-
-        function safeHref(value) {
-            var href = String(value || '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim();
-            if (/^(https?:|mailto:|\/|#|\.\.\/|[A-Za-z0-9._-]+\/)/i.test(href)) return href;
-            return '#';
-        }
-
-        function inlineMarkdown(value) {
-            var escaped = escapeHtml(value);
-            escaped = escaped.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, function (match, alt, href) {
-                return '<img src="' + escapeHtml(safeHref(href)) + '" alt="' + alt + '">';
-            });
-            escaped = escaped.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, function (match, text, href) {
-                return '<a href="' + escapeHtml(safeHref(href)) + '">' + text + '</a>';
-            });
-            escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
-            escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-            escaped = escaped.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-            escaped = escaped.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-            return escaped;
-        }
-
-        function renderMarkdown(source) {
-            var lines = String(source || '').replace(/\r\n/g, '\n').split('\n');
-            var html = '';
-            var i = 0;
-            var inCode = false;
-            var codeLines = [];
-
-            function isListStart(line) {
-                return /^\s*[-*+]\s+/.test(line) || /^\s*\d+\.\s+/.test(line);
-            }
-
-            function isBlockStart(line) {
-                return !line || line.trim() === '' || isListStart(line) || /^\s*>\s?/.test(line) || /^#{1,6}\s+/.test(line) || /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line);
-            }
-
-            while (i < lines.length) {
-                var line = lines[i];
-                var fence = line.match(/^```([A-Za-z0-9_-]*)\s*$/);
-                if (fence) {
-                    if (!inCode) {
-                        inCode = true;
-                        codeLines = [];
-                    } else {
-                        html += '<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>';
-                        inCode = false;
-                    }
-                    i += 1;
-                    continue;
-                }
-                if (inCode) {
-                    codeLines.push(line);
-                    i += 1;
-                    continue;
-                }
-                if (/^\s*>\s?/.test(line)) {
-                    var quoteLines = [];
-                    while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
-                        quoteLines.push(lines[i].replace(/^\s*>\s?/, ''));
-                        i += 1;
-                    }
-                    html += '<blockquote><p>' + inlineMarkdown(quoteLines.join('<br>')) + '</p></blockquote>';
-                    continue;
-                }
-                var heading = line.match(/^(#{1,6})\s+(.*)$/);
-                if (heading) {
-                    var level = heading[1].length;
-                    html += '<h' + level + '>' + inlineMarkdown(heading[2]) + '</h' + level + '>';
-                    i += 1;
-                    continue;
-                }
-                if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
-                    html += '<hr>';
-                    i += 1;
-                    continue;
-                }
-                if (isListStart(line)) {
-                    var ordered = /^\s*\d+\.\s+/.test(line);
-                    var tag = ordered ? 'ol' : 'ul';
-                    var items = [];
-                    while (i < lines.length && isListStart(lines[i])) {
-                        var current = lines[i];
-                        var task = current.match(/^\s*[-*+]\s+\[([ xX])\]\s+(.*)$/);
-                        if (task) {
-                            var checked = task[1].toLowerCase() === 'x' ? ' checked' : '';
-                            items.push('<li class="task"><input type="checkbox" disabled' + checked + '> ' + inlineMarkdown(task[2]) + '</li>');
-                        } else {
-                            items.push('<li>' + inlineMarkdown(current.replace(/^\s*[-*+]\s+/, '').replace(/^\s*\d+\.\s+/, '')) + '</li>');
-                        }
-                        i += 1;
-                    }
-                    html += '<' + tag + '>' + items.join('') + '</' + tag + '>';
-                    continue;
-                }
-                var paragraph = [];
-                while (i < lines.length && !isBlockStart(lines[i])) {
-                    paragraph.push(lines[i]);
-                    i += 1;
-                }
-                if (paragraph.length) {
-                    html += '<p>' + inlineMarkdown(paragraph.join('<br>')) + '</p>';
-                }
-                if (i < lines.length && lines[i].trim() === '') {
-                    i += 1;
-                }
-            }
-            if (inCode) {
-                html += '<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>';
-            }
-            return html;
-        }
-
-        function updatePreview() {
-            if (!preview.hidden) preview.innerHTML = renderMarkdown(body.value);
-        }
-
-        function wrapSelection(prefix, suffix, placeholder) {
-            var start = body.selectionStart;
-            var end = body.selectionEnd;
-            var selected = body.value.slice(start, end) || placeholder;
-            body.setRangeText(prefix + selected + suffix, start, end, 'end');
-            body.focus();
-            updatePreview();
-        }
-
-        function prefixLines(prefix) {
-            var start = body.selectionStart;
-            var end = body.selectionEnd;
-            var value = body.value;
-            var lineStart = value.lastIndexOf('\n', start - 1) + 1;
-            var lineEnd = value.indexOf('\n', end);
-            if (lineEnd === -1) lineEnd = value.length;
-            var selected = value.slice(lineStart, lineEnd);
-            var prefixed = selected.split('\n').map(function (item) {
-                return item ? prefix + item : item;
-            }).join('\n');
-            body.setRangeText(prefixed, lineStart, lineEnd, 'end');
-            body.focus();
-            updatePreview();
-        }
-
-        function formatMarkdown(type) {
-            var actions = {
-                bold: function () { wrapSelection('**', '**', '加粗文本'); },
-                italic: function () { wrapSelection('*', '*', '斜体文本'); },
-                strike: function () { wrapSelection('~~', '~~', '删除文本'); },
-                code: function () { wrapSelection('`', '`', '代码'); },
-                codeblock: function () { wrapSelection('```\n', '\n```', '代码块'); },
-                link: function () { wrapSelection('[', '](https://)', '链接文字'); },
-                image: function () { wrapSelection('![', '](https://)', '图片说明'); },
-                h1: function () { prefixLines('# '); },
-                h2: function () { prefixLines('## '); },
-                h3: function () { prefixLines('### '); },
-                quote: function () { prefixLines('> '); },
-                ul: function () { prefixLines('- '); },
-                ol: function () { prefixLines('1. '); },
-                task: function () { prefixLines('- [ ] '); },
-                hr: function () {
-                    if (body.selectionStart === body.selectionEnd) {
-                        body.setRangeText('\n\n---\n\n', body.selectionStart, body.selectionEnd, 'end');
-                        body.focus();
-                        updatePreview();
-                    } else {
-                        wrapSelection('\n\n---\n\n', '', '分隔线');
-                    }
-                }
-            };
-            if (actions[type]) actions[type]();
-        }
+        var customList = document.getElementById('custom-list');
+        var stackedit = null;
 
         function pathFromTitle(title) {
             var normalized = String(title || '').normalize('NFKC').toLowerCase().trim();
@@ -334,13 +151,38 @@
             if (pathPreview) pathPreview.textContent = pathFromTitle(titleInput.value);
         }
 
-        function toggleSplit() {
-            var split = preview.hidden;
-            preview.hidden = !split;
-            editorArea.classList.toggle('split', split);
-            togglePreview.textContent = split ? '编辑' : '分栏';
-            updatePreview();
-            body.focus();
+        function setStackeditStatus(message, isError) {
+            var status = document.getElementById('stackedit-status');
+            status.textContent = message;
+            status.classList.toggle('error', Boolean(isError));
+        }
+
+        function openStackedit() {
+            if (typeof window.Stackedit !== 'function') {
+                setStackeditStatus('StackEdit 加载失败，请展开下方源码编辑区。', true);
+                document.querySelector('.source-editor').open = true;
+                return;
+            }
+            if (!stackedit) {
+                stackedit = new window.Stackedit({ url: '{{ stackedit_url|escapejs }}' });
+                stackedit.on('fileChange', function (file) {
+                    body.value = file.content.text;
+                    body.dispatchEvent(new Event('input', { bubbles: true }));
+                    setStackeditStatus('已从 StackEdit 同步 ' + body.value.length + ' 个字符。', false);
+                });
+                stackedit.on('close', function () {
+                    setStackeditStatus('StackEdit 已关闭，正文已保留，可继续填写元数据或保存。', false);
+                });
+            }
+            var name = pathInput ? pathInput.value : pathFromTitle(titleInput.value);
+            stackedit.openFile({ name: name, content: { text: body.value } });
+            setStackeditStatus('正在打开 StackEdit…', false);
+        }
+
+        function bindCustomRow(row) {
+            row.querySelector('[data-remove-custom]').addEventListener('click', function () {
+                row.remove();
+            });
         }
 
         function setAIStatus(message, isError) {
@@ -353,7 +195,6 @@
             var content = body.value.trim();
             if (!content) {
                 setAIStatus('请先输入正文', true);
-                body.focus();
                 return;
             }
             var mode = document.getElementById('ai-mode').value;
@@ -384,43 +225,25 @@
             }
         }
 
-        document.querySelectorAll('[data-format]').forEach(function (button) {
-            button.addEventListener('click', function () {
-                formatMarkdown(button.dataset.format);
-            });
+        customList.querySelectorAll('[data-custom-row]').forEach(bindCustomRow);
+        document.getElementById('add-custom').addEventListener('click', function () {
+            var row = document.getElementById('custom-field-template').content.firstElementChild.cloneNode(true);
+            customList.appendChild(row);
+            bindCustomRow(row);
+            row.querySelector('input').focus();
         });
-        body.addEventListener('input', updatePreview);
+        document.getElementById('open-stackedit').addEventListener('click', openStackedit);
         titleInput.addEventListener('input', updatePath);
-        togglePreview.addEventListener('click', toggleSplit);
         document.getElementById('ai-run').addEventListener('click', runAI);
         document.addEventListener('keydown', function (event) {
             var modifier = event.metaKey || event.ctrlKey;
-            if (!modifier || event.altKey) return;
-            if (event.key === 's' || event.key === 'S') {
+            if (modifier && !event.altKey && (event.key === 's' || event.key === 'S')) {
                 event.preventDefault();
                 form.requestSubmit();
-            } else if (event.key === 'Enter') {
-                event.preventDefault();
-                form.requestSubmit();
-            } else if (event.key === 'e' || event.key === 'E') {
-                event.preventDefault();
-                toggleSplit();
-            } else if (event.key === 'b' || event.key === 'B') {
-                if (document.activeElement !== body) return;
-                event.preventDefault();
-                formatMarkdown('bold');
-            } else if (event.key === 'i' || event.key === 'I') {
-                if (document.activeElement !== body) return;
-                event.preventDefault();
-                formatMarkdown('italic');
-            } else if (event.key === 'k' || event.key === 'K') {
-                if (document.activeElement !== body) return;
-                event.preventDefault();
-                formatMarkdown('link');
             }
         });
         updatePath();
-        updatePreview();
+        setStackeditStatus('正文已完整载入，共 ' + body.value.length + ' 个字符。', false);
     })();
 </script>
 {% endblock %}

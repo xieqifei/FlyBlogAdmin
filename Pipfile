@@ -7,6 +7,7 @@ name = "pip_conf_index_global"
 Django = "==5.2.11"
 requests = "==2.32.5"
 gunicorn = "==25.1.0"
+PyYAML = "==6.0.3"
 
 [dev-packages]
 

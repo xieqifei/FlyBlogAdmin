@@ -12,5 +12,6 @@ urlpatterns = [
     path("articles/save/", views.save_article, name="save_article"),
     path("articles/optimize/", views.optimize_article, name="optimize_article"),
     path("articles/delete/", views.delete_article, name="delete_article"),
+    path("assets/stackedit.js", views.stackedit_script, name="stackedit_script"),
     path("robots.txt", views.robots, name="robots"),
 ]

@@ -9,7 +9,13 @@ from django.test import Client, SimpleTestCase, override_settings
 from django.urls import reverse
 
 from .auth import COOKIE_NAME
-from .front_matter import article_path_from_title, build_article, parse_article, split_list
+from .front_matter import (
+    article_path_from_title,
+    build_article,
+    parse_article,
+    parse_custom_fields,
+    split_list,
+)
 from .github_client import GitHubConfig, GitHubContentClient, GitHubError, InvalidArticlePath
 from .llm_client import LLMClient, LLMConfigurationError
 
@@ -275,6 +281,61 @@ class FrontMatterTests(SimpleTestCase):
         self.assertEqual(parsed["body"], "plain body")
         self.assertEqual(parsed["title"], "")
 
+    def test_parse_article_exposes_complex_legacy_metadata_without_losing_body(self):
+        content = (
+            "\ufeff---\n"
+            "title: Legacy\n"
+            "date: 2025-02-03 12:34:56\n"
+            "description: |\n"
+            "  第一行\n"
+            "  第二行\n"
+            "categories:\n"
+            "  - [技术, 前端]\n"
+            "mathjax: true\n"
+            "extra:\n"
+            "  nested: value\n"
+            "...\n\n"
+            "开头\n\n中间\n\n结尾"
+        )
+
+        parsed = parse_article(content)
+
+        self.assertEqual(parsed["date"], "2025-02-03 12:34:56")
+        self.assertEqual(parsed["description"], "第一行\n第二行\n")
+        self.assertEqual(parsed["categories"], [["技术", "前端"]])
+        self.assertEqual(parsed["categories_text"], '["技术", "前端"]')
+        self.assertEqual(parsed["body"], "开头\n\n中间\n\n结尾")
+        self.assertEqual(parsed["custom_fields"], [
+            {"name": "mathjax", "value": "true"},
+            {"name": "extra", "value": '{"nested": "value"}'},
+        ])
+
+    def test_custom_fields_accept_structured_values_and_reject_managed_names(self):
+        fields = parse_custom_fields(
+            ["mathjax", "keywords", "nested"],
+            ["true", '["AI", "Hexo"]', '{"enabled": false}'],
+        )
+
+        self.assertEqual(fields, {
+            "mathjax": True,
+            "keywords": ["AI", "Hexo"],
+            "nested": {"enabled": False},
+        })
+        with self.assertRaises(ValueError):
+            parse_custom_fields(["title"], ["duplicate"])
+
+    def test_legacy_template_values_remain_visible_when_yaml_is_not_parseable(self):
+        parsed = parse_article(
+            "---\ntitle: Draft\ndate: {{ date }}\nlegacy: {{ slug }}\n---\n\nBody"
+        )
+
+        self.assertEqual(parsed["title"], "Draft")
+        self.assertEqual(parsed["date"], "{{ date }}")
+        self.assertEqual(parsed["custom_fields"], [
+            {"name": "legacy", "value": "{{ slug }}"},
+        ])
+        self.assertEqual(parsed["body"], "Body")
+
     def test_split_list_handles_commas_and_newlines(self):
         self.assertEqual(split_list("AI, Markdown，写作\nHexo"), ["AI", "Markdown", "写作", "Hexo"])
 
@@ -318,7 +379,48 @@ class ArticleViewTests(SimpleTestCase):
         self.assertContains(response, 'name="front_matter"')
         self.assertContains(response, 'name="tags"')
         self.assertNotContains(response, 'name="content"')
+        self.assertNotContains(response, 'name="commit_message"')
+        self.assertContains(response, "打开 StackEdit 编辑器")
+        self.assertContains(response, reverse("stackedit_script"))
         self.assertContains(response, "# Body")
+
+    def test_stackedit_bridge_is_served_without_staticfiles_app(self):
+        response = self.client.get(reverse("stackedit_script"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/javascript; charset=utf-8")
+        self.assertContains(response, "global.Stackedit = Stackedit")
+
+    def test_edit_page_displays_long_body_and_all_custom_metadata(self):
+        long_body = "开始\n" + ("很长的历史正文\n" * 2000) + "正文结尾标记"
+        fake_client = Mock()
+        fake_client.get_article.return_value = {
+            "path": "legacy.md",
+            "sha": "sha-legacy",
+            "content": (
+                "---\ntitle: Legacy\ndate: 2025-02-03 12:34:56\n"
+                "mathjax: true\nkeywords: [AI, Hexo]\n---\n\n" + long_body
+            ),
+        }
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("edit_article") + "?path=legacy.md")
+
+        self.assertContains(response, "正文结尾标记")
+        self.assertContains(response, 'name="custom_key" value="mathjax"')
+        self.assertContains(response, 'name="custom_key" value="keywords"')
+        self.assertContains(response, 'value="2025-02-03 12:34:56"')
+
+    def test_home_has_new_article_button_without_quick_create_form(self):
+        fake_client = Mock()
+        fake_client.list_articles.return_value = []
+        fake_client.config.repository = "owner/blog"
+        fake_client.config.branch = "main"
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("home"))
+
+        self.assertContains(response, "新建文章")
+        self.assertNotContains(response, "快捷创建")
+        self.assertNotContains(response, 'id="quick-title"')
 
     def test_edit_page_accepts_quick_create_title(self):
         response = self.client.get(reverse("edit_article") + "?title=Quick")
@@ -352,6 +454,33 @@ class ArticleViewTests(SimpleTestCase):
         self.assertIn('- "Markdown"', saved_content)
         self.assertIn('- "Notes"', saved_content)
         self.assertIn("# 正文", saved_content)
+        self.assertNotIn("message", fake_client.save_article.call_args.kwargs)
+
+    def test_save_preserves_nested_categories_and_custom_fields(self):
+        fake_client = Mock()
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.post(reverse("save_article"), {
+                "path": "legacy.md",
+                "sha": "sha-legacy",
+                "title": "Legacy",
+                "date": "2025-02-03 12:34:56",
+                "tags": "AI\nHexo",
+                "categories": '["技术", "前端"]',
+                "description": "第一行\n第二行",
+                "front_matter": "title: Old\nobsolete: remove-me",
+                "body": "完整正文",
+                "custom_key": ["mathjax", "keywords"],
+                "custom_value": ["true", '["AI", "Hexo"]'],
+            })
+
+        self.assertRedirects(response, reverse("home") + "?saved=1", fetch_redirect_response=False)
+        saved_content = fake_client.save_article.call_args.args[1]
+        self.assertIn('date: "2025-02-03 12:34:56"', saved_content)
+        self.assertIn('- "技术"', saved_content)
+        self.assertIn('description: "第一行\\n第二行"', saved_content)
+        self.assertIn("mathjax: true", saved_content)
+        self.assertIn("keywords:", saved_content)
+        self.assertNotIn("obsolete", saved_content)
 
     def test_save_failure_preserves_unsaved_content(self):
         fake_client = Mock()

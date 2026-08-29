@@ -1,8 +1,8 @@
 import json
 import os
 import secrets
-from pathlib import PurePosixPath
-from urllib.parse import urlencode
+from pathlib import Path, PurePosixPath
+from urllib.parse import urlencode, urlsplit
 
 from django.contrib.auth.hashers import make_password
 from django.http import HttpResponse, JsonResponse
@@ -22,8 +22,20 @@ from .auth import (
 )
 from .config import configuration_complete, configuration_status, missing_configuration
 from .github_client import ConfigurationError, GitHubContentClient, GitHubError, InvalidArticlePath
-from .front_matter import article_path_from_title, build_article, parse_article, split_list
+from .front_matter import (
+    article_path_from_title,
+    build_article,
+    parse_article,
+    parse_custom_fields,
+    split_list,
+)
 from .llm_client import LLMClient, LLMConfigurationError, LLMError
+
+
+STACKEDIT_SCRIPT_PATH = (
+    Path(__file__).resolve().parent
+    / "static/stateless/vendor/stackedit/stackedit.js"
+)
 
 
 def _client():
@@ -37,12 +49,21 @@ def _ai_configured():
     )
 
 
+def _stackedit_url():
+    value = os.environ.get("QEXO_STACKEDIT_URL", "https://stackedit.io/app").strip()
+    parsed = urlsplit(value)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return value
+    return "https://stackedit.io/app"
+
+
 def _render_editor(request, article, editor, error="", status=200):
     return render(request, "stateless/edit.html", {
         "article": article,
         "editor": editor,
         "error": error,
         "ai_configured": _ai_configured(),
+        "stackedit_url": _stackedit_url(),
     }, status=status)
 
 
@@ -165,35 +186,52 @@ def save_article(request):
         "cover": request.POST.get("cover", "").strip(),
         "description": request.POST.get("description", "").strip(),
     }
+    custom_field_names = request.POST.getlist("custom_key")
+    custom_field_values = request.POST.getlist("custom_value")
+    posted_editor = {
+        "front_matter": request.POST.get("front_matter", ""),
+        "body": body,
+        "tags_text": request.POST.get("tags", ""),
+        "categories_text": request.POST.get("categories", ""),
+        "custom_fields": [
+            {"name": name, "value": value}
+            for name, value in zip(custom_field_names, custom_field_values)
+        ],
+        **metadata,
+    }
     article_path = request.POST.get("path", "").strip()
     if not title:
         return _render_editor(request, {
             "path": article_path,
             "sha": request.POST.get("sha", "").strip(),
             "content": "",
-        }, {
-            "front_matter": request.POST.get("front_matter", ""),
-            "body": body,
-            **metadata,
-        }, "请填写文章标题", status=400)
+        }, posted_editor, "请填写文章标题", status=400)
+    try:
+        custom_fields = parse_custom_fields(custom_field_names, custom_field_values)
+    except ValueError as exc:
+        return _render_editor(request, {
+            "path": article_path,
+            "sha": request.POST.get("sha", "").strip(),
+            "content": "",
+        }, posted_editor, str(exc), status=400)
     if not article_path:
         article_path = article_path_from_title(title)
-    content = build_article(request.POST.get("front_matter", ""), body, metadata)
+    content = build_article(
+        request.POST.get("front_matter", ""),
+        body,
+        metadata,
+        custom_fields=custom_fields,
+    )
     sha = request.POST.get("sha", "").strip()
-    commit_message = request.POST.get("commit_message", "").strip()
     try:
         client = _client()
-        client.save_article(article_path, content, sha=sha, message=commit_message)
+        client.save_article(article_path, content, sha=sha)
     except (ConfigurationError, GitHubError, InvalidArticlePath) as exc:
         return _render_editor(request, {
             "path": article_path,
             "sha": sha,
             "content": content,
-        }, {
-            "front_matter": request.POST.get("front_matter", ""),
-            "body": body,
-            **metadata,
-        }, str(exc), status=400)
+        }, posted_editor, str(exc), status=400)
     return redirect(reverse("home") + "?saved=1")
 
 
@@ -239,6 +277,14 @@ def optimize_article(request):
     except LLMError as exc:
         return JsonResponse({"error": str(exc)}, status=502)
     return JsonResponse({"content": optimized})
+
+
+@require_GET
+def stackedit_script(request):
+    return HttpResponse(
+        STACKEDIT_SCRIPT_PATH.read_bytes(),
+        content_type="text/javascript; charset=utf-8",
+    )
 
 
 @require_GET

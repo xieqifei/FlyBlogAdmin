@@ -65,10 +65,13 @@ Qexo 是一个快速、强大、美观的在线 静态博客编辑器。使用 G
 | `QEXO_LLM_MODEL` | 可选：AI 模型名称 |
 | `QEXO_LLM_BASE_URL` | 可选：OpenAI 兼容 API 地址，默认 `https://api.openai.com/v1` |
 | `QEXO_LLM_API_STYLE` | 可选：`auto`、`chat` 或 `responses`，默认 `auto` |
+| `QEXO_STACKEDIT_URL` | 可选：StackEdit 服务地址，默认 `https://stackedit.io/app` |
 
 可选的 `QEXO_SESSION_AGE` 设置登录 Cookie 秒数（默认 7 天），`QEXO_POST_EXTENSIONS` 设置可编辑扩展名（默认 `.md,.markdown`）。非 Vercel 的 HTTPS 反向代理部署应设置 `QEXO_COOKIE_SECURE=1` 和 `QEXO_SSL_REDIRECT=1`；Vercel 会默认启用这两项安全设置。
 
 AI 文章优化为可选功能。设置 `QEXO_LLM_API_KEY` 和 `QEXO_LLM_MODEL` 后在编辑页即可使用优化、校对、精简、扩写与自定义要求。默认使用 OpenAI 兼容的 `chat/completions` 接口，可通过 `QEXO_LLM_BASE_URL` 指向其他兼容服务；如服务只提供 Responses API，可设置 `QEXO_LLM_API_STYLE=responses`。AI 内容由服务端请求，密钥不会发送到浏览器。
+
+正文通过 [StackEdit](https://github.com/benweet/stackedit) 编辑，并使用其官方推荐的 `stackedit.js` 嵌入协议。默认打开 `stackedit.io`；私有文章或内网部署建议自行部署 StackEdit，并通过 `QEXO_STACKEDIT_URL` 指向该实例。标题、日期、标签、分类及其他 Front Matter 仍在 Qexo 的表单中维护，历史文章的多行值、层级分类和自定义字段会完整显示。
 
 可直接在 `/setup/` 引导页生成密码哈希；也可在安装依赖的本地环境中交互式生成，密码不会进入命令历史：
 
