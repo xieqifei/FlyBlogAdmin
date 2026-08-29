@@ -1,5 +1,7 @@
+import secrets
 from urllib.parse import urlencode
 
+from django.contrib.auth.hashers import make_password
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -14,6 +16,7 @@ from .auth import (
     set_session_cookie,
     verify_credentials,
 )
+from .config import configuration_complete, configuration_status, missing_configuration
 from .github_client import ConfigurationError, GitHubContentClient, GitHubError, InvalidArticlePath
 
 
@@ -23,6 +26,8 @@ def _client():
 
 @require_http_methods(["GET", "POST"])
 def login_view(request):
+    if not configuration_complete():
+        return redirect("setup")
     if read_session_cookie(request):
         return redirect("home")
 
@@ -39,6 +44,34 @@ def login_view(request):
         else:
             error = "用户名或密码错误"
     return render(request, "stateless/login.html", {"error": error, "next": next_url})
+
+
+@require_http_methods(["GET", "POST"])
+def setup_view(request):
+    complete = configuration_complete()
+    if complete and not read_session_cookie(request):
+        return redirect(reverse("login") + "?next=" + reverse("setup"))
+
+    password_hash = ""
+    error = ""
+    if request.method == "POST":
+        password = request.POST.get("password", "")
+        confirmation = request.POST.get("password_confirmation", "")
+        if len(password) < 12:
+            error = "密码至少需要 12 个字符"
+        elif password != confirmation:
+            error = "两次输入的密码不一致"
+        else:
+            password_hash = make_password(password)
+
+    return render(request, "stateless/setup.html", {
+        "configuration_complete": complete,
+        "configuration_status": configuration_status(),
+        "missing_configuration": missing_configuration(),
+        "generated_secret_key": secrets.token_urlsafe(48),
+        "password_hash": password_hash,
+        "error": error,
+    })
 
 
 @require_POST

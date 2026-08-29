@@ -4,7 +4,7 @@ from unittest import skipUnless
 from unittest.mock import Mock, patch
 
 from django.conf import settings
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password, make_password
 from django.test import Client, SimpleTestCase, override_settings
 from django.urls import reverse
 
@@ -28,6 +28,9 @@ class AuthenticationTests(SimpleTestCase):
         self.environment = patch.dict(os.environ, {
             "ADMIN_USERNAME": "owner",
             "ADMIN_PASSWORD_HASH": make_password("correct horse battery staple"),
+            "QEXO_GITHUB_TOKEN": "test-token",
+            "QEXO_GITHUB_REPOSITORY": "owner/blog",
+            "DOMAINS": '["testserver"]',
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -72,6 +75,47 @@ class AuthenticationTests(SimpleTestCase):
 
         with patch.dict(os.environ, {"ADMIN_PASSWORD_HASH": make_password("new password")}):
             response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(reverse("login")))
+
+    def test_plaintext_password_environment_variable_is_supported(self):
+        with patch.dict(os.environ, {
+            "ADMIN_PASSWORD_HASH": "",
+            "ADMIN_PASSWORD": "plain password for tests",
+        }):
+            response = self.client.post(reverse("login"), {
+                "username": "owner",
+                "password": "plain password for tests",
+            })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(COOKIE_NAME, response.cookies)
+
+    def test_password_hash_takes_precedence_over_plaintext(self):
+        with patch.dict(os.environ, {
+            "ADMIN_PASSWORD_HASH": make_password("hashed password wins"),
+            "ADMIN_PASSWORD": "plain password for tests",
+        }):
+            response = self.client.post(reverse("login"), {
+                "username": "owner",
+                "password": "plain password for tests",
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "用户名或密码错误")
+
+    def test_changing_plaintext_password_invalidates_existing_cookie(self):
+        with patch.dict(os.environ, {
+            "ADMIN_PASSWORD_HASH": "",
+            "ADMIN_PASSWORD": "original plain password",
+        }):
+            self.client.post(reverse("login"), {
+                "username": "owner",
+                "password": "original plain password",
+            })
+            with patch.dict(os.environ, {"ADMIN_PASSWORD": "changed plain password"}):
+                response = self.client.get(reverse("home"))
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith(reverse("login")))
@@ -175,6 +219,9 @@ class ArticleViewTests(SimpleTestCase):
         self.environment = patch.dict(os.environ, {
             "ADMIN_USERNAME": "owner",
             "ADMIN_PASSWORD_HASH": make_password("password-for-tests"),
+            "QEXO_GITHUB_TOKEN": "test-token",
+            "QEXO_GITHUB_REPOSITORY": "owner/blog",
+            "DOMAINS": '["testserver"]',
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -194,3 +241,72 @@ class ArticleViewTests(SimpleTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertContains(response, "unsaved text", status_code=400)
         self.assertContains(response, "冲突", status_code=400)
+
+
+@override_settings(STATELESS_COOKIE_SECURE=False)
+@skipUnless(settings.STATELESS_MODE, "requires QEXO_STATELESS=1")
+class SetupGuideTests(SimpleTestCase):
+    def setUp(self):
+        self.environment = patch.dict(os.environ, {
+            "QEXO_SECRET_KEY": "",
+            "SECRET_KEY": "",
+            "ADMIN_USERNAME": "",
+            "ADMIN_PASSWORD_HASH": "",
+            "ADMIN_PASSWORD": "",
+            "QEXO_GITHUB_TOKEN": "",
+            "QEXO_GITHUB_REPOSITORY": "",
+            "DOMAINS": "",
+            "VERCEL_URL": "",
+            "VERCEL_BRANCH_URL": "",
+            "VERCEL_PROJECT_PRODUCTION_URL": "",
+        })
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+        self.client = Client()
+
+    def test_incomplete_configuration_redirects_editor_and_login_to_setup(self):
+        for route in ("home", "login"):
+            with self.subTest(route=route):
+                response = self.client.get(reverse(route))
+                self.assertRedirects(response, reverse("setup"), fetch_redirect_response=False)
+
+    def test_setup_page_explains_required_variables_without_exposing_values(self):
+        response = self.client.get(reverse("setup"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "QEXO_GITHUB_TOKEN")
+        self.assertContains(response, "ADMIN_PASSWORD_HASH")
+        self.assertContains(response, "Contents")
+
+    def test_setup_page_never_echoes_environment_secrets(self):
+        secrets = {
+            "ADMIN_PASSWORD": "environment plaintext secret",
+            "QEXO_GITHUB_TOKEN": "github_pat_environment_secret",
+        }
+        with patch.dict(os.environ, secrets):
+            response = self.client.get(reverse("setup"))
+
+        self.assertEqual(response.status_code, 200)
+        for value in secrets.values():
+            self.assertNotContains(response, value)
+
+    def test_setup_page_generates_verifiable_password_hash(self):
+        password = "a private password for setup"
+        response = self.client.post(reverse("setup"), {
+            "password": password,
+            "password_confirmation": password,
+        })
+
+        self.assertEqual(response.status_code, 200)
+        encoded = response.context["password_hash"]
+        self.assertTrue(check_password(password, encoded))
+        self.assertNotContains(response, password)
+
+    def test_setup_page_rejects_mismatched_passwords(self):
+        response = self.client.post(reverse("setup"), {
+            "password": "a sufficiently long password",
+            "password_confirmation": "another sufficiently long password",
+        })
+
+        self.assertContains(response, "两次输入的密码不一致")
+        self.assertEqual(response.context["password_hash"], "")

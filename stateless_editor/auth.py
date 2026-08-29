@@ -11,28 +11,39 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
+from .config import configuration_complete
+
 
 COOKIE_NAME = "qexo_editor_session"
 COOKIE_SALT = "qexo.stateless-editor.session.v1"
 
 
 def credentials_configured():
-    return bool(os.environ.get("ADMIN_USERNAME") and os.environ.get("ADMIN_PASSWORD_HASH"))
+    return bool(
+        os.environ.get("ADMIN_USERNAME")
+        and (os.environ.get("ADMIN_PASSWORD_HASH") or os.environ.get("ADMIN_PASSWORD"))
+    )
 
 
 def verify_credentials(username, password):
     expected_username = os.environ.get("ADMIN_USERNAME", "")
     encoded_password = os.environ.get("ADMIN_PASSWORD_HASH", "")
+    plain_password = os.environ.get("ADMIN_PASSWORD", "")
     username_matches = hmac.compare_digest(username.encode("utf-8"), expected_username.encode("utf-8"))
-    password_matches = check_password(password, encoded_password) if encoded_password else False
+    if encoded_password:
+        password_matches = check_password(password, encoded_password)
+    else:
+        password_matches = hmac.compare_digest(password.encode("utf-8"), plain_password.encode("utf-8"))
     return username_matches and password_matches
 
 
 def _credential_version():
     encoded_password = os.environ.get("ADMIN_PASSWORD_HASH", "")
+    plain_password = os.environ.get("ADMIN_PASSWORD", "")
+    credential = f"hash:{encoded_password}" if encoded_password else f"plain:{plain_password}"
     return hmac.new(
         settings.SECRET_KEY.encode("utf-8"),
-        encoded_password.encode("utf-8"),
+        credential.encode("utf-8"),
         hashlib.sha256,
     ).hexdigest()
 
@@ -98,6 +109,8 @@ def safe_next_url(request, candidate, default_name="home"):
 def login_required(view):
     @wraps(view)
     def wrapped(request, *args, **kwargs):
+        if not configuration_complete():
+            return redirect("setup")
         username = read_session_cookie(request)
         if not username:
             login_url = reverse("login")

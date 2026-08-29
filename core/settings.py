@@ -31,8 +31,8 @@ LOGOUT_REDIRECT_URL = "home"  # Route defined in home/urls.py
 # SECURITY WARNING: keep the secret key used in production secret!
 _DEVELOPMENT_SECRET_KEY = 'django-insecure-mrf1flh+i8*!ao73h6)ne#%gowhtype!ld#+(j^r*!^11al2vz'
 SECRET_KEY = os.environ.get("QEXO_SECRET_KEY") or os.environ.get("SECRET_KEY") or _DEVELOPMENT_SECRET_KEY
-if STATELESS_MODE and SECRET_KEY == _DEVELOPMENT_SECRET_KEY:
-    raise exceptions.InitError("无数据库模式必须设置 QEXO_SECRET_KEY 或 SECRET_KEY")
+# The setup guide must be able to start before a secret has been supplied. No
+# authenticated session can be created until configuration is complete.
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -289,6 +289,11 @@ def _load_allowed_hosts(local_config):
         else:
             hosts = domains_hosts or vercel_hosts
             if not hosts:
+                if STATELESS_MODE:
+                    # This only exposes the public setup guide. Its checklist
+                    # keeps the editor locked until a real domain is supplied.
+                    logging.warning("无数据库模式尚未配置 DOMAINS，临时允许访问配置引导页")
+                    return ["*"]
                 raise exceptions.InitError('DOMAINS 未设置且未检测到 Vercel 环境变量, 请为 DOMAINS 环境变量填写实际域名, 例如 ["example.com"]')
             logging.info(f"从{'环境变量 DOMAINS' if domains_hosts else 'Vercel 环境变量'}获取域名: {hosts}")
         

@@ -34,10 +34,24 @@
         .articles li:last-child { border-bottom: 0; }
         .article-path { overflow-wrap: anywhere; }
         .login { width: min(430px, calc(100% - 32px)); margin: 10vh auto; }
+        .setup { width: min(920px, calc(100% - 32px)); margin: 32px auto; }
+        .setup h2 { margin: 0; font-size: 19px; }
+        .setup h3 { margin: 4px 0 0; font-size: 16px; }
+        .checklist { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+        .checklist li { display: flex; gap: 9px; align-items: baseline; }
+        .ok { color: var(--success); }
+        .missing { color: var(--danger); }
+        .code-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+        code, .code-value { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+        .code-value { padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); }
+        .steps { margin: 0; padding-left: 22px; }
+        .steps li + li { margin-top: 8px; }
+        .variable { padding-top: 14px; border-top: 1px solid var(--line); }
+        .variable:first-child { padding-top: 0; border-top: 0; }
         .inline { display: inline; }
         h1 { margin: 0; font-size: 24px; }
         p { margin-top: 0; }
-        @media (max-width: 600px) { .shell { margin: 18px auto; } .card { padding: 16px; } .topbar { align-items: flex-start; } textarea { min-height: 55vh; } }
+        @media (max-width: 600px) { .shell, .setup { margin: 18px auto; } .card { padding: 16px; } .topbar { align-items: flex-start; } textarea { min-height: 55vh; } .code-row { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
