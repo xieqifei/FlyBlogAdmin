@@ -1,34 +1,98 @@
 {% extends "stateless/base.html" %}
 {% block title %}{% if article.sha %}编辑{% else %}新建{% endif %}文章 · Blog Admin{% endblock %}
 {% block head %}
+<link rel="stylesheet" href="{% url 'editor_md_asset' 'css/editormd.min.css' %}">
+<link rel="stylesheet" href="{% url 'editor_md_asset' 'css/editormd.preview.min.css' %}">
 <style>
-    .editor-shell { max-width: 1180px; }
+    .editor-shell { max-width: 1240px; }
+    .editor-shell h1 { letter-spacing: 0; }
+    .meta-card { background: color-mix(in srgb, var(--card) 94%, var(--primary) 3%); }
     .meta-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; }
     .meta-grid .wide { grid-column: 1 / -1; }
     .meta-grid label { min-width: 0; }
     .meta-grid textarea { min-height: 68px; resize: vertical; }
     .path-line { display: flex; align-items: center; gap: 10px; min-height: 28px; }
-    .custom-fields { border-top: 1px solid var(--line); padding-top: 14px; }
+    .path-line code { background: var(--bg); padding: 5px 9px; border-radius: 7px; }
+    .custom-fields { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 2px; }
     .custom-fields summary { cursor: pointer; font-weight: 700; }
     .custom-list { display: grid; gap: 10px; margin-top: 12px; }
     .custom-row { display: grid; grid-template-columns: minmax(150px, 0.7fr) minmax(260px, 2fr) auto; gap: 8px; align-items: start; }
     .custom-row textarea { min-height: 44px; resize: vertical; }
     .custom-row button { min-width: 42px; }
     .editor-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-    .editor-toolbar .stackedit-launch { background: #2f6f9f; }
     .ai-group { display: flex; align-items: center; gap: 8px; flex: 1 1 520px; flex-wrap: wrap; }
     .ai-group select, .ai-group input { width: auto; min-width: 130px; }
     .ai-group input { flex: 1 1 220px; }
     .ai-group.disabled { opacity: 0.55; pointer-events: none; }
     #ai-status { min-width: 56px; font-weight: 600; }
-    #ai-status.error, #stackedit-status.error { color: var(--danger); }
-    .source-editor { margin-top: 14px; }
-    .source-editor summary { cursor: pointer; color: var(--muted); }
-    .source-editor textarea { min-height: 58vh; height: 58vh; margin-top: 10px; }
+    #ai-status.error, #editor-status.error { color: var(--danger); }
+    #editor-status { min-width: 120px; text-align: right; }
+    .editor-card { overflow: hidden; padding: 18px; }
+    .editor-shell .editormd {
+        width: 100% !important;
+        height: 620px !important;
+        margin: 0;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--card);
+        color: var(--text);
+        box-shadow: 0 14px 34px rgb(23 32 51 / 7%);
+    }
+    .editor-shell .editormd-toolbar {
+        background: color-mix(in srgb, var(--card) 94%, var(--primary) 4%);
+        border-bottom: 1px solid var(--line);
+    }
+    .editor-shell .editormd-menu > li.divider { border-color: var(--line); }
+    .editor-shell .editormd-menu > li > a { color: var(--text); border-color: transparent; }
+    .editor-shell .editormd-menu > li > a:hover,
+    .editor-shell .editormd-menu > li > a.active { border-color: var(--line); background: color-mix(in srgb, var(--primary) 9%, var(--card)); }
+    .editor-shell .editormd-container { background: var(--card); }
+    .editor-shell .editormd .CodeMirror,
+    .editor-shell .editormd-preview { background: var(--card); color: var(--text); }
+    .editor-shell .editormd .CodeMirror { border-color: var(--line); }
+    .editor-shell .editormd-preview { border-left: 1px solid var(--line); }
+    .editor-shell .editormd-preview-container { background: var(--card); color: var(--text); }
+    .editor-shell .editormd-preview-container pre,
+    .editor-shell .editormd-preview-container code,
+    .editor-shell .editormd-preview-container blockquote,
+    .editor-shell .editormd-preview-container table td,
+    .editor-shell .editormd-preview-container table th { border-color: var(--line); background: color-mix(in srgb, var(--text) 6%, var(--card)); }
+    .editor-shell .editormd-preview-container a { color: var(--primary); }
+    .editor-shell .editormd-preview-container h1,
+    .editor-shell .editormd-preview-container h2,
+    .editor-shell .editormd-preview-container hr { border-color: var(--line); }
+    .editor-shell .editormd-dialog { background: var(--card); color: var(--text); box-shadow: 0 24px 70px rgb(0 0 0 / 22%); }
+    .editor-shell .editormd-dialog input,
+    .editor-shell .editormd-dialog select,
+    .editor-shell .editormd-dialog textarea,
+    .editor-shell .editormd-form input[type=text],
+    .editor-shell .editormd-form select { color: var(--text); border-color: var(--line); background: var(--card); }
+    .editor-shell .editormd-dialog button,
+    .editor-shell .editormd-form button { color: var(--text); border-color: var(--line); background: var(--card); }
+    .editor-shell .editormd-container-mask,
+    .editor-shell .editormd-dialog-mask { background-color: var(--card); }
+    .editor-shell .editormd-fullscreen { z-index: 1040; }
+    .editor-fallback { min-height: 58vh; height: 58vh; }
+    .editor-status-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; color: var(--muted); font-size: 13px; }
     @media (max-width: 760px) {
         .meta-grid { grid-template-columns: 1fr; }
         .custom-row { grid-template-columns: 1fr; }
         .editor-toolbar { align-items: stretch; }
+        #editor-status { text-align: left; }
+        .editor-shell .editormd { height: 520px !important; }
+    }
+    @media (prefers-color-scheme: dark) {
+        .editor-shell .editormd,
+        .editor-shell .editormd-container,
+        .editor-shell .editormd-preview,
+        .editor-shell .editormd .CodeMirror,
+        .editor-shell .editormd-preview-container { background: var(--card); color: var(--text); }
+        .editor-shell .editormd-toolbar { background: color-mix(in srgb, var(--card) 92%, var(--primary) 8%); }
+        .editor-shell .editormd-menu > li > a { color: var(--text); }
+        .editor-shell .editormd-dialog,
+        .editor-shell .editormd-form input,
+        .editor-shell .editormd-form select,
+        .editor-shell .editormd-form textarea { color: var(--text); background: var(--card); border-color: var(--line); }
     }
 </style>
 {% endblock %}
@@ -39,7 +103,7 @@
         <a class="button secondary" href="{% url 'home' %}">返回列表</a>
     </div>
     {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
-    <form id="article-form" class="card stack" method="post" action="{% url 'save_article' %}">
+    <form id="article-form" class="card meta-card stack" method="post" action="{% url 'save_article' %}">
         {% csrf_token %}
         <input type="hidden" name="sha" value="{{ article.sha }}">
         {% if article.path %}<input type="hidden" id="article-path" name="path" value="{{ article.path }}">{% endif %}
@@ -87,8 +151,6 @@
             <button type="button" id="add-custom" class="secondary">添加元数据</button>
         </details>
         <div class="editor-toolbar">
-            <button type="button" id="open-stackedit" class="stackedit-launch">打开 StackEdit 编辑器</button>
-            <span id="stackedit-status" class="muted">正文将完整载入 StackEdit，关闭后自动同步回来。</span>
             <div class="ai-group{% if not ai_configured %} disabled{% endif %}">
                 <select id="ai-mode" aria-label="AI 处理方式">
                     <option value="optimize">优化</option>
@@ -102,10 +164,13 @@
                 <span id="ai-status" class="muted"></span>
             </div>
         </div>
-        <details class="source-editor">
-            <summary>源码编辑（StackEdit 不可用时的回退方式）</summary>
-            <textarea id="body" name="body" spellcheck="false" placeholder="正文">{{ editor.body }}</textarea>
-        </details>
+        <div id="body-editor" class="editor-card">
+            <textarea id="body" name="body" class="editor-fallback" spellcheck="false" placeholder="正文">{{ editor.body }}</textarea>
+        </div>
+        <div class="editor-status-row">
+            <span class="muted">Editor.md 支持 Markdown 预览、目录、搜索替换与全屏编辑。</span>
+            <span id="editor-status">已载入正文</span>
+        </div>
         <div class="row">
             <button type="submit">保存并提交</button>
             <span class="muted">保存会使用系统生成的提交说明，并直接写入目标分支。</span>
@@ -128,16 +193,30 @@
         <button type="button" class="secondary" data-remove-custom aria-label="删除字段">−</button>
     </div>
 </template>
-<script src="{% url 'stackedit_script' %}"></script>
+<script src="{% url 'editor_md_asset' 'lib/jquery.min.js' %}"></script>
+<script src="{% url 'editor_md_asset' 'editormd.min.js' %}"></script>
 <script>
     (function () {
         var body = document.getElementById('body');
+        var bodyEditor = document.getElementById('body-editor');
+        var editorStatus = document.getElementById('editor-status');
         var titleInput = document.getElementById('article-title');
         var pathInput = document.getElementById('article-path');
         var pathPreview = document.getElementById('path-preview');
         var form = document.getElementById('article-form');
         var customList = document.getElementById('custom-list');
-        var stackedit = null;
+        var editor = null;
+
+        function setEditorStatus(message, isError) {
+            editorStatus.textContent = message;
+            editorStatus.classList.toggle('error', Boolean(isError));
+        }
+
+        function updateCount() {
+            var value = body.value;
+            var words = value.trim() ? value.trim().split(/\s+/).length : 0;
+            setEditorStatus(value.length + ' 字符 · ' + words + ' 词');
+        }
 
         function pathFromTitle(title) {
             var normalized = String(title || '').normalize('NFKC').toLowerCase().trim();
@@ -154,34 +233,6 @@
 
         function updatePath() {
             if (pathPreview) pathPreview.textContent = pathFromTitle(titleInput.value);
-        }
-
-        function setStackeditStatus(message, isError) {
-            var status = document.getElementById('stackedit-status');
-            status.textContent = message;
-            status.classList.toggle('error', Boolean(isError));
-        }
-
-        function openStackedit() {
-            if (typeof window.Stackedit !== 'function') {
-                setStackeditStatus('StackEdit 加载失败，请展开下方源码编辑区。', true);
-                document.querySelector('.source-editor').open = true;
-                return;
-            }
-            if (!stackedit) {
-                stackedit = new window.Stackedit({ url: '{{ stackedit_url|escapejs }}' });
-                stackedit.on('fileChange', function (file) {
-                    body.value = file.content.text;
-                    body.dispatchEvent(new Event('input', { bubbles: true }));
-                    setStackeditStatus('已从 StackEdit 同步 ' + body.value.length + ' 个字符。', false);
-                });
-                stackedit.on('close', function () {
-                    setStackeditStatus('StackEdit 已关闭，正文已保留，可继续填写元数据或保存。', false);
-                });
-            }
-            var name = pathInput ? pathInput.value : pathFromTitle(titleInput.value);
-            stackedit.openFile({ name: name, content: { text: body.value } });
-            setStackeditStatus('正在打开 StackEdit…', false);
         }
 
         function bindCustomRow(row) {
@@ -220,14 +271,60 @@
                 });
                 var data = await response.json();
                 if (!response.ok) throw new Error(data.error || '请求失败');
-                body.value = data.content;
-                body.dispatchEvent(new Event('input', { bubbles: true }));
-                setAIStatus('完成', false);
+                if (editor) {
+                    editor.setValue(data.content);
+                } else {
+                    body.value = data.content;
+                    body.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                updateCount();
+                setAIStatus('完成，正文已更新', false);
             } catch (error) {
                 setAIStatus(error.message || '请求失败', true);
             } finally {
                 runButton.disabled = false;
             }
+        }
+
+        function initEditor() {
+            if (typeof window.editormd !== 'function') {
+                setEditorStatus('编辑器组件加载失败，已启用源码编辑', true);
+                return;
+            }
+            var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            editor = window.editormd('body-editor', {
+                path: '{% url 'editor_md_asset' 'lib/' %}',
+                width: '100%',
+                height: 620,
+                markdown: body.value,
+                theme: dark ? 'dark' : 'default',
+                editorTheme: dark ? 'pastel-on-dark' : 'default',
+                previewTheme: dark ? 'dark' : 'default',
+                watch: true,
+                syncScrolling: 'single',
+                toolbarAutoFixed: false,
+                codeFold: true,
+                searchReplace: true,
+                lineWrapping: true,
+                placeholder: '从这里开始写正文…',
+                toolbarIcons: [
+                    'undo', 'redo', '|',
+                    'bold', 'del', 'italic', 'quote', '|',
+                    'h1', 'h2', 'h3', '|',
+                    'list-ul', 'list-ol', 'hr', '|',
+                    'link', 'reference-link', 'image', 'code', 'code-block', 'table', '|',
+                    'watch', 'preview', 'fullscreen', 'search', '|',
+                    'help'
+                ],
+                onchange: function () {
+                    body.value = editor.getValue();
+                    updateCount();
+                },
+                onload: function () {
+                    body.value = editor.getValue();
+                    updateCount();
+                }
+            });
         }
 
         customList.querySelectorAll('[data-custom-row]').forEach(bindCustomRow);
@@ -237,9 +334,12 @@
             bindCustomRow(row);
             row.querySelector('input').focus();
         });
-        document.getElementById('open-stackedit').addEventListener('click', openStackedit);
         titleInput.addEventListener('input', updatePath);
         document.getElementById('ai-run').addEventListener('click', runAI);
+        body.addEventListener('input', updateCount);
+        form.addEventListener('submit', function () {
+            if (editor) body.value = editor.getValue();
+        });
         document.addEventListener('keydown', function (event) {
             var modifier = event.metaKey || event.ctrlKey;
             if (modifier && !event.altKey && (event.key === 's' || event.key === 'S')) {
@@ -248,7 +348,8 @@
             }
         });
         updatePath();
-        setStackeditStatus('正文已完整载入，共 ' + body.value.length + ' 个字符。', false);
+        initEditor();
+        updateCount();
     })();
 </script>
 {% endblock %}

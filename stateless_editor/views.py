@@ -1,9 +1,10 @@
 import json
+import mimetypes
 import os
 import secrets
 from datetime import datetime
 from pathlib import Path, PurePosixPath
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlencode
 
 from django.contrib.auth.hashers import make_password
 from django.http import HttpResponse, JsonResponse
@@ -34,9 +35,9 @@ from .llm_client import LLMClient, LLMConfigurationError, LLMError
 from .search_index import get_catalog, invalidate_catalog, public_article
 
 
-STACKEDIT_SCRIPT_PATH = (
+EDITOR_MD_VENDOR_PATH = (
     Path(__file__).resolve().parent
-    / "static/stateless/vendor/stackedit/stackedit.js"
+    / "static/stateless/vendor/editor-md"
 )
 
 
@@ -49,14 +50,6 @@ def _ai_configured():
         os.environ.get("QEXO_LLM_API_KEY", "").strip()
         and os.environ.get("QEXO_LLM_MODEL", "").strip()
     )
-
-
-def _stackedit_url():
-    value = os.environ.get("QEXO_STACKEDIT_URL", "https://stackedit.io/app").strip()
-    parsed = urlsplit(value)
-    if parsed.scheme in {"http", "https"} and parsed.netloc:
-        return value
-    return "https://stackedit.io/app"
 
 
 def _date_sort_value(value):
@@ -113,7 +106,6 @@ def _render_editor(request, article, editor, error="", status=200):
         "editor": editor,
         "error": error,
         "ai_configured": _ai_configured(),
-        "stackedit_url": _stackedit_url(),
     }, status=status)
 
 
@@ -405,11 +397,31 @@ def optimize_article(request):
 
 
 @require_GET
-def stackedit_script(request):
-    return HttpResponse(
-        STACKEDIT_SCRIPT_PATH.read_bytes(),
-        content_type="text/javascript; charset=utf-8",
-    )
+def editor_md_asset(request, asset_path):
+    asset_path = str(asset_path or "").strip()
+    if not asset_path or asset_path.startswith("/") or ".." in Path(asset_path).parts:
+        return HttpResponse(status=404)
+
+    requested = (EDITOR_MD_VENDOR_PATH / asset_path).resolve()
+    try:
+        requested.relative_to(EDITOR_MD_VENDOR_PATH.resolve())
+    except ValueError:
+        return HttpResponse(status=404)
+
+    if not requested.is_file():
+        return HttpResponse(status=404)
+
+    content_type = mimetypes.guess_type(requested.name)[0] or "application/octet-stream"
+    if requested.suffix == ".js":
+        content_type = "application/javascript"
+    if content_type.startswith("text/") or content_type in {
+        "application/javascript",
+        "application/json",
+    }:
+        content_type += "; charset=utf-8"
+    response = HttpResponse(requested.read_bytes(), content_type=content_type)
+    response["Cache-Control"] = "public, max-age=86400"
+    return response
 
 
 @require_GET

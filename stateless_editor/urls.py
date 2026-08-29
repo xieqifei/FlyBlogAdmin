@@ -15,6 +15,6 @@ urlpatterns = [
     path("articles/save/", views.save_article, name="save_article"),
     path("articles/optimize/", views.optimize_article, name="optimize_article"),
     path("articles/delete/", views.delete_article, name="delete_article"),
-    path("assets/stackedit.js", views.stackedit_script, name="stackedit_script"),
+    path("assets/editor-md/<path:asset_path>", views.editor_md_asset, name="editor_md_asset"),
     path("robots.txt", views.robots, name="robots"),
 ]

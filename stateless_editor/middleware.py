@@ -6,6 +6,7 @@ class NoStoreMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        response["Cache-Control"] = "no-store, max-age=0"
-        response["Pragma"] = "no-cache"
+        if not request.path.startswith("/assets/editor-md/"):
+            response["Cache-Control"] = "no-store, max-age=0"
+            response["Pragma"] = "no-cache"
         return response

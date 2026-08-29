@@ -65,13 +65,12 @@ Qexo 是一个快速、强大、美观的在线 静态博客编辑器。使用 G
 | `QEXO_LLM_MODEL` | 可选：AI 模型名称 |
 | `QEXO_LLM_BASE_URL` | 可选：OpenAI 兼容 API 地址，默认 `https://api.openai.com/v1` |
 | `QEXO_LLM_API_STYLE` | 可选：`auto`、`chat` 或 `responses`，默认 `auto` |
-| `QEXO_STACKEDIT_URL` | 可选：StackEdit 服务地址，默认 `https://stackedit.io/app` |
 
 可选的 `QEXO_SESSION_AGE` 设置登录 Cookie 秒数（默认 7 天），`QEXO_POST_EXTENSIONS` 设置可编辑扩展名（默认 `.md,.markdown`）。非 Vercel 的 HTTPS 反向代理部署应设置 `QEXO_COOKIE_SECURE=1` 和 `QEXO_SSL_REDIRECT=1`；Vercel 会默认启用这两项安全设置。
 
 AI 文章优化为可选功能。设置 `QEXO_LLM_API_KEY` 和 `QEXO_LLM_MODEL` 后在编辑页即可使用优化、校对、精简、扩写与自定义要求。默认使用 OpenAI 兼容的 `chat/completions` 接口，可通过 `QEXO_LLM_BASE_URL` 指向其他兼容服务；如服务只提供 Responses API，可设置 `QEXO_LLM_API_STYLE=responses`。AI 内容由服务端请求，密钥不会发送到浏览器。
 
-正文通过 [StackEdit](https://github.com/benweet/stackedit) 编辑，并使用其官方推荐的 `stackedit.js` 嵌入协议。默认打开 `stackedit.io`；私有文章或内网部署建议自行部署 StackEdit，并通过 `QEXO_STACKEDIT_URL` 指向该实例。标题、日期、标签、分类及其他 Front Matter 仍在 Blog Admin 的表单中维护，历史文章的多行值、层级分类和自定义字段会完整显示。
+正文通过 [Editor.md](https://github.com/pandao/editor.md) 编辑，编辑器脚本和依赖已随仓库本地化，不依赖外部编辑器服务或第三方 CDN。标题、日期、标签、分类及其他 Front Matter 仍在 Blog Admin 的表单中维护，历史文章的多行值、层级分类和自定义字段会完整显示。
 
 文章首页按 20 篇一页懒加载，并显示 Front Matter 中的标题、分类、标签、创建日期及最近编辑日期。Blog Admin 保存文章时会自动更新 `updated` 字段；历史文章若没有 `updated`，会依次兼容 `lastmod`、`modified`、`updated_at`、`last_modified`，最后回退到创建日期。右上角的“关系图谱”以文章、分类和标签为节点展示关联。
 
@@ -88,6 +87,7 @@ python3 -c 'from django.conf import settings; settings.configure(); from django.
 - [Ace](https://ace.c9.io/)
 - [Argon-Dashboard-Django](https://github.com/creativetimofficial/argon-dashboard-django)
 - [Bootstrap](https://getbootstrap.com/)
+- [Editor.md](https://github.com/pandao/editor.md)
 - [Notyf](https://github.com/caroso1222/notyf)
 - [Django](https://github.com/django/django)
 - [HexoPlusPlus](https://github.com/HexoPlusPlus/HexoPlusPlus)

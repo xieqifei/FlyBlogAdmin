@@ -411,16 +411,24 @@ class ArticleViewTests(SimpleTestCase):
         self.assertContains(response, 'name="tags"')
         self.assertNotContains(response, 'name="content"')
         self.assertNotContains(response, 'name="commit_message"')
-        self.assertContains(response, "打开 StackEdit 编辑器")
-        self.assertContains(response, reverse("stackedit_script"))
+        self.assertContains(response, "editormd.min.js")
+        self.assertContains(response, reverse("editor_md_asset", args=["css/editormd.min.css"]))
+        self.assertContains(response, reverse("editor_md_asset", args=["lib/"]))
         self.assertContains(response, "# Body")
 
-    def test_stackedit_bridge_is_served_without_staticfiles_app(self):
-        response = self.client.get(reverse("stackedit_script"))
+    def test_editor_md_assets_are_served_without_staticfiles_app(self):
+        response = self.client.get(reverse("editor_md_asset", args=["editormd.min.js"]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response["Content-Type"], "text/javascript; charset=utf-8")
-        self.assertContains(response, "global.Stackedit = Stackedit")
+        self.assertEqual(response["Content-Type"], "application/javascript; charset=utf-8")
+        self.assertEqual(response["Cache-Control"], "public, max-age=86400")
+        self.assertContains(response, "Editor.md")
+
+    def test_editor_md_asset_rejects_path_traversal(self):
+        for path in ("../stackedit/stackedit.js", "../../manage.py", "%2e%2e/manage.py"):
+            with self.subTest(path=path):
+                response = self.client.get("/assets/editor-md/" + path)
+                self.assertNotEqual(response.status_code, 200)
 
     def test_edit_page_displays_long_body_and_all_custom_metadata(self):
         long_body = "开始\n" + ("很长的历史正文\n" * 2000) + "正文结尾标记"
