@@ -624,6 +624,30 @@ class ArticleViewTests(SimpleTestCase):
         self.assertContains(response, 'id="back-to-top"')
         fake_client.list_articles.assert_not_called()
 
+    def test_primary_pages_include_responsive_mobile_layout(self):
+        fake_client = Mock()
+        fake_client.config.repository = "owner/blog"
+        fake_client.config.branch = "main"
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            home = self.client.get(reverse("home"))
+            edit = self.client.get(reverse("edit_article"))
+
+        self.assertContains(home, 'width=device-width, initial-scale=1')
+        self.assertContains(home, '.topbar-actions { width: 100%; display: grid;')
+        self.assertContains(home, 'bottom: calc(12px + env(safe-area-inset-bottom))')
+        self.assertContains(home, ".articles li { align-items: stretch; flex-direction: column;")
+        self.assertContains(edit, ".editormd .CodeMirror { width: 100% !important;")
+        self.assertContains(edit, ".editormd-dialog { width: calc(100vw - 24px) !important;")
+        self.assertContains(edit, "watch: !compactEditor")
+
+    def test_graph_uses_compact_mobile_viewbox_without_fixed_canvas_width(self):
+        response = self.client.get(reverse("graph"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "return { width: 360, height: 600")
+        self.assertContains(response, "svg.setAttribute('viewBox'")
+        self.assertNotContains(response, "min-width: 720px")
+
     def test_articles_api_paginates_and_returns_article_metadata(self):
         fake_client = Mock()
         fake_client.get_article_last_modified.return_value = "2026-08-04T00:00:00Z"

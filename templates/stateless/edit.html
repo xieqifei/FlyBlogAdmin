@@ -27,7 +27,7 @@
     .taxonomy-add input { min-width: 0; }
     .taxonomy-add button { width: 42px; min-width: 42px; padding: 0; font-size: 22px; line-height: 1; }
     .path-line { display: flex; align-items: center; gap: 10px; min-height: 28px; }
-    .path-line code { background: var(--bg); padding: 5px 9px; border-radius: 7px; }
+    .path-line code { min-width: 0; background: var(--bg); padding: 5px 9px; border-radius: 7px; }
     .custom-fields { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 2px; }
     .custom-fields summary { cursor: pointer; font-weight: 700; }
     .custom-list { display: grid; gap: 10px; margin-top: 12px; }
@@ -56,7 +56,12 @@
     .editor-shell .editormd-toolbar {
         background: color-mix(in srgb, var(--card) 94%, var(--primary) 4%);
         border-bottom: 1px solid var(--line);
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
     }
+    .editor-shell .editormd-toolbar-container { width: max-content; min-width: 100%; }
+    .editor-shell .editormd-menu { white-space: nowrap; }
     .editor-shell .editormd-menu > li.divider { border-color: var(--line); }
     .editor-shell .editormd-menu > li > a { color: var(--text); border-color: transparent; }
     .editor-shell .editormd-menu > li > a:hover,
@@ -93,8 +98,28 @@
         .meta-grid { grid-template-columns: 1fr; }
         .custom-row { grid-template-columns: 1fr; }
         .editor-toolbar { align-items: stretch; }
+        .ai-group { align-items: stretch; flex-direction: column; flex-basis: 100%; }
+        .ai-group select, .ai-group input, .ai-group button { width: 100%; }
+        .taxonomy-add { min-width: 0; flex-basis: 100%; }
+        .path-line { align-items: flex-start; flex-direction: column; }
+        .editor-card { padding: 0; }
         #editor-status { text-align: left; }
-        .editor-shell .editormd { height: 520px !important; }
+        .editor-shell .editormd { height: max(420px, calc(100dvh - 180px)) !important; border-radius: 8px; }
+        .editor-shell .editormd .CodeMirror { width: 100% !important; border-right: 0; font-size: 16px; }
+        .editor-shell .editormd-preview:not(.editormd-preview-active) { display: none !important; }
+        .editor-shell .editormd-preview-active { width: 100% !important; padding: 16px; }
+        .editor-shell .editormd-fullscreen { width: 100vw !important; height: 100dvh !important; border-radius: 0; }
+        .editor-shell .editormd-menu > li { padding-block: 4px; }
+        .editor-shell .editormd-menu > li > a { min-width: 34px; min-height: 34px; }
+        .editor-shell .editormd-dialog { width: calc(100vw - 24px) !important; max-height: calc(100dvh - 24px); top: 12px !important; left: 12px !important; overflow: auto; }
+        .editor-shell .editormd-dialog-container { padding: 16px; }
+        .editor-shell .editormd-form label { float: none; width: auto; padding: 6px 0; }
+        .editor-shell .editormd-form input[type=text],
+        .editor-shell .editormd-form select,
+        .editor-shell .editormd-form textarea { width: 100%; font-size: 16px; }
+        .editor-shell .editormd-code-block-dialog textarea,
+        .editor-shell .editormd-preformatted-text-dialog textarea { height: 45dvh; }
+        .editor-status-row { align-items: flex-start; flex-direction: column; }
     }
     @media (prefers-color-scheme: dark) {
         .editor-shell .editormd,
@@ -408,6 +433,7 @@
                 return;
             }
             var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            var compactEditor = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
             editor = window.editormd('body-editor', {
                 path: '{% url 'editor_md_asset' 'lib/' %}',
                 width: '100%',
@@ -416,7 +442,7 @@
                 theme: dark ? 'dark' : 'default',
                 editorTheme: dark ? 'pastel-on-dark' : 'default',
                 previewTheme: dark ? 'dark' : 'default',
-                watch: true,
+                watch: !compactEditor,
                 syncScrolling: 'single',
                 toolbarAutoFixed: false,
                 codeFold: true,

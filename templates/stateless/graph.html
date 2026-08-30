@@ -2,11 +2,11 @@
 {% block title %}关系图谱 · Blog Admin{% endblock %}
 {% block head %}
 <style>
-    .graph-card { padding: 12px; overflow: auto; }
+    .graph-card { padding: 12px; overflow: hidden; }
     .graph-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .graph-legend { display: flex; gap: 12px; flex-wrap: wrap; }
     .legend-dot { display: inline-block; width: 10px; height: 10px; margin-right: 5px; border-radius: 50%; }
-    .graph-canvas { width: 100%; min-width: 720px; height: auto; display: block; }
+    .graph-canvas { width: 100%; min-width: 0; height: auto; display: block; touch-action: manipulation; }
     .graph-edge { stroke: var(--line); stroke-width: 1.2; }
     .graph-node text { fill: var(--text); font: 12px system-ui, sans-serif; paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
     .graph-node.article { cursor: pointer; }
@@ -14,6 +14,12 @@
     .graph-node.category circle { fill: #d97706; }
     .graph-node.tag circle { fill: #059669; }
     .graph-node.dimmed, .graph-edge.dimmed { opacity: 0.1; }
+    @media (max-width: 600px) {
+        .graph-toolbar { align-items: stretch; flex-direction: column; }
+        .graph-toolbar > input, .graph-toolbar > button { width: 100%; }
+        .graph-legend { justify-content: space-between; gap: 8px; font-size: 13px; }
+        .graph-card { padding: 6px; }
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -56,19 +62,26 @@
         return node;
     }
 
-    function positions(nodes) {
+    function graphDimensions() {
+        if (window.matchMedia && window.matchMedia('(max-width: 600px)').matches) {
+            return { width: 360, height: 600, centerX: 180, centerY: 300, articleRadius: 118, taxonomyRadius: 166 };
+        }
+        return { width: 1000, height: 700, centerX: 500, centerY: 350, articleRadius: 225, taxonomyRadius: 315 };
+    }
+
+    function positions(nodes, dimensions) {
         const grouped = {
             article: nodes.filter(node => node.type === 'article'),
             taxonomy: nodes.filter(node => node.type !== 'article')
         };
         const result = new Map();
-        [['article', 225], ['taxonomy', 315]].forEach(([kind, radius]) => {
+        [['article', dimensions.articleRadius], ['taxonomy', dimensions.taxonomyRadius]].forEach(([kind, radius]) => {
             const members = grouped[kind];
             members.forEach((node, index) => {
                 const angle = (Math.PI * 2 * index / Math.max(members.length, 1)) - Math.PI / 2;
                 result.set(node.id, {
-                    x: 500 + Math.cos(angle) * radius,
-                    y: 350 + Math.sin(angle) * radius
+                    x: dimensions.centerX + Math.cos(angle) * radius,
+                    y: dimensions.centerY + Math.sin(angle) * radius
                 });
             });
         });
@@ -83,7 +96,10 @@
             status.textContent = '暂无可展示的文章关系。';
             return;
         }
-        const layout = positions(graph.nodes);
+        const dimensions = graphDimensions();
+        svg.setAttribute('viewBox', `0 0 ${dimensions.width} ${dimensions.height}`);
+        const compact = dimensions.width < 500;
+        const layout = positions(graph.nodes, dimensions);
         const edgeLayer = element('g');
         graph.edges.forEach(edge => {
             const source = layout.get(edge.source);
@@ -107,8 +123,14 @@
                 'data-label': node.label.toLocaleLowerCase()
             });
             group.appendChild(element('circle', { r: node.type === 'article' ? 8 : 6 }));
-            const label = element('text', { x: 11, y: 4 });
-            label.textContent = node.label.length > 24 ? node.label.slice(0, 23) + '…' : node.label;
+            const rightSide = point.x > dimensions.centerX + 4;
+            const label = element('text', {
+                x: rightSide ? -11 : 11,
+                y: 4,
+                'text-anchor': rightSide ? 'end' : 'start'
+            });
+            const labelLimit = compact ? 15 : 24;
+            label.textContent = node.label.length > labelLimit ? node.label.slice(0, labelLimit - 1) + '…' : node.label;
             group.appendChild(label);
             const title = element('title');
             title.textContent = node.label;
@@ -172,6 +194,7 @@
 
     filter.addEventListener('input', applyFilter);
     refresh.addEventListener('click', () => load(true));
+    window.addEventListener('orientationchange', render);
     load(false);
 })();
 </script>
