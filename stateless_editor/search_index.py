@@ -4,6 +4,7 @@ import html
 import hashlib
 import math
 import os
+import posixpath
 import re
 import threading
 import time
@@ -11,6 +12,7 @@ import unicodedata
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import PurePosixPath
+from urllib.parse import unquote, urlsplit
 
 from django.core.cache import cache
 
@@ -22,6 +24,11 @@ _CACHE_LOCK = threading.Lock()
 _WORD_PATTERN = re.compile(r"[a-z0-9]+(?:[-_][a-z0-9]+)*")
 _CJK_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]+")
 _MARKDOWN_LINK = re.compile(r"!?\[([^]]*)\]\([^)]*\)")
+_MARKDOWN_LINK_TARGET = re.compile(
+    r"(?<!!)\[[^]\n]*\]\(\s*(?:<([^>\n]+)>|([^\s)\n]+))",
+)
+_WIKI_LINK = re.compile(r"!?\[\[([^]\n]+)\]\]")
+_EXTERNAL_LINK = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|//)", re.IGNORECASE)
 _HTML_TAG = re.compile(r"<[^>]+>")
 _FENCE = re.compile(r"```[^\n]*\n?(.*?)```", re.DOTALL)
 _SPACE = re.compile(r"\s+")
@@ -62,6 +69,29 @@ def markdown_text(value):
     return _SPACE.sub(" ", html.unescape(text)).strip()
 
 
+def article_links(value):
+    """Extract safe internal Markdown and Obsidian-style wiki link targets."""
+    text = str(value or "")
+    links = []
+    seen = set()
+
+    def append(target, kind):
+        target = html.unescape(str(target or "")).strip()
+        if not target or target.startswith("#") or _EXTERNAL_LINK.match(target):
+            return
+        key = (target, kind)
+        if key not in seen:
+            seen.add(key)
+            links.append({"target": target, "format": kind})
+
+    for match in _WIKI_LINK.finditer(text):
+        target = match.group(1).split("|", 1)[0].split("#", 1)[0].strip()
+        append(target, "wiki")
+    for match in _MARKDOWN_LINK_TARGET.finditer(text):
+        append(match.group(1) or match.group(2), "markdown")
+    return links
+
+
 def tokenize(value):
     """Tokenize Latin words and Chinese uni/bi-grams for local vector search."""
     text = _normalized_text(value)
@@ -93,7 +123,8 @@ def article_document(entry, content):
     categories = _labels(parsed.get("categories", []))
     tags = _labels(parsed.get("tags", []))
     description = markdown_text(parsed.get("description", ""))
-    body = markdown_text(parsed.get("body", ""))
+    raw_body = str(parsed.get("body", "") or "")
+    body = markdown_text(raw_body)
     searchable = " ".join((entry["path"], title, " ".join(categories), " ".join(tags), description, body))
     weighted = " ".join((entry["path"],) * 2 + (title,) * 4 + tuple(categories) * 3 + tuple(tags) * 3 + (description,) * 2 + (body,))
     return {
@@ -108,6 +139,7 @@ def article_document(entry, content):
         "description": description,
         "excerpt": description or body[:180],
         "metadata_error": False,
+        "_links": article_links(raw_body),
         "_body": body,
         "_normalized": _normalized_text(searchable),
         "_terms": Counter(tokenize(weighted)),
@@ -247,10 +279,76 @@ class ArticleCatalog:
             key=lambda item: (-item[1], item[0]["title"].casefold(), item[0]["path"].casefold()),
         )
 
-    def graph(self):
+    @staticmethod
+    def _link_key(value):
+        value = unquote(str(value or "")).strip().replace("\\", "/")
+        if not value:
+            return ""
+        try:
+            value = urlsplit(value).path
+        except ValueError:
+            value = value.split("?", 1)[0].split("#", 1)[0]
+        value = value.strip().strip("/")
+        return _normalized_text(value)
+
+    @classmethod
+    def _document_link_keys(cls, document):
+        path = str(document["path"])
+        path_without_suffix = str(PurePosixPath(path).with_suffix(""))
+        basename = PurePosixPath(path).name
+        stem = PurePosixPath(path).stem
+        title = str(document["title"])
+        title_slug = re.sub(r"[^\w\-]+", "-", _normalized_text(title)).strip("-")
+        return {
+            key for key in (
+                cls._link_key(path),
+                cls._link_key(path_without_suffix),
+                cls._link_key(basename),
+                cls._link_key(stem),
+                cls._link_key(title),
+                cls._link_key(title_slug),
+            ) if key
+        }
+
+    def _link_index(self):
+        index = {}
+        for document in self.documents:
+            for key in self._document_link_keys(document):
+                index.setdefault(key, document)
+        return index
+
+    def _resolve_link(self, source, target, index):
+        raw_target = unquote(str(target or "")).strip()
+        try:
+            target_path = urlsplit(raw_target).path
+        except ValueError:
+            target_path = raw_target.split("?", 1)[0].split("#", 1)[0]
+        target_path = target_path.replace("\\", "/")
+        candidates = [target_path]
+        if target_path and not target_path.startswith("/"):
+            candidates.insert(0, posixpath.normpath(
+                posixpath.join(str(PurePosixPath(source["path"]).parent), target_path),
+            ))
+        for candidate in candidates:
+            keys = [self._link_key(candidate)]
+            suffix = PurePosixPath(candidate).suffix.casefold()
+            if suffix in {".md", ".markdown", ".html", ".htm"}:
+                keys.append(self._link_key(str(PurePosixPath(candidate).with_suffix(""))))
+            keys.extend((
+                self._link_key(PurePosixPath(candidate).name),
+                self._link_key(PurePosixPath(candidate).stem),
+            ))
+            for key in keys:
+                if key and key in index:
+                    return index[key]
+        return None
+
+    def graph(self, focus="", depth=1):
         nodes = []
         edges = []
         seen = set()
+        edge_keys = set()
+        link_index = self._link_index()
 
         def add_node(node):
             if node["id"] not in seen:
@@ -269,8 +367,63 @@ class ArticleCatalog:
                 for label in labels:
                     taxonomy_id = f"{kind}:{label.casefold()}"
                     add_node({"id": taxonomy_id, "type": kind, "label": label})
-                    edges.append({"source": article_id, "target": taxonomy_id, "type": kind})
-        return {"nodes": nodes, "edges": edges}
+                    edge_key = (article_id, taxonomy_id, kind)
+                    if edge_key not in edge_keys:
+                        edge_keys.add(edge_key)
+                        edges.append({"source": article_id, "target": taxonomy_id, "type": kind})
+            for link in document.get("_links", []):
+                target = self._resolve_link(document, link.get("target"), link_index)
+                if not target or target["path"] == document["path"]:
+                    continue
+                target_id = "article:" + target["path"]
+                edge_key = (article_id, target_id, "link")
+                if edge_key not in edge_keys:
+                    edge_keys.add(edge_key)
+                    edges.append({
+                        "source": article_id,
+                        "target": target_id,
+                        "type": "link",
+                        "directed": True,
+                        "format": link.get("format", "markdown"),
+                    })
+
+        degree = Counter()
+        for edge in edges:
+            degree[edge["source"]] += 1
+            degree[edge["target"]] += 1
+        for node in nodes:
+            node["degree"] = degree[node["id"]]
+
+        focus_document = None
+        if focus:
+            focus_document = link_index.get(self._link_key(focus))
+        focus_id = "article:" + focus_document["path"] if focus_document else ""
+        if focus_id:
+            adjacency = {}
+            for edge in edges:
+                adjacency.setdefault(edge["source"], set()).add(edge["target"])
+                adjacency.setdefault(edge["target"], set()).add(edge["source"])
+            visible = {focus_id}
+            frontier = {focus_id}
+            for _ in range(max(1, min(int(depth), 3))):
+                frontier = {
+                    neighbor
+                    for node_id in frontier
+                    for neighbor in adjacency.get(node_id, ())
+                    if neighbor not in visible
+                }
+                visible.update(frontier)
+            nodes = [node for node in nodes if node["id"] in visible]
+            edges = [
+                edge for edge in edges
+                if edge["source"] in visible and edge["target"] in visible
+            ]
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "scope": "local" if focus_id else "global",
+            "focus": focus_id,
+        }
 
 
 def _cache_seconds():

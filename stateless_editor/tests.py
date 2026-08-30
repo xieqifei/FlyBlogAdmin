@@ -19,7 +19,13 @@ from .front_matter import (
 )
 from .github_client import GitHubConfig, GitHubContentClient, GitHubError, InvalidArticlePath
 from .llm_client import LLMClient, LLMConfigurationError
-from .search_index import ArticleCatalog, article_document, invalidate_catalog, markdown_text
+from .search_index import (
+    ArticleCatalog,
+    article_document,
+    article_links,
+    invalidate_catalog,
+    markdown_text,
+)
 
 
 class FakeResponse:
@@ -422,6 +428,7 @@ class ArticleViewTests(SimpleTestCase):
         self.assertContains(response, reverse("editor_md_asset", args=["css/editormd.min.css"]))
         self.assertContains(response, reverse("editor_md_asset", args=["lib/"]))
         self.assertContains(response, "# Body")
+        self.assertContains(response, f'{reverse("graph")}?focus=hello.md')
 
     def test_editor_md_assets_are_served_without_staticfiles_app(self):
         response = self.client.get(reverse("editor_md_asset", args=["editormd.min.js"]))
@@ -640,12 +647,15 @@ class ArticleViewTests(SimpleTestCase):
         self.assertContains(edit, ".editormd-dialog { width: calc(100vw - 24px) !important;")
         self.assertContains(edit, "watch: !compactEditor")
 
-    def test_graph_uses_compact_mobile_viewbox_without_fixed_canvas_width(self):
+    def test_graph_uses_responsive_interactive_canvas(self):
         response = self.client.get(reverse("graph"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "return { width: 360, height: 600")
-        self.assertContains(response, "svg.setAttribute('viewBox'")
+        self.assertContains(response, '<canvas id="graph"')
+        self.assertContains(response, "touch-action: none")
+        self.assertContains(response, "restartSimulation")
+        self.assertContains(response, "addEventListener('pointerdown'")
+        self.assertContains(response, "new ResizeObserver")
         self.assertNotContains(response, "min-width: 720px")
 
     def test_articles_api_paginates_and_returns_article_metadata(self):
@@ -723,6 +733,49 @@ class ArticleViewTests(SimpleTestCase):
         self.assertEqual({node["type"] for node in payload["nodes"]}, {"article", "category", "tag"})
         self.assertEqual(len(payload["edges"]), 2)
 
+    def test_graph_api_builds_article_links_and_local_graph(self):
+        invalidate_catalog()
+        fake_client = Mock()
+        fake_client.get_article_last_modified.return_value = "2026-01-01T00:00:00Z"
+        fake_client.config = GitHubConfig(
+            token="token", repository="owner/linked-blog", branch="main",
+            posts_path="source/_posts", extensions=(".md",),
+        )
+        fake_client.list_articles.return_value = [
+            {
+                "path": "notes/start.md", "size": 10,
+                "content": "---\ntitle: 起点\ntags: [入口]\n---\n\n[[目标文章]] 和 [扩展](../more.md)",
+            },
+            {
+                "path": "notes/target.md", "size": 10,
+                "content": "---\ntitle: 目标文章\n---\n\n正文",
+            },
+            {
+                "path": "more.md", "size": 10,
+                "content": "---\ntitle: 扩展\n---\n\n正文",
+            },
+            {
+                "path": "unrelated.md", "size": 10,
+                "content": "---\ntitle: 无关\n---\n\n正文",
+            },
+        ]
+
+        with patch("stateless_editor.views._client", return_value=fake_client):
+            response = self.client.get(reverse("graph_api"), {"focus": "notes/start.md"})
+
+        payload = response.json()
+        self.assertEqual(payload["scope"], "local")
+        self.assertEqual(payload["focus"], "article:notes/start.md")
+        link_edges = [edge for edge in payload["edges"] if edge["type"] == "link"]
+        self.assertEqual(
+            {(edge["source"], edge["target"]) for edge in link_edges},
+            {
+                ("article:notes/start.md", "article:notes/target.md"),
+                ("article:notes/start.md", "article:more.md"),
+            },
+        )
+        self.assertNotIn("article:unrelated.md", {node["id"] for node in payload["nodes"]})
+
     def test_save_preserves_nested_categories_and_custom_fields(self):
         fake_client = Mock()
         with patch("stateless_editor.views._client", return_value=fake_client):
@@ -779,6 +832,17 @@ class ArticleViewTests(SimpleTestCase):
 
 
 class SearchIndexTests(SimpleTestCase):
+    def test_article_links_extracts_wiki_and_internal_markdown_targets(self):
+        links = article_links(
+            "[[知识图谱#章节|图谱]] [相对链接](../notes/next.md) "
+            "[外部](https://example.com) ![图片](image.png)",
+        )
+
+        self.assertEqual(links, [
+            {"target": "知识图谱", "format": "wiki"},
+            {"target": "../notes/next.md", "format": "markdown"},
+        ])
+
     def test_markdown_is_reduced_to_safe_searchable_text(self):
         self.assertEqual(markdown_text("# [标题](https://example.com) <b>正文</b>"), "标题 正文")
 

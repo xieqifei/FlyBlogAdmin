@@ -140,6 +140,7 @@
 <section class="stack editor-shell">
     <div class="row">
         <div class="grow"><h1>{% if article.sha %}编辑文章{% else %}新建文章{% endif %}</h1></div>
+        {% if article.path %}<a class="button secondary" href="{% url 'graph' %}?focus={{ article.path|urlencode }}">局部图谱</a>{% endif %}
         <a class="button secondary" href="{% url 'home' %}">返回列表</a>
     </div>
     {% if error %}<div class="notice error">{{ error }}</div>{% endif %}

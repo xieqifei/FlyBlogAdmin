@@ -254,10 +254,15 @@ def graph_view(request):
 @login_required
 def graph_api(request):
     try:
+        focus = request.GET.get("focus", "").strip()[:300]
+        try:
+            depth = max(1, min(int(request.GET.get("depth", "1")), 3))
+        except ValueError:
+            depth = 1
         graph = get_catalog(
             _client(),
             refresh=request.GET.get("refresh") == "1",
-        ).graph()
+        ).graph(focus=focus, depth=depth)
         return JsonResponse({"status": True, **graph})
     except (ConfigurationError, GitHubError) as exc:
         return JsonResponse({"status": False, "error": str(exc)}, status=502)
