@@ -291,9 +291,15 @@ def edit_article(request):
 def save_article(request):
     title = request.POST.get("title", "").strip()
     body = request.POST.get("body", "")
+    article_path = request.POST.get("path", "").strip()
+    sha = request.POST.get("sha", "").strip()
     metadata = {
         "title": title,
-        "date": request.POST.get("date", "").strip(),
+        "date": (
+            request.POST.get("date", "").strip()
+            if sha
+            else localdate().isoformat()
+        ),
         "updated": localtime().isoformat(timespec="seconds"),
         "tags": split_list(request.POST.get("tags", "")),
         "categories": split_list(request.POST.get("categories", "")),
@@ -313,11 +319,10 @@ def save_article(request):
         ],
         **metadata,
     }
-    article_path = request.POST.get("path", "").strip()
     if not title:
         return _render_editor(request, {
             "path": article_path,
-            "sha": request.POST.get("sha", "").strip(),
+            "sha": sha,
             "content": "",
         }, posted_editor, "请填写文章标题", status=400)
     try:
@@ -325,7 +330,7 @@ def save_article(request):
     except ValueError as exc:
         return _render_editor(request, {
             "path": article_path,
-            "sha": request.POST.get("sha", "").strip(),
+            "sha": sha,
             "content": "",
         }, posted_editor, str(exc), status=400)
     if not article_path:
@@ -336,7 +341,6 @@ def save_article(request):
         metadata,
         custom_fields=custom_fields,
     )
-    sha = request.POST.get("sha", "").strip()
     try:
         client = _client()
         client.save_article(article_path, content, sha=sha)

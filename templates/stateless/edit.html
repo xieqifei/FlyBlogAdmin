@@ -7,10 +7,25 @@
     .editor-shell { max-width: 1240px; }
     .editor-shell h1 { letter-spacing: 0; }
     .meta-card { background: color-mix(in srgb, var(--card) 94%, var(--primary) 3%); }
+    .article-settings { border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+    .article-settings > summary { cursor: pointer; padding: 12px 14px; font-weight: 700; background: color-mix(in srgb, var(--card) 96%, var(--primary) 4%); }
+    .article-settings[open] > summary { border-bottom: 1px solid var(--line); }
+    .article-settings-body { display: grid; gap: 14px; padding: 14px; }
     .meta-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; }
     .meta-grid .wide { grid-column: 1 / -1; }
     .meta-grid label { min-width: 0; }
     .meta-grid textarea { min-height: 68px; resize: vertical; }
+    .automatic-date { display: grid; gap: 4px; align-content: center; }
+    .automatic-date strong, .taxonomy-label { font-weight: 650; }
+    .taxonomy-field { display: grid; gap: 7px; min-width: 0; }
+    .taxonomy-control { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 44px; }
+    .taxonomy-chips { display: contents; }
+    .taxonomy-chip { display: inline-flex; align-items: center; gap: 6px; width: auto; padding: 7px 9px; border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line)); border-radius: 999px; background: color-mix(in srgb, var(--primary) 8%, var(--card)); color: var(--text); font-weight: 650; }
+    .taxonomy-chip:hover { border-color: var(--primary); }
+    .taxonomy-chip-remove { color: var(--muted); font-size: 17px; line-height: 1; }
+    .taxonomy-add { display: flex; align-items: stretch; gap: 7px; flex: 1 1 230px; min-width: 190px; }
+    .taxonomy-add input { min-width: 0; }
+    .taxonomy-add button { width: 42px; min-width: 42px; padding: 0; font-size: 22px; line-height: 1; }
     .path-line { display: flex; align-items: center; gap: 10px; min-height: 28px; }
     .path-line code { background: var(--bg); padding: 5px 9px; border-radius: 7px; }
     .custom-fields { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 2px; }
@@ -108,47 +123,75 @@
         <input type="hidden" name="sha" value="{{ article.sha }}">
         {% if article.path %}<input type="hidden" id="article-path" name="path" value="{{ article.path }}">{% endif %}
         <input type="hidden" name="front_matter" value="{{ editor.front_matter }}">
-        <div class="meta-grid">
-            <label>标题
-                <input id="article-title" name="title" value="{{ editor.title }}" maxlength="200" required {% if not article.path %}autofocus{% endif %}>
-            </label>
-            <label>日期
-                <input name="date" value="{{ editor.date }}" placeholder="2026-08-30 12:00:00">
-            </label>
-            {% if editor.updated %}
-            <label>最近编辑
-                <input value="{{ editor.updated }}" readonly aria-readonly="true">
-            </label>
-            {% endif %}
-            <label>标签（每行一个）
-                <textarea name="tags" rows="2" placeholder="AI&#10;Markdown">{{ editor.tags_text }}</textarea>
-            </label>
-            <label>分类（每行一个）
-                <textarea name="categories" rows="2" placeholder="Notes&#10;层级分类可写 [ &quot;技术&quot;, &quot;前端&quot; ]">{{ editor.categories_text }}</textarea>
-            </label>
-            <label>封面
-                <input name="cover" value="{{ editor.cover }}" placeholder="https://">
-            </label>
-            <label class="wide">摘要
-                <textarea name="description" rows="3">{{ editor.description }}</textarea>
-            </label>
-        </div>
-        <div class="path-line">
-            <span class="muted">路径</span>
-            {% if article.path %}<code>{{ article.path }}</code>{% else %}<code id="path-preview"></code>{% endif %}
-        </div>
-        <details class="custom-fields"{% if editor.custom_fields %} open{% endif %}>
-            <summary>其他元数据（历史文章字段会完整显示在这里）</summary>
-            <div id="custom-list" class="custom-list">
-                {% for field in editor.custom_fields %}
-                <div class="custom-row" data-custom-row>
-                    <input name="custom_key" value="{{ field.name }}" placeholder="字段名，例如 mathjax">
-                    <textarea name="custom_value" rows="1" placeholder="字段内容；列表或对象可使用 JSON">{{ field.value }}</textarea>
-                    <button type="button" class="secondary" data-remove-custom aria-label="删除字段">−</button>
+        <label>标题
+            <input id="article-title" name="title" value="{{ editor.title }}" maxlength="200" required {% if not article.path %}autofocus{% endif %}>
+        </label>
+        <details id="article-settings" class="article-settings">
+            <summary>文章信息</summary>
+            <div class="article-settings-body">
+                <div class="meta-grid">
+                    {% if article.sha %}
+                    <label>日期
+                        <input name="date" value="{{ editor.date }}" placeholder="2026-08-30 12:00:00">
+                    </label>
+                    {% else %}
+                    <div class="automatic-date">
+                        <strong>日期</strong>
+                        <span class="muted">将在首次保存时自动生成</span>
+                    </div>
+                    {% endif %}
+                    {% if editor.updated %}
+                    <label>最近编辑
+                        <input value="{{ editor.updated }}" readonly aria-readonly="true">
+                    </label>
+                    {% endif %}
+                    <div class="taxonomy-field wide">
+                        <span id="tags-label" class="taxonomy-label">标签</span>
+                        <textarea id="tags-value" name="tags" hidden>{{ editor.tags_text }}</textarea>
+                        <div class="taxonomy-control" data-taxonomy data-label="标签">
+                            <span class="taxonomy-chips" data-taxonomy-chips aria-live="polite"></span>
+                            <span class="taxonomy-add">
+                                <input id="tags-input" data-taxonomy-input aria-labelledby="tags-label" placeholder="输入标签" autocomplete="off">
+                                <button type="button" data-add-taxonomy aria-label="添加标签" title="添加标签">+</button>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="taxonomy-field wide">
+                        <span id="categories-label" class="taxonomy-label">分类</span>
+                        <textarea id="categories-value" name="categories" hidden>{{ editor.categories_text }}</textarea>
+                        <div class="taxonomy-control" data-taxonomy data-label="分类">
+                            <span class="taxonomy-chips" data-taxonomy-chips aria-live="polite"></span>
+                            <span class="taxonomy-add">
+                                <input id="categories-input" data-taxonomy-input aria-labelledby="categories-label" placeholder="输入分类" autocomplete="off">
+                                <button type="button" data-add-taxonomy aria-label="添加分类" title="添加分类">+</button>
+                            </span>
+                        </div>
+                    </div>
+                    <label>封面
+                        <input name="cover" value="{{ editor.cover }}" placeholder="https://">
+                    </label>
+                    <label class="wide">摘要
+                        <textarea name="description" rows="3">{{ editor.description }}</textarea>
+                    </label>
                 </div>
-                {% endfor %}
+                <div class="path-line">
+                    <span class="muted">路径</span>
+                    {% if article.path %}<code>{{ article.path }}</code>{% else %}<code id="path-preview"></code>{% endif %}
+                </div>
+                <details class="custom-fields"{% if editor.custom_fields %} open{% endif %}>
+                    <summary>其他元数据（历史文章字段会完整显示在这里）</summary>
+                    <div id="custom-list" class="custom-list">
+                        {% for field in editor.custom_fields %}
+                        <div class="custom-row" data-custom-row>
+                            <input name="custom_key" value="{{ field.name }}" placeholder="字段名，例如 mathjax">
+                            <textarea name="custom_value" rows="1" placeholder="字段内容；列表或对象可使用 JSON">{{ field.value }}</textarea>
+                            <button type="button" class="secondary" data-remove-custom aria-label="删除字段">−</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" id="add-custom" class="secondary">添加元数据</button>
+                </details>
             </div>
-            <button type="button" id="add-custom" class="secondary">添加元数据</button>
         </details>
         <div class="editor-toolbar">
             <div class="ai-group{% if not ai_configured %} disabled{% endif %}">
@@ -233,6 +276,79 @@
 
         function updatePath() {
             if (pathPreview) pathPreview.textContent = pathFromTitle(titleInput.value);
+        }
+
+        function taxonomyDisplayValue(value) {
+            try {
+                var parsed = JSON.parse(value);
+                if (Array.isArray(parsed)) return parsed.join(' / ');
+            } catch (error) {
+                // Plain labels are expected to be more common than JSON values.
+            }
+            return value;
+        }
+
+        function taxonomyEntries(value) {
+            var text = String(value || '').trim();
+            if (!text) return [];
+            if (text.startsWith('[') || text.startsWith('{')) return [text];
+            return text.split(/[,，]/).map(function (item) {
+                return item.trim();
+            }).filter(Boolean);
+        }
+
+        function initTaxonomy(control) {
+            var label = control.dataset.label;
+            var input = control.querySelector('[data-taxonomy-input]');
+            var addButton = control.querySelector('[data-add-taxonomy]');
+            var chips = control.querySelector('[data-taxonomy-chips]');
+            var valueField = control.previousElementSibling;
+            var values = String(valueField.value || '').split(/\r?\n/).map(function (value) {
+                return value.trim();
+            }).filter(Boolean);
+
+            function sync() {
+                valueField.value = values.join('\n');
+                chips.replaceChildren();
+                values.forEach(function (value, index) {
+                    var chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'taxonomy-chip';
+                    chip.setAttribute('aria-label', '删除' + label + '：' + taxonomyDisplayValue(value));
+
+                    var chipText = document.createElement('span');
+                    chipText.textContent = taxonomyDisplayValue(value);
+                    var removeMark = document.createElement('span');
+                    removeMark.className = 'taxonomy-chip-remove';
+                    removeMark.setAttribute('aria-hidden', 'true');
+                    removeMark.textContent = '×';
+                    chip.append(chipText, removeMark);
+                    chip.addEventListener('click', function () {
+                        values.splice(index, 1);
+                        sync();
+                        input.focus();
+                    });
+                    chips.appendChild(chip);
+                });
+            }
+
+            function addValues() {
+                taxonomyEntries(input.value).forEach(function (value) {
+                    if (!values.includes(value)) values.push(value);
+                });
+                input.value = '';
+                sync();
+                input.focus();
+            }
+
+            addButton.addEventListener('click', addValues);
+            input.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addValues();
+                }
+            });
+            sync();
         }
 
         function bindCustomRow(row) {
@@ -328,6 +444,7 @@
         }
 
         customList.querySelectorAll('[data-custom-row]').forEach(bindCustomRow);
+        document.querySelectorAll('[data-taxonomy]').forEach(initTaxonomy);
         document.getElementById('add-custom').addEventListener('click', function () {
             var row = document.getElementById('custom-field-template').content.firstElementChild.cloneNode(true);
             customList.appendChild(row);

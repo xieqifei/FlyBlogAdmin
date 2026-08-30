@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+from datetime import date
 from unittest.mock import Mock, patch
 
 from django.conf import settings
@@ -409,6 +410,12 @@ class ArticleViewTests(SimpleTestCase):
         self.assertContains(response, 'name="body"')
         self.assertContains(response, 'name="front_matter"')
         self.assertContains(response, 'name="tags"')
+        self.assertContains(response, 'id="tags-input"')
+        self.assertContains(response, 'aria-label="添加标签"')
+        self.assertContains(response, 'id="categories-input"')
+        self.assertContains(response, 'aria-label="添加分类"')
+        self.assertContains(response, 'id="article-settings"')
+        self.assertContains(response, 'name="date"')
         self.assertNotContains(response, 'name="content"')
         self.assertNotContains(response, 'name="commit_message"')
         self.assertContains(response, "editormd.min.js")
@@ -571,13 +578,18 @@ class ArticleViewTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'value="Quick"')
         self.assertNotContains(response, 'name="path"')
+        self.assertNotContains(response, 'name="date"')
+        self.assertContains(response, "将在首次保存时自动生成")
 
     def test_save_new_article_generates_path_and_writes_metadata(self):
         fake_client = Mock()
-        with patch("stateless_editor.views._client", return_value=fake_client):
+        with (
+            patch("stateless_editor.views._client", return_value=fake_client),
+            patch("stateless_editor.views.localdate", return_value=date(2026, 8, 30)),
+        ):
             response = self.client.post(reverse("save_article"), {
                 "title": "Hello World",
-                "date": "2026-08-30",
+                "date": "2000-01-01",
                 "tags": "AI, Markdown",
                 "categories": "Notes",
                 "cover": "",
