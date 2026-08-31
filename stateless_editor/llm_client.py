@@ -15,17 +15,17 @@ class LLMError(Exception):
 
 class LLMClient:
     def __init__(self, api_key=None, model=None, base_url=None, api_style=None, session=None):
-        self.api_key = (api_key if api_key is not None else os.environ.get("QEXO_LLM_API_KEY", "")).strip()
-        self.model = (model if model is not None else os.environ.get("QEXO_LLM_MODEL", "")).strip()
-        self.base_url = (base_url if base_url is not None else os.environ.get("QEXO_LLM_BASE_URL", "https://api.openai.com/v1")).strip().rstrip("/")
-        self.api_style = (api_style if api_style is not None else os.environ.get("QEXO_LLM_API_STYLE", "auto")).strip().lower()
+        self.api_key = (api_key if api_key is not None else os.environ.get("LLM_API_KEY", "")).strip()
+        self.model = (model if model is not None else os.environ.get("LLM_MODEL", "")).strip()
+        self.base_url = (base_url if base_url is not None else os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")).strip().rstrip("/")
+        self.api_style = (api_style if api_style is not None else os.environ.get("LLM_API_STYLE", "auto")).strip().lower()
         self.session = session or requests.Session()
         if not self.api_key or not self.model:
-            raise LLMConfigurationError("AI 尚未配置，请设置 QEXO_LLM_API_KEY 和 QEXO_LLM_MODEL")
+            raise LLMConfigurationError("AI 尚未配置，请设置 LLM_API_KEY 和 LLM_MODEL")
         if not self.base_url.startswith(("https://", "http://")):
-            raise LLMConfigurationError("QEXO_LLM_BASE_URL 必须是 HTTP(S) 地址")
+            raise LLMConfigurationError("LLM_BASE_URL 必须是 HTTP(S) 地址")
         if self.api_style not in {"auto", "chat", "responses"}:
-            raise LLMConfigurationError("QEXO_LLM_API_STYLE 必须是 auto、chat 或 responses")
+            raise LLMConfigurationError("LLM_API_STYLE 必须是 auto、chat 或 responses")
 
     def optimize(self, content, instruction):
         if self.api_style == "chat":

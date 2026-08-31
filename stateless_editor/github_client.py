@@ -30,11 +30,11 @@ class GitHubConfig:
 
     @classmethod
     def from_environment(cls):
-        token = os.environ.get("QEXO_GITHUB_TOKEN", "").strip()
-        repository = os.environ.get("QEXO_GITHUB_REPOSITORY", "").strip()
-        branch = os.environ.get("QEXO_GITHUB_BRANCH", "main").strip()
-        posts_path = os.environ.get("QEXO_POSTS_PATH", "source/_posts").strip().strip("/")
-        raw_extensions = os.environ.get("QEXO_POST_EXTENSIONS", ".md,.markdown")
+        token = os.environ.get("GITHUB_TOKEN", "").strip()
+        repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
+        branch = os.environ.get("GITHUB_BRANCH", "main").strip()
+        posts_path = os.environ.get("POSTS_PATH", "source/_posts").strip().strip("/")
+        raw_extensions = os.environ.get("POST_EXTENSIONS", ".md,.markdown")
         extensions = tuple(
             extension if extension.startswith(".") else f".{extension}"
             for extension in (item.strip().lower() for item in raw_extensions.split(","))
@@ -43,19 +43,19 @@ class GitHubConfig:
 
         missing = []
         if not token:
-            missing.append("QEXO_GITHUB_TOKEN")
+            missing.append("GITHUB_TOKEN")
         if not repository:
-            missing.append("QEXO_GITHUB_REPOSITORY")
+            missing.append("GITHUB_REPOSITORY")
         if not branch:
-            missing.append("QEXO_GITHUB_BRANCH")
+            missing.append("GITHUB_BRANCH")
         if missing:
             raise ConfigurationError("缺少环境变量：" + "、".join(missing))
         if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
-            raise ConfigurationError("QEXO_GITHUB_REPOSITORY 必须为 owner/repository 格式")
+            raise ConfigurationError("GITHUB_REPOSITORY 必须为 owner/repository 格式")
         if not posts_path or not extensions:
             raise ConfigurationError("文章目录和扩展名不能为空")
         if "\\" in posts_path or any(part in {".", ".."} for part in PurePosixPath(posts_path).parts):
-            raise ConfigurationError("QEXO_POSTS_PATH 不是安全的仓库目录")
+            raise ConfigurationError("POSTS_PATH 不是安全的仓库目录")
 
         return cls(token, repository, branch, posts_path, extensions)
 

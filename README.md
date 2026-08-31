@@ -59,43 +59,42 @@ npm run dev
 
 此分支固定运行无数据库 GitHub 文章编辑器，不加载 Django 用户、Session、缓存、Passkeys 或任何 Qexo 动态功能数据表，只提供单管理员登录和文章的列表、新建、编辑、删除。MySQL、PostgreSQL、MongoDB、PlanetScale 及 `configs.py` 均不再需要；旧数据库环境变量即使残留也不会被读取。
 
-首次部署不需要模式开关。若必需变量未齐全，访问网站会进入 `/setup/` 配置引导页，可直接生成签名密钥和密码哈希，并查看 GitHub Token、仓库、域名等变量的获取步骤。
+首次部署不需要模式开关。若必需变量未齐全，访问网站会直接显示设置引导页，并检查 GitHub Token、仓库和登录变量的配置状态。
 
 必需环境变量：
 
 | 名称 | 说明 |
 | --- | --- |
-| `QEXO_SECRET_KEY` | 用于签名登录 Cookie 的长期随机密钥；轮换后所有登录失效 |
+| `SECRET_KEY` | 用于签名登录 Cookie 的长期随机密钥；轮换后所有登录失效 |
 | `ADMIN_USERNAME` | 管理员用户名 |
-| `ADMIN_PASSWORD_HASH` | 推荐：由 `/setup/` 生成的 Django 格式密码哈希 |
+| `ADMIN_PASSWORD_HASH` | 推荐：Django `pbkdf2_sha256` 或 `sha256$<hex>` 格式的密码哈希 |
 | `ADMIN_PASSWORD` | 可选替代项：明文密码；与哈希同时设置时优先使用哈希 |
-| `QEXO_GITHUB_TOKEN` | 仅授予目标仓库 Contents 读写权限的 GitHub Token |
-| `QEXO_GITHUB_REPOSITORY` | 目标仓库，格式为 `owner/repository` |
-| `QEXO_GITHUB_BRANCH` | 写入分支，例如 `main` |
-| `QEXO_POSTS_PATH` | 文章目录，例如 Hexo 的 `source/_posts` |
-| `DOMAINS` | 允许访问的域名 JSON 列表，例如 `["editor.example.com"]` |
-| `QEXO_LLM_API_KEY` | 可选：AI 服务 API Key |
-| `QEXO_LLM_MODEL` | 可选：AI 模型名称 |
-| `QEXO_LLM_BASE_URL` | 可选：OpenAI 兼容 API 地址，默认 `https://api.openai.com/v1` |
-| `QEXO_LLM_API_STYLE` | 可选：`auto`、`chat` 或 `responses`，默认 `auto` |
+| `GITHUB_TOKEN` | 仅授予目标仓库 Contents 读写权限的 GitHub Token |
+| `GITHUB_REPOSITORY` | 目标仓库，格式为 `owner/repository` |
+| `GITHUB_BRANCH` | 写入分支，例如 `main` |
+| `POSTS_PATH` | 文章目录，例如 Hexo 的 `source/_posts` |
+| `LLM_API_KEY` | 可选：旧版 Django 编辑器的 AI 服务 API Key |
+| `LLM_MODEL` | 可选：旧版 Django 编辑器的 AI 模型名称 |
+| `LLM_BASE_URL` | 可选：OpenAI 兼容 API 地址，默认 `https://api.openai.com/v1` |
+| `LLM_API_STYLE` | 可选：`auto`、`chat` 或 `responses`，默认 `auto` |
 
-可选的 `QEXO_SESSION_AGE` 设置登录 Cookie 秒数（默认 7 天），`QEXO_POST_EXTENSIONS` 设置可编辑扩展名（默认 `.md,.markdown`）。非 Vercel 的 HTTPS 反向代理部署应设置 `QEXO_COOKIE_SECURE=1` 和 `QEXO_SSL_REDIRECT=1`；Vercel 会默认启用这两项安全设置。
+可选的 `SESSION_AGE` 设置登录 Cookie 秒数（默认 7 天），`POST_EXTENSIONS` 设置可编辑扩展名（默认 `.md,.markdown`）。非 Vercel 的 HTTPS 反向代理部署应设置 `COOKIE_SECURE=1` 和 `SSL_REDIRECT=1`；Vercel 会默认启用安全 Cookie。
 
-AI 文章优化为可选功能。设置 `QEXO_LLM_API_KEY` 和 `QEXO_LLM_MODEL` 后在编辑页即可使用优化、校对、精简、扩写与自定义要求。默认使用 OpenAI 兼容的 `chat/completions` 接口，可通过 `QEXO_LLM_BASE_URL` 指向其他兼容服务；如服务只提供 Responses API，可设置 `QEXO_LLM_API_STYLE=responses`。AI 内容由服务端请求，密钥不会发送到浏览器。
+旧版 Django 编辑器的 AI 文章优化为可选功能。设置 `LLM_API_KEY` 和 `LLM_MODEL` 后即可使用；可通过 `LLM_BASE_URL` 指向兼容服务，通过 `LLM_API_STYLE=responses` 选择 Responses API。
 
-正文通过 [Editor.md](https://github.com/pandao/editor.md) 编辑，编辑器脚本和依赖已随仓库本地化，不依赖外部编辑器服务或第三方 CDN。新文章的日期会在保存时自动生成；标题直接填写，标签、分类及其他 Front Matter 收纳在可折叠的文章信息栏中，历史文章的多行值、层级分类和自定义字段会完整显示。
+当前 React 管理端使用内置 Markdown 文本编辑器直接编辑完整文件（包括 Front Matter），不依赖外部编辑器服务或第三方 CDN。
 
-文章首页按 20 篇一页懒加载，并显示 Front Matter 中的标题、分类、标签、创建日期及最近编辑日期。Blog Admin 保存文章时会自动更新 `updated` 字段；历史文章若没有 `updated`，会依次兼容 `lastmod`、`modified`、`updated_at`、`last_modified`，最后回退到创建日期。右上角的“关系图谱”以文章、分类和标签为节点展示关联。
+文章页会在登录后自动从 GitHub 加载 Markdown 文件，并过滤隐藏文件、`.password` 和非文章扩展名。关系图谱以文章、分类和标签为节点，识别 Markdown 内链及 `[[Wiki Link]]`。
 
-全文搜索无需外部数据库或第三方 AI 服务：首次搜索时会在服务端读取文章正文，自动生成兼容中英文的稀疏 TF-IDF 向量，并将标题、分类、标签、摘要和正文的精确匹配与余弦相似度合并排序。该方案是词法向量检索，不会把私有文章发送给嵌入服务；它不等同于大模型语义 Embedding，但在当前无数据库部署模型下可直接运行。索引默认在进程内缓存 300 秒，文章通过 Blog Admin 保存或删除后会立即失效，也可在首页手动刷新；可用 `QEXO_SEARCH_CACHE_SECONDS` 调整为 0–3600 秒。
+旧版 Django 全文搜索的进程内索引默认缓存 300 秒，可用 `SEARCH_CACHE_SECONDS` 调整为 0–3600 秒。
 
-可直接在 `/setup/` 引导页生成密码哈希；也可在安装依赖的本地环境中交互式生成，密码不会进入命令历史：
+可在安装 Django 依赖的本地环境中交互式生成兼容密码哈希，密码不会进入命令历史：
 
 ```bash
 python3 -c 'from django.conf import settings; settings.configure(); from django.contrib.auth.hashers import make_password; from getpass import getpass; print(make_password(getpass("Password: ")))'
 ```
 
-所有敏感值都应保存在部署平台的 Secret/加密环境变量中，不要写进 Git 仓库或前端代码。`ADMIN_PASSWORD` 明文方式便于配置，但项目管理员和运行中的程序可以读取它；`ADMIN_PASSWORD_HASH` 可提供额外保护，因此更推荐。更新任一种密码配置后，已有登录 Cookie 会自动失效；轮换 `QEXO_SECRET_KEY` 也会使全部登录失效。保存已有文章时会提交当前 GitHub blob SHA；若远端文章已变化，GitHub 会拒绝覆盖并在编辑页保留未保存内容。
+所有敏感值都应保存在部署平台的 Secret/加密环境变量中，不要写进 Git 仓库或前端代码。`ADMIN_PASSWORD` 明文方式便于配置，但项目管理员和运行中的程序可以读取它；`ADMIN_PASSWORD_HASH` 可提供额外保护，因此更推荐。更新任一种密码配置后，已有登录 Cookie 会自动失效；轮换 `SECRET_KEY` 也会使全部登录失效。保存已有文章时会提交当前 GitHub blob SHA；若远端文章已变化，GitHub 会拒绝覆盖并在编辑页保留未保存内容。
 ## Acknowledgements 鸣谢
 - [Ace](https://ace.c9.io/)
 - [Argon-Dashboard-Django](https://github.com/creativetimofficial/argon-dashboard-django)

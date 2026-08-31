@@ -428,7 +428,7 @@ class ArticleCatalog:
 
 def _cache_seconds():
     try:
-        return max(0, min(int(os.environ.get("QEXO_SEARCH_CACHE_SECONDS", "300")), 3600))
+        return max(0, min(int(os.environ.get("SEARCH_CACHE_SECONDS", "300")), 3600))
     except ValueError:
         return 300
 

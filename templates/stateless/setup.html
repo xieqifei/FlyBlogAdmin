@@ -24,12 +24,12 @@
             <div class="muted">Vercel：项目 → Settings → Environment Variables，选择 Production/Preview 环境并保存；变量变更后必须重新部署。</div>
         </div>
         <ul class="checklist">
-            <li class="ok">✓ 无数据库模式已永久启用，无需配置数据库或 <code>QEXO_STATELESS</code>。</li>
-            <li class="{% if configuration_status.QEXO_SECRET_KEY %}ok{% else %}missing{% endif %}">{% if configuration_status.QEXO_SECRET_KEY %}✓{% else %}○{% endif %} <code>QEXO_SECRET_KEY</code>：长期随机签名密钥。</li>
+            <li class="ok">✓ 无数据库模式已永久启用，无需配置数据库。</li>
+            <li class="{% if configuration_status.SECRET_KEY %}ok{% else %}missing{% endif %}">{% if configuration_status.SECRET_KEY %}✓{% else %}○{% endif %} <code>SECRET_KEY</code>：长期随机签名密钥。</li>
             <li class="{% if configuration_status.ADMIN_USERNAME %}ok{% else %}missing{% endif %}">{% if configuration_status.ADMIN_USERNAME %}✓{% else %}○{% endif %} <code>ADMIN_USERNAME</code>：你自己选择的登录用户名。</li>
             <li class="{% if configuration_status.ADMIN_PASSWORD %}ok{% else %}missing{% endif %}">{% if configuration_status.ADMIN_PASSWORD %}✓{% else %}○{% endif %} <code>ADMIN_PASSWORD_HASH</code>（推荐）或 <code>ADMIN_PASSWORD</code>。</li>
-            <li class="{% if configuration_status.QEXO_GITHUB_TOKEN %}ok{% else %}missing{% endif %}">{% if configuration_status.QEXO_GITHUB_TOKEN %}✓{% else %}○{% endif %} <code>QEXO_GITHUB_TOKEN</code>：GitHub 仓库访问令牌。</li>
-            <li class="{% if configuration_status.QEXO_GITHUB_REPOSITORY %}ok{% else %}missing{% endif %}">{% if configuration_status.QEXO_GITHUB_REPOSITORY %}✓{% else %}○{% endif %} <code>QEXO_GITHUB_REPOSITORY</code>：例如 <code>your-name/blog</code>。</li>
+            <li class="{% if configuration_status.GITHUB_TOKEN %}ok{% else %}missing{% endif %}">{% if configuration_status.GITHUB_TOKEN %}✓{% else %}○{% endif %} <code>GITHUB_TOKEN</code>：GitHub 仓库访问令牌。</li>
+            <li class="{% if configuration_status.GITHUB_REPOSITORY %}ok{% else %}missing{% endif %}">{% if configuration_status.GITHUB_REPOSITORY %}✓{% else %}○{% endif %} <code>GITHUB_REPOSITORY</code>：例如 <code>your-name/blog</code>。</li>
             <li class="{% if configuration_status.DOMAINS %}ok{% else %}missing{% endif %}">{% if configuration_status.DOMAINS %}✓{% else %}○{% endif %} <code>DOMAINS</code>：例如 <code>["editor.example.com"]</code>，不要写协议或路径。</li>
         </ul>
         <p class="muted">参考：<a href="https://vercel.com/docs/environment-variables/managing-environment-variables" target="_blank" rel="noopener noreferrer">Vercel 环境变量官方文档</a>。敏感变量不要提交到 Git 仓库，也不要使用 <code>NEXT_PUBLIC_</code> 等会暴露给浏览器的前缀。</p>
@@ -37,8 +37,8 @@
 
     <section class="card stack">
         <div>
-            <h2>2. 生成 QEXO_SECRET_KEY</h2>
-            <p class="muted">复制下面的新随机值并持久保存为 <code>QEXO_SECRET_KEY</code>。以后轮换它会让所有登录 Cookie 失效。</p>
+            <h2>2. 生成 SECRET_KEY</h2>
+            <p class="muted">复制下面的新随机值并持久保存为 <code>SECRET_KEY</code>。以后轮换它会让所有登录 Cookie 失效。</p>
         </div>
         <div class="code-row">
             <div class="code-value" id="secret-key">{{ generated_secret_key }}</div>
@@ -76,21 +76,21 @@
         <ol class="steps">
             <li>打开 GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token。</li>
             <li>Resource owner 选择你的账号；Repository access 只选择博客仓库。</li>
-            <li>Repository permissions 中把 <strong>Contents</strong> 设置为 <strong>Read and write</strong>，生成后立即复制到 <code>QEXO_GITHUB_TOKEN</code>。</li>
-            <li>仓库网址若是 <code>github.com/alice/my-blog</code>，则 <code>QEXO_GITHUB_REPOSITORY</code> 填 <code>alice/my-blog</code>。</li>
+            <li>Repository permissions 中把 <strong>Contents</strong> 设置为 <strong>Read and write</strong>，生成后立即复制到 <code>GITHUB_TOKEN</code>。</li>
+            <li>仓库网址若是 <code>github.com/alice/my-blog</code>，则 <code>GITHUB_REPOSITORY</code> 填 <code>alice/my-blog</code>。</li>
         </ol>
         <p class="muted">参考：<a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens" target="_blank" rel="noopener noreferrer">GitHub 创建 fine-grained token 官方文档</a>。Token 等同密码，请放在 Secret 环境变量中。</p>
     </section>
 
     <section class="card stack">
         <div><h2>5. 文章位置与可选变量</h2></div>
-        <div class="variable"><h3><code>QEXO_GITHUB_BRANCH</code></h3><div class="muted">博客仓库的默认分支，通常是 <code>main</code>；不填也默认使用 <code>main</code>。</div></div>
-        <div class="variable"><h3><code>QEXO_POSTS_PATH</code></h3><div class="muted">文章目录。Hexo 通常是 <code>source/_posts</code>（默认值），Hugo 常见为 <code>content/posts</code>，以你的仓库结构为准。</div></div>
-        <div class="variable"><h3><code>QEXO_POST_EXTENSIONS</code></h3><div class="muted">可编辑扩展名，默认 <code>.md,.markdown</code>。</div></div>
-        <div class="variable"><h3><code>QEXO_SESSION_AGE</code></h3><div class="muted">登录有效秒数，默认 <code>604800</code>（7 天）。Vercel 默认启用安全 Cookie 和 HTTPS 跳转；其他 HTTPS 部署可设置 <code>QEXO_COOKIE_SECURE=1</code>、<code>QEXO_SSL_REDIRECT=1</code>。</div></div>
-        <div class="variable"><h3><code>QEXO_LLM_API_KEY</code> / <code>QEXO_LLM_MODEL</code></h3><div class="muted">可选的 AI 文章优化配置。设置后编辑页会启用 AI 处理，密钥只在服务端使用。</div></div>
-        <div class="variable"><h3><code>QEXO_LLM_BASE_URL</code></h3><div class="muted">OpenAI 兼容 API 地址，默认 <code>https://api.openai.com/v1</code>。自托管或第三方兼容服务可覆盖此值。</div></div>
-        <div class="variable"><h3><code>QEXO_LLM_API_STYLE</code></h3><div class="muted">可选 <code>auto</code>、<code>chat</code> 或 <code>responses</code>，默认 <code>auto</code>，会自动在 chat/completions 与 Responses API 之间切换。</div></div>
+        <div class="variable"><h3><code>GITHUB_BRANCH</code></h3><div class="muted">博客仓库的默认分支，通常是 <code>main</code>；不填也默认使用 <code>main</code>。</div></div>
+        <div class="variable"><h3><code>POSTS_PATH</code></h3><div class="muted">文章目录。Hexo 通常是 <code>source/_posts</code>（默认值），Hugo 常见为 <code>content/posts</code>，以你的仓库结构为准。</div></div>
+        <div class="variable"><h3><code>POST_EXTENSIONS</code></h3><div class="muted">可编辑扩展名，默认 <code>.md,.markdown</code>。</div></div>
+        <div class="variable"><h3><code>SESSION_AGE</code></h3><div class="muted">登录有效秒数，默认 <code>604800</code>（7 天）。Vercel 默认启用安全 Cookie 和 HTTPS 跳转；其他 HTTPS 部署可设置 <code>COOKIE_SECURE=1</code>、<code>SSL_REDIRECT=1</code>。</div></div>
+        <div class="variable"><h3><code>LLM_API_KEY</code> / <code>LLM_MODEL</code></h3><div class="muted">可选的 AI 文章优化配置。设置后编辑页会启用 AI 处理，密钥只在服务端使用。</div></div>
+        <div class="variable"><h3><code>LLM_BASE_URL</code></h3><div class="muted">OpenAI 兼容 API 地址，默认 <code>https://api.openai.com/v1</code>。自托管或第三方兼容服务可覆盖此值。</div></div>
+        <div class="variable"><h3><code>LLM_API_STYLE</code></h3><div class="muted">可选 <code>auto</code>、<code>chat</code> 或 <code>responses</code>，默认 <code>auto</code>，会自动在 chat/completions 与 Responses API 之间切换。</div></div>
     </section>
 
     <section class="card stack">

@@ -47,8 +47,8 @@ def _client():
 
 def _ai_configured():
     return bool(
-        os.environ.get("QEXO_LLM_API_KEY", "").strip()
-        and os.environ.get("QEXO_LLM_MODEL", "").strip()
+        os.environ.get("LLM_API_KEY", "").strip()
+        and os.environ.get("LLM_MODEL", "").strip()
     )
 
 

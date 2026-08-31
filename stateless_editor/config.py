@@ -13,11 +13,11 @@ def configuration_status():
         for name in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL")
     )
     return {
-        "QEXO_SECRET_KEY": _has_value("QEXO_SECRET_KEY") or _has_value("SECRET_KEY"),
+        "SECRET_KEY": _has_value("SECRET_KEY"),
         "ADMIN_USERNAME": _has_value("ADMIN_USERNAME"),
         "ADMIN_PASSWORD": password_configured,
-        "QEXO_GITHUB_TOKEN": _has_value("QEXO_GITHUB_TOKEN"),
-        "QEXO_GITHUB_REPOSITORY": _has_value("QEXO_GITHUB_REPOSITORY"),
+        "GITHUB_TOKEN": _has_value("GITHUB_TOKEN"),
+        "GITHUB_REPOSITORY": _has_value("GITHUB_REPOSITORY"),
         "DOMAINS": domain_configured,
     }
 
@@ -28,11 +28,11 @@ def configuration_complete():
 
 def missing_configuration():
     labels = {
-        "QEXO_SECRET_KEY": "QEXO_SECRET_KEY",
+        "SECRET_KEY": "SECRET_KEY",
         "ADMIN_USERNAME": "ADMIN_USERNAME",
         "ADMIN_PASSWORD": "ADMIN_PASSWORD_HASH 或 ADMIN_PASSWORD",
-        "QEXO_GITHUB_TOKEN": "QEXO_GITHUB_TOKEN",
-        "QEXO_GITHUB_REPOSITORY": "QEXO_GITHUB_REPOSITORY",
+        "GITHUB_TOKEN": "GITHUB_TOKEN",
+        "GITHUB_REPOSITORY": "GITHUB_REPOSITORY",
         "DOMAINS": "DOMAINS（Vercel 自动域名除外）",
     }
     status = configuration_status()

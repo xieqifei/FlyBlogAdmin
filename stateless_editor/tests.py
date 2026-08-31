@@ -41,11 +41,11 @@ class FakeResponse:
 class AuthenticationTests(SimpleTestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
-            "QEXO_SECRET_KEY": "test-secret-key",
+            "SECRET_KEY": "test-secret-key",
             "ADMIN_USERNAME": "owner",
             "ADMIN_PASSWORD_HASH": make_password("correct horse battery staple"),
-            "QEXO_GITHUB_TOKEN": "test-token",
-            "QEXO_GITHUB_REPOSITORY": "owner/blog",
+            "GITHUB_TOKEN": "test-token",
+            "GITHUB_REPOSITORY": "owner/blog",
             "DOMAINS": '["testserver"]',
         })
         self.environment.start()
@@ -386,15 +386,15 @@ class FrontMatterTests(SimpleTestCase):
 class ArticleViewTests(SimpleTestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
-            "QEXO_SECRET_KEY": "test-secret-key",
+            "SECRET_KEY": "test-secret-key",
             "ADMIN_USERNAME": "owner",
             "ADMIN_PASSWORD_HASH": make_password("password-for-tests"),
-            "QEXO_GITHUB_TOKEN": "test-token",
-            "QEXO_GITHUB_REPOSITORY": "owner/blog",
+            "GITHUB_TOKEN": "test-token",
+            "GITHUB_REPOSITORY": "owner/blog",
             "DOMAINS": '["testserver"]',
-            "QEXO_LLM_API_KEY": "test-llm-key",
-            "QEXO_LLM_MODEL": "test-model",
-            "QEXO_SEARCH_CACHE_SECONDS": "0",
+            "LLM_API_KEY": "test-llm-key",
+            "LLM_MODEL": "test-model",
+            "SEARCH_CACHE_SECONDS": "0",
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -577,7 +577,7 @@ class ArticleViewTests(SimpleTestCase):
 
         guide = self.client.get(reverse("setup"))
         self.assertEqual(guide.status_code, 200)
-        self.assertContains(guide, "QEXO_GITHUB_TOKEN")
+        self.assertContains(guide, "GITHUB_TOKEN")
 
     def test_edit_page_accepts_quick_create_title(self):
         response = self.client.get(reverse("edit_article") + "?title=Quick")
@@ -909,10 +909,10 @@ class LLMClientTests(SimpleTestCase):
 
     def test_missing_credentials_raises_configuration_error(self):
         with patch.dict(os.environ, {
-            "QEXO_LLM_API_KEY": "",
-            "QEXO_LLM_MODEL": "",
-            "QEXO_LLM_BASE_URL": "https://api.example.com/v1",
-            "QEXO_LLM_API_STYLE": "auto",
+            "LLM_API_KEY": "",
+            "LLM_MODEL": "",
+            "LLM_BASE_URL": "https://api.example.com/v1",
+            "LLM_API_STYLE": "auto",
         }):
             with self.assertRaises(LLMConfigurationError):
                 LLMClient()
@@ -922,15 +922,15 @@ class LLMClientTests(SimpleTestCase):
 class LLMViewTests(SimpleTestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
-            "QEXO_SECRET_KEY": "test-secret-key",
+            "SECRET_KEY": "test-secret-key",
             "ADMIN_USERNAME": "owner",
             "ADMIN_PASSWORD_HASH": make_password("password-for-tests"),
-            "QEXO_GITHUB_TOKEN": "test-token",
-            "QEXO_GITHUB_REPOSITORY": "owner/blog",
+            "GITHUB_TOKEN": "test-token",
+            "GITHUB_REPOSITORY": "owner/blog",
             "DOMAINS": '["testserver"]',
-            "QEXO_LLM_API_KEY": "test-llm-key",
-            "QEXO_LLM_MODEL": "test-model",
-            "QEXO_LLM_BASE_URL": "https://api.example.com/v1",
+            "LLM_API_KEY": "test-llm-key",
+            "LLM_MODEL": "test-model",
+            "LLM_BASE_URL": "https://api.example.com/v1",
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
@@ -955,13 +955,13 @@ class LLMViewTests(SimpleTestCase):
 class SetupGuideTests(SimpleTestCase):
     def setUp(self):
         self.environment = patch.dict(os.environ, {
-            "QEXO_SECRET_KEY": "",
+            "SECRET_KEY": "",
             "SECRET_KEY": "",
             "ADMIN_USERNAME": "",
             "ADMIN_PASSWORD_HASH": "",
             "ADMIN_PASSWORD": "",
-            "QEXO_GITHUB_TOKEN": "",
-            "QEXO_GITHUB_REPOSITORY": "",
+            "GITHUB_TOKEN": "",
+            "GITHUB_REPOSITORY": "",
             "DOMAINS": "",
             "VERCEL_URL": "",
             "VERCEL_BRANCH_URL": "",
@@ -981,14 +981,14 @@ class SetupGuideTests(SimpleTestCase):
         response = self.client.get(reverse("setup"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "QEXO_GITHUB_TOKEN")
+        self.assertContains(response, "GITHUB_TOKEN")
         self.assertContains(response, "ADMIN_PASSWORD_HASH")
         self.assertContains(response, "Contents")
 
     def test_setup_page_never_echoes_environment_secrets(self):
         secrets = {
             "ADMIN_PASSWORD": "environment plaintext secret",
-            "QEXO_GITHUB_TOKEN": "github_pat_environment_secret",
+            "GITHUB_TOKEN": "github_pat_environment_secret",
         }
         with patch.dict(os.environ, secrets):
             response = self.client.get(reverse("setup"))
@@ -1028,4 +1028,4 @@ class StatelessSettingsTests(SimpleTestCase):
     def test_setup_does_not_require_a_mode_switch(self):
         from .config import configuration_status
 
-        self.assertNotIn("QEXO_STATELESS", configuration_status())
+        self.assertNotIn("STATELESS", configuration_status())

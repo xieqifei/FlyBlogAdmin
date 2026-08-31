@@ -22,7 +22,7 @@ def _env_flag(name, default=False):
 STATELESS_MODE = True
 
 _DEVELOPMENT_SECRET_KEY = "django-insecure-qexo-stateless-setup-only"
-SECRET_KEY = os.environ.get("QEXO_SECRET_KEY") or os.environ.get("SECRET_KEY") or _DEVELOPMENT_SECRET_KEY
+SECRET_KEY = os.environ.get("SECRET_KEY") or _DEVELOPMENT_SECRET_KEY
 DEBUG = False
 
 # The editor does not use Django models, database sessions, authentication
@@ -113,8 +113,8 @@ USE_TZ = True
 # Authentication state lives in a signed, HTTP-only cookie. Article content is
 # read from and written to GitHub; all configuration comes from environment
 # variables.
-STATELESS_SESSION_AGE = int(os.environ.get("QEXO_SESSION_AGE", "604800"))
-STATELESS_COOKIE_SECURE = _env_flag("QEXO_COOKIE_SECURE", bool(os.environ.get("VERCEL")))
+STATELESS_SESSION_AGE = int(os.environ.get("SESSION_AGE", "604800"))
+STATELESS_COOKIE_SECURE = _env_flag("COOKIE_SECURE", bool(os.environ.get("VERCEL")))
 CSRF_COOKIE_SECURE = STATELESS_COOKIE_SECURE
-SECURE_SSL_REDIRECT = _env_flag("QEXO_SSL_REDIRECT", bool(os.environ.get("VERCEL")))
+SECURE_SSL_REDIRECT = _env_flag("SSL_REDIRECT", bool(os.environ.get("VERCEL")))
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
