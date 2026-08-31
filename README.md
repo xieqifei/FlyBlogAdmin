@@ -44,6 +44,19 @@ Qexo 是一个快速、强大、美观的在线 静态博客编辑器。使用 G
 
 ## 无数据库模式
 
+## Node.js + TypeScript 管理端
+
+管理端已提供 Node.js/TypeScript 与 React + Ant Design 实现，适合直接部署到 Vercel：前端由 Vite 构建为静态资源，`api/index.ts` 提供无状态的 GitHub Contents API，不写入数据库。文章列表通过 `GET /api/posts` 读取，使用 `PUT /api/posts` 创建或更新，使用 `DELETE /api/posts` 删除；请求体中的 `name`、`content` 和（更新/删除时）`sha` 与 GitHub Contents 数据格式保持兼容。
+
+本地开发：
+
+```bash
+npm install
+npm run dev
+```
+
+生产构建使用 `npm run build`。Vercel 会自动执行该命令并发布 `dist`，同时将 `api/index.ts` 作为 Node.js Serverless Function。部署时仍只需配置下方的 GitHub 环境变量；运行时不会创建或依赖数据库。
+
 此分支固定运行无数据库 GitHub 文章编辑器，不加载 Django 用户、Session、缓存、Passkeys 或任何 Qexo 动态功能数据表，只提供单管理员登录和文章的列表、新建、编辑、删除。MySQL、PostgreSQL、MongoDB、PlanetScale 及 `configs.py` 均不再需要；旧数据库环境变量即使残留也不会被读取。
 
 首次部署不需要模式开关。若必需变量未齐全，访问网站会进入 `/setup/` 配置引导页，可直接生成签名密钥和密码哈希，并查看 GitHub Token、仓库、域名等变量的获取步骤。

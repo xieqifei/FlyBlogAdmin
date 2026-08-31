@@ -1,15 +1,9 @@
 {
-  "builds": [
-    {
-      "src": "core/wsgi.py",
-      "use": "@vercel/python",
-      "config": { "runtime": "python3.12" }
-    }
-  ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "functions": { "api/index.ts": { "runtime": "nodejs22.x" } },
   "rewrites": [
-    {
-      "source": "(.*)",
-      "destination": "core/wsgi.py"
-    }
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
