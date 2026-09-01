@@ -21,6 +21,9 @@ body { color: #172033; background: #f5f7fa; }
 .setup-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .settings-page, .graph-page { display: grid; gap: 16px; }
 .guide-steps { display: grid; gap: 10px; padding-left: 22px; }
+.config-generators { display: grid; gap: 22px; margin-top: 18px; }
+.config-generator { display: grid; gap: 10px; min-width: 0; }
+.config-generator .ant-space-compact { max-width: 860px; }
 .configured { color: #059669; }
 .missing { color: #dc2626; }
 .editor-form { display: grid; gap: 16px; }
@@ -74,6 +77,8 @@ body { color: #172033; background: #f5f7fa; }
 @media (max-width: 640px) {
   .setup-shell { width: min(100% - 24px, 1040px); margin: 18px auto; }
   .setup-heading { align-items: flex-start; }
+  .config-generator .ant-space-compact { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .config-generator .ant-space-compact .ant-input, .config-generator .ant-space-compact .ant-input-affix-wrapper, .config-generator .ant-space-compact .ant-btn { width: 100%; border-radius: 6px !important; }
   .ant-card .ant-card-body { padding: 16px; }
   .settings-page .ant-descriptions-row { display: block; }
   .settings-page .ant-descriptions-item-label, .settings-page .ant-descriptions-item-content { display: block; width: 100%; box-sizing: border-box; }
