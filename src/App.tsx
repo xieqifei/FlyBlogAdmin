@@ -15,7 +15,7 @@ const items = [
 ];
 type Row = { name: string; path: string; sha?: string; title?: string; categories?: string[]; tags?: string[]; date?: string; updated?: string };
 type Post = Row & { content: string };
-type OptimizeMode = 'proofread' | 'rewrite' | 'concise' | 'outline';
+type OptimizeMode = 'generate' | 'proofread' | 'rewrite' | 'concise' | 'outline';
 
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options); const data = await response.json().catch(() => ({}));
@@ -145,7 +145,7 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
     <Layout><Header className="header"><Button type="text" icon={(isMobile ? !mobileOpen : collapsed) ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => { if (isMobile) setMobileOpen((value) => !value); else setCollapsed((value) => !value); }} /><Typography.Title level={4}>{section === 'editor' ? (editor?.sha ? '编辑文章' : '新建文章') : title}</Typography.Title><Button className="header-logout" type="text" aria-label="退出登录" icon={<LogoutOutlined />} onClick={logout}>{isMobile ? '' : '退出登录'}</Button></Header><Content className="content"><div className="content-stack">{section === 'home' ? dashboard : section === 'posts' ? posts : section === 'editor' ? editorPage : section === 'graph' ? <GraphView onEdit={edit} /> : <SettingsGuide configuration={configuration} />}</div></Content></Layout>
     <Modal open={aiOpen} width={1080} title="AI 文章优化" onCancel={() => setAiOpen(false)} footer={<Space><Button onClick={() => setAiOpen(false)}>关闭</Button><Button disabled={!suggestion} onClick={() => { setEditor((value) => value ? { ...value, content: suggestion } : value); setAiOpen(false); message.success('已应用建议，请检查后再保存'); }}>应用到文章</Button><Button type="primary" loading={optimizing} onClick={optimize}>生成建议</Button></Space>}>
       <Alert showIcon type="info" message="先预览，再应用" description="参考 Obsidian AI 写作插件的 Apply Edit 工作流：模型只生成建议，不会直接保存或覆盖 GitHub 内容。" />
-      <div className="ai-controls"><Select value={optimizeMode} onChange={setOptimizeMode} options={[{ value: 'proofread', label: '校对错别字与语病' }, { value: 'rewrite', label: '改善结构与表达' }, { value: 'concise', label: '压缩冗余内容' }, { value: 'outline', label: '优化标题与大纲' }]} /><Input value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder="可选：补充要求，例如“保持技术术语不变”" /></div>
+      <div className="ai-controls"><Select value={optimizeMode} onChange={setOptimizeMode} options={[{ value: 'generate', label: '生成标题和内容' }, { value: 'proofread', label: '校对错别字与语病' }, { value: 'rewrite', label: '改善结构与表达' }, { value: 'concise', label: '压缩冗余内容' }, { value: 'outline', label: '优化标题与大纲' }]} /><Input value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder={optimizeMode === 'generate' ? '补充主题、要点、语气等写作要求' : '可选：补充要求，例如“保持技术术语不变”'} /></div>
       {suggestion ? <div className="ai-preview"><div><Typography.Text strong>当前文章</Typography.Text><Input.TextArea readOnly value={editor?.content} /></div><div><Typography.Text strong>AI 建议</Typography.Text><Input.TextArea value={suggestion} onChange={(event) => setSuggestion(event.target.value)} /></div></div> : <Empty description={optimizing ? '正在生成建议…' : '选择优化方式后生成建议'} />}
     </Modal>
   </Layout>;
