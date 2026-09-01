@@ -3,7 +3,7 @@ import { createHash, createHmac, pbkdf2Sync, timingSafeEqual } from 'node:crypto
 import { posix } from 'node:path';
 import { configurationStatus } from './configuration.js';
 import { parseFrontMatter, values, writeFrontMatter } from '../shared/frontMatter.js';
-import { currentDateTime, normalizeDateTime } from '../shared/dateTime.js';
+import { automaticArticleDates, currentDateTime, normalizeDateTime } from '../shared/dateTime.js';
 
 type GitHubFile = { name: string; path: string; sha: string; type: 'file' | 'dir'; content?: string };
 type Post = { name: string; path?: string; sha?: string; content?: string; clientTime?: string };
@@ -201,8 +201,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await github('DELETE', `/repos/${config().repository}/contents/${encodeRepositoryPath(target)}`, { message: `Delete post ${relative}`, sha: post.sha, branch: config().branch }); return res.status(200).json({ ok: true });
     }
     if (typeof post.content !== 'string') return res.status(400).json({ error: 'content is required' });
-    const fields = parseFrontMatter(post.content).fields; const publication = normalizeDateTime(fields.date);
-    const content = writeFrontMatter(post.content, { ...(publication ? { date: publication } : {}), updated: normalizeDateTime(post.clientTime) || currentDateTime() });
+    const fields = parseFrontMatter(post.content).fields; const now = normalizeDateTime(post.clientTime) || currentDateTime();
+    const content = writeFrontMatter(post.content, automaticArticleDates(fields.date, now, Boolean(post.sha)));
     const payload = { message: `${post.sha ? 'Update' : 'Create'} post ${relative}`, content: Buffer.from(content).toString('base64'), branch: config().branch, ...(post.sha ? { sha: post.sha } : {}) };
     const result = await github('PUT', `/repos/${config().repository}/contents/${encodeRepositoryPath(target)}`, payload) as { content: GitHubFile };
     return res.status(200).json({ ok: true, path: relative, sha: result.content.sha });

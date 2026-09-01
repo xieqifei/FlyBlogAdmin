@@ -6,12 +6,12 @@ export function normalizeDateTime(value: unknown) {
   return `${date} ${hour}:${minute}:${second}`;
 }
 
-export function dateTimeInputValue(value: unknown) {
-  const normalized = normalizeDateTime(value);
-  return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(normalized) ? normalized.replace(' ', 'T') : '';
-}
-
 export function currentDateTime(current = new Date()) {
   const pad = (value: number) => String(value).padStart(2, '0');
   return `${current.getFullYear()}-${pad(current.getMonth() + 1)}-${pad(current.getDate())} ${pad(current.getHours())}:${pad(current.getMinutes())}:${pad(current.getSeconds())}`;
+}
+
+export function automaticArticleDates(existingDate: unknown, now: unknown, isPublished: boolean) {
+  const timestamp = normalizeDateTime(now) || currentDateTime();
+  return { date: isPublished ? normalizeDateTime(existingDate) || timestamp : timestamp, updated: timestamp };
 }
