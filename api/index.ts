@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash, createHmac, pbkdf2Sync, timingSafeEqual } from 'node:crypto';
 import { posix } from 'node:path';
+import { configurationStatus } from './configuration.js';
 import { OptimizeError, optimizeArticle } from './llm.js';
 
 type GitHubFile = { name: string; path: string; sha: string; type: 'file' | 'dir'; content?: string };
@@ -23,16 +24,6 @@ function config() {
     secret: process.env.SECRET_KEY || '',
     sessionAge: Math.max(300, Number(process.env.SESSION_AGE) || 604800),
   };
-}
-
-function configurationStatus() {
-  const current = config();
-  const status = {
-    SECRET_KEY: Boolean(current.secret), ADMIN_USERNAME: Boolean(current.username),
-    ADMIN_PASSWORD: Boolean(current.password || current.passwordHash.startsWith('pbkdf2_sha256$') || current.passwordHash.startsWith('sha256$')), GITHUB_TOKEN: Boolean(current.token),
-    GITHUB_REPOSITORY: Boolean(current.repository),
-  };
-  return { configured: Object.values(status).every(Boolean), status, missing: Object.entries(status).filter(([, ok]) => !ok).map(([name]) => name) };
 }
 
 function safeEqual(left: string, right: string) {
@@ -83,7 +74,10 @@ function setSessionCookie(res: VercelResponse, value: string, maxAge: number) {
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`);
 }
 
-function requestPath(req: VercelRequest) { return new URL(req.url || '/', 'http://localhost').pathname.replace(/\/+$/, '') || '/'; }
+function requestPath(req: VercelRequest) {
+  const route = Array.isArray(req.query.route) ? req.query.route[0] : req.query.route;
+  return route ? `/api/${String(route).replace(/^\/+|\/+$/g, '')}` : new URL(req.url || '/', 'http://localhost').pathname.replace(/\/+$/, '') || '/';
+}
 function mutationOriginAllowed(req: VercelRequest) {
   const origin = req.headers.origin; const host = req.headers['x-forwarded-host'] || req.headers.host;
   if (!origin || !host) return true;

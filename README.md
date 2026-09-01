@@ -1,8 +1,8 @@
 # FlyBlogAdmin
 
-FlyBlogAdmin 是一个面向 Hexo 等 Git 仓库博客的无数据库管理后台。文章直接通过 GitHub Contents API 读取和提交，前端使用 React、TypeScript 与 Ant Design，服务端使用 Vercel Node.js Functions。
+FlyBlogAdmin 是一个面向 Hexo 等 Git 仓库博客的无数据库管理后台。文章直接通过 GitHub Contents API 读取和提交，前端使用 React、TypeScript 与 Ant Design，服务端使用 Vercel Node.js Functions。项目完全使用 Node.js/TypeScript，不包含 Python 或 Django 运行时。
 
-未配置 API 环境变量时也可以直接访问主页和浏览管理界面；登录、文章读取、保存和 AI 优化等依赖服务端的功能会提示先完成配置。
+首次访问时，必需环境变量未齐全会一直显示设置引导页；配置齐全并重新部署后进入登录页。设置页会逐项显示必需与可选变量的实际配置状态。
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fxieqifei%2FFlyBlogAdmin&env=SECRET_KEY,ADMIN_USERNAME,ADMIN_PASSWORD,GITHUB_TOKEN,GITHUB_REPOSITORY&envDescription=FlyBlogAdmin%20%E8%BF%90%E8%A1%8C%E6%89%80%E9%9C%80%E7%9A%84%E7%99%BB%E5%BD%95%E4%B8%8E%20GitHub%20%E9%85%8D%E7%BD%AE&project-name=fly-blog-admin&repository-name=fly-blog-admin)
 
@@ -29,7 +29,7 @@ npm install
 npm run dev
 ```
 
-Vite 开发服务器默认地址为 `http://localhost:5173`。仅查看设置页和界面构建不需要连接数据库；访问实际文章及登录接口时，需要通过 Vercel 本地开发环境或其他方式为 `/api` Node Function 提供下列环境变量。
+Vite 开发服务器默认地址为 `http://localhost:5173`。它只启动前端，因此会停留在设置引导页；验证登录、文章读写等完整功能时，请使用 `npx vercel dev` 启动前端和 `/api` Node Function，并提供下列环境变量。
 
 执行生产构建：
 

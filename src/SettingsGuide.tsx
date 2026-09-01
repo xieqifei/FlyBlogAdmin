@@ -29,7 +29,7 @@ export default function SettingsGuide({ configuration }: { configuration: Config
     </Card>
     <Card title="环境变量">
       <Descriptions bordered size="small" column={1}>{variables.map(([name, requirement, description]) => {
-        const statusKey = name === 'ADMIN_PASSWORD_HASH' ? 'ADMIN_PASSWORD' : name; const known = Object.prototype.hasOwnProperty.call(configuration.status, statusKey); const ready = configuration.status[statusKey];
+        const known = Object.prototype.hasOwnProperty.call(configuration.status, name); const ready = configuration.status[name];
         return <Descriptions.Item key={name} label={<Space><Typography.Text code>{name}</Typography.Text><Tag>{requirement}</Tag>{known && (ready ? <CheckCircleOutlined className="configured" /> : <CloseCircleOutlined className="missing" />)}</Space>}>{description}</Descriptions.Item>;
       })}</Descriptions>
     </Card>
