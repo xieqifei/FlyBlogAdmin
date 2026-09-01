@@ -56,7 +56,8 @@ body { color: #172033; background: #f5f7fa; }
 .obsidian-editor .cm-activeLine, .obsidian-editor .cm-activeLineGutter { background: rgb(49 94 251 / 4%); }
 .obsidian-editor .cm-selectionBackground, .obsidian-editor .cm-content ::selection { background: rgb(49 94 251 / 18%) !important; }
 .obsidian-editor .cm-placeholder { color: #a0a5af; font-style: normal; }
-.obsidian-editor .cm-live-h1, .obsidian-editor .cm-live-h2, .obsidian-editor .cm-live-h3, .obsidian-editor .cm-live-h4, .obsidian-editor .cm-live-h5, .obsidian-editor .cm-live-h6 { color: #171717; font-weight: 750; }
+.obsidian-editor .cm-live-h1, .obsidian-editor .cm-live-h2, .obsidian-editor .cm-live-h3, .obsidian-editor .cm-live-h4, .obsidian-editor .cm-live-h5, .obsidian-editor .cm-live-h6 { color: #171717; font-weight: 750; text-decoration: none !important; border-bottom: 0; }
+.obsidian-editor :is(.cm-live-h1, .cm-live-h2, .cm-live-h3, .cm-live-h4, .cm-live-h5, .cm-live-h6) .cm-live-link, .obsidian-editor .cm-live-link:is(.cm-live-h1, .cm-live-h2, .cm-live-h3, .cm-live-h4, .cm-live-h5, .cm-live-h6) { text-decoration: none; }
 .obsidian-editor .cm-live-h1 { font-size: 2.15em; line-height: 1.4; letter-spacing: -.025em; }
 .obsidian-editor .cm-live-h2 { font-size: 1.68em; line-height: 1.5; letter-spacing: -.018em; }
 .obsidian-editor .cm-live-h3 { font-size: 1.36em; line-height: 1.55; }
@@ -66,8 +67,8 @@ body { color: #172033; background: #f5f7fa; }
 .obsidian-editor .cm-live-strike { color: #777; text-decoration: line-through; }
 .obsidian-editor .cm-live-code { padding: 2px 5px; border-radius: 4px; color: #d6336c; background: #f4f4f5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
 .obsidian-editor .cm-live-code-line { padding-inline: 18px; color: #24292f; background: #f6f8fa; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; line-height: 1.65; }
-.obsidian-editor .cm-live-code-first { margin-top: 10px; padding-top: 10px; border-radius: 8px 8px 0 0; }
-.obsidian-editor .cm-live-code-last { margin-bottom: 10px; padding-bottom: 10px; border-radius: 0 0 8px 8px; }
+.obsidian-editor .cm-live-code-first { padding-top: 10px; border-radius: 8px 8px 0 0; }
+.obsidian-editor .cm-live-code-last { padding-bottom: 10px; border-radius: 0 0 8px 8px; }
 .obsidian-editor .cm-live-code-line .tok-keyword, .obsidian-editor .cm-live-code-line .tok-operator { color: #cf222e; }
 .obsidian-editor .cm-live-code-line .tok-string, .obsidian-editor .cm-live-code-line .tok-regexp { color: #0a3069; }
 .obsidian-editor .cm-live-code-line .tok-number, .obsidian-editor .cm-live-code-line .tok-bool, .obsidian-editor .cm-live-code-line .tok-null { color: #0550ae; }
@@ -79,7 +80,8 @@ body { color: #172033; background: #f5f7fa; }
 .obsidian-editor .cm-live-bullet { display: inline-block; width: 1.2em; color: #6d4aff; font-size: 1.2em; font-weight: 800; text-align: center; }
 .obsidian-editor .cm-live-list { color: #303642; }
 .obsidian-editor .cm-live-table { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #374151; }
-.obsidian-editor .cm-table-preview { display: block; margin: 10px 0; overflow-x: auto; border: 1px solid #d8dee4; border-radius: 8px; background: #fff; cursor: text; }
+.obsidian-editor .cm-table-preview-shell { display: block; box-sizing: border-box; padding: 10px 0; }
+.obsidian-editor .cm-table-preview { display: block; overflow-x: auto; border: 1px solid #d8dee4; border-radius: 8px; background: #fff; cursor: text; }
 .obsidian-editor .cm-table-preview table { width: 100%; border-collapse: collapse; font-size: .95em; }
 .obsidian-editor .cm-table-preview th, .obsidian-editor .cm-table-preview td { min-width: 110px; padding: 9px 12px; border-right: 1px solid #d8dee4; border-bottom: 1px solid #d8dee4; line-height: 1.55; }
 .obsidian-editor .cm-table-preview th { color: #24292f; background: #f6f8fa; font-weight: 650; }

@@ -42,16 +42,16 @@ class TableWidget extends WidgetType {
   constructor(readonly from: number, readonly source: string) { super(); }
   eq(other: TableWidget) { return this.from === other.from && this.source === other.source; }
   toDOM(view: EditorView) {
-    const parsed = parseMarkdownTable(this.source); const wrapper = document.createElement('div');
-    wrapper.className = 'cm-table-preview'; wrapper.title = '点击表格可编辑单元格';
-    if (!parsed) return wrapper;
+    const parsed = parseMarkdownTable(this.source); const shell = document.createElement('div'); const wrapper = document.createElement('div');
+    shell.className = 'cm-table-preview-shell'; wrapper.className = 'cm-table-preview'; wrapper.title = '点击表格可编辑单元格'; shell.append(wrapper);
+    if (!parsed) return shell;
     const table = document.createElement('table'); const head = document.createElement('thead'); const headRow = document.createElement('tr');
     parsed.headers.forEach((value, index) => { const cell = document.createElement('th'); cell.textContent = value; cell.style.textAlign = parsed.alignments[index]; headRow.append(cell); });
     head.append(headRow); table.append(head);
     if (parsed.rows.length) { const body = document.createElement('tbody'); parsed.rows.forEach((row) => { const tableRow = document.createElement('tr'); row.forEach((value, index) => { const cell = document.createElement('td'); cell.textContent = value; cell.style.textAlign = parsed.alignments[index]; tableRow.append(cell); }); body.append(tableRow); }); table.append(body); }
     wrapper.append(table);
     wrapper.addEventListener('click', () => { view.dispatch({ selection: EditorSelection.cursor(this.from), scrollIntoView: true }); view.focus(); });
-    return wrapper;
+    return shell;
   }
   ignoreEvent() { return false; }
 }
@@ -64,11 +64,9 @@ function livePreviewDecorations(view: EditorView) {
     const toLine = view.state.doc.lineAt(range.to).number;
     for (let line = fromLine; line <= toLine; line += 1) activeLines.add(line);
   }
-  const firstVisible = view.visibleRanges[0]?.from ?? 0;
-  const lastVisible = view.visibleRanges.at(-1)?.to ?? view.state.doc.length;
   syntaxTree(view.state).iterate({
-    from: firstVisible,
-    to: lastVisible,
+    from: 0,
+    to: view.state.doc.length,
     enter(node) {
       const className = nodeClasses[node.name];
       if (className && node.from < node.to) decorations.push(Decoration.mark({ class: className }).range(node.from, node.to));
