@@ -152,15 +152,16 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
 }
 
 export default function Root() {
-  const [configuration, setConfiguration] = useState<Configuration>(); const [authenticated, setAuthenticated] = useState<boolean>();
+  const [configuration, setConfiguration] = useState<Configuration>(); const [authenticated, setAuthenticated] = useState<boolean>(); const [startupError, setStartupError] = useState('');
   useEffect(() => { (async () => {
     let current: Configuration;
     try { current = await api<Configuration>('/api/config'); if (typeof current.configured !== 'boolean' || !Array.isArray(current.missing)) throw new Error('API unavailable'); }
-    catch { setConfiguration({ configured: false, status: {}, missing: ['API 服务'] }); setAuthenticated(false); return; }
+    catch { setStartupError('无法读取 API 服务状态，请确认当前部署包含 Node.js API Functions 后重试。'); setAuthenticated(false); return; }
     setConfiguration(current);
     if (!current.configured) { setAuthenticated(false); return; }
     try { await api('/api/auth/session'); setAuthenticated(true); } catch { setAuthenticated(false); }
   })(); }, []);
+  if (startupError) return <AntApp><main className="setup-shell"><Alert showIcon type="error" message="API 服务暂时不可用" description={startupError} action={<Button onClick={() => window.location.reload()}>重新检测</Button>} /></main></AntApp>;
   if (!configuration || authenticated === undefined) return <div className="boot"><Spin size="large" /></div>;
   if (!configuration.configured) return <main className="setup-shell"><div className="setup-heading"><Typography.Title level={2}>FlyBlog Admin 设置</Typography.Title></div><SettingsGuide configuration={configuration} /></main>;
   if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;

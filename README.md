@@ -4,6 +4,7 @@ FlyBlogAdmin 是一个面向 Hexo 等 Git 仓库博客的无数据库管理后�
 
 首次访问时，必需环境变量未齐全会一直显示设置引导页；配置齐全并重新部署后进入登录页。设置页会逐项显示必需与可选变量的实际配置状态。
 设置页内置仅在浏览器本地运行的 `SECRET_KEY` 与 `ADMIN_PASSWORD_HASH` 生成器，并提供细粒度 `GITHUB_TOKEN` 的创建和最小权限配置教程。
+AI 接口变量始终是可选项，不参与引导页判断；即使完全不配置 AI，也可以正常登录并管理文章。
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fxieqifei%2FFlyBlogAdmin&env=SECRET_KEY,ADMIN_USERNAME,ADMIN_PASSWORD,GITHUB_TOKEN,GITHUB_REPOSITORY&envDescription=FlyBlogAdmin%20%E8%BF%90%E8%A1%8C%E6%89%80%E9%9C%80%E7%9A%84%E7%99%BB%E5%BD%95%E4%B8%8E%20GitHub%20%E9%85%8D%E7%BD%AE&project-name=fly-blog-admin&repository-name=fly-blog-admin)
 

@@ -2,7 +2,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash, createHmac, pbkdf2Sync, timingSafeEqual } from 'node:crypto';
 import { posix } from 'node:path';
 import { configurationStatus } from './configuration.js';
-import { OptimizeError, optimizeArticle } from './llm.js';
 import { parseFrontMatter, values, writeFrontMatter } from '../shared/frontMatter.js';
 
 type GitHubFile = { name: string; path: string; sha: string; type: 'file' | 'dir'; content?: string };
@@ -157,6 +156,10 @@ async function buildGraph() {
 }
 
 function jsonBody<T>(req: VercelRequest) { return (typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {}) as T; }
+function responseStatus(error: unknown) {
+  const status = typeof error === 'object' && error && 'status' in error ? Number((error as { status?: unknown }).status) : 500;
+  return Number.isInteger(status) && status >= 400 && status < 600 ? status : 500;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store'); const path = requestPath(req); const method = req.method || 'GET';
@@ -176,6 +179,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (method !== 'GET' && !mutationOriginAllowed(req)) return res.status(403).json({ error: 'Invalid request origin' });
     if (method === 'GET' && path === '/api/graph') return res.status(200).json(await buildGraph());
     if (method === 'POST' && path === '/api/ai/optimize') {
+      const { optimizeArticle } = await import('./llm.js');
       return res.status(200).json({ suggestion: await optimizeArticle(jsonBody(req)) });
     }
     if (path !== '/api/posts') return res.status(404).json({ error: 'Not found' });
@@ -200,5 +204,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const payload = { message: `${post.sha ? 'Update' : 'Create'} post ${relative}`, content: Buffer.from(content).toString('base64'), branch: config().branch, ...(post.sha ? { sha: post.sha } : {}) };
     const result = await github('PUT', `/repos/${config().repository}/contents/${encodeRepositoryPath(target)}`, payload) as { content: GitHubFile };
     return res.status(200).json({ ok: true, path: relative, sha: result.content.sha });
-  } catch (error) { return res.status(error instanceof OptimizeError ? error.status : 500).json({ error: error instanceof Error ? error.message : 'Unexpected error' }); }
+  } catch (error) { return res.status(responseStatus(error)).json({ error: error instanceof Error ? error.message : 'Unexpected error' }); }
 }
