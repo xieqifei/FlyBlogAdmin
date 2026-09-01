@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash, createHmac, pbkdf2Sync, timingSafeEqual } from 'node:crypto';
 import { posix } from 'node:path';
 import { configurationStatus } from './configuration.js';
+import { R2Error, buildObjectKey, contentTypeFor, deleteObject, listBuckets, listObjects, putObject, r2Configuration, validateBucketName, validateObjectKey } from './r2.js';
 import { parseFrontMatter, values, writeFrontMatter } from '../shared/frontMatter.js';
 import { automaticArticleDates, currentDateTime, normalizeDateTime } from '../shared/dateTime.js';
 
@@ -182,6 +183,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (method === 'POST' && path === '/api/ai/optimize') {
       const { optimizeArticle } = await import('./llm.js');
       return res.status(200).json({ suggestion: await optimizeArticle(jsonBody(req)) });
+    }
+    if (method === 'GET' && path === '/api/r2/buckets') return res.status(200).json({ buckets: await listBuckets() });
+    if (method === 'GET' && path === '/api/r2/objects') {
+      const bucket = validateBucketName(req.query.bucket);
+      const prefix = typeof req.query.prefix === 'string' ? req.query.prefix.replace(/^\/+/, '') : '';
+      const next = typeof req.query.next === 'string' ? req.query.next : '';
+      return res.status(200).json(await listObjects(bucket, prefix, next));
+    }
+    if (method === 'POST' && path === '/api/r2/upload') {
+      const body = jsonBody<{ bucket?: unknown; key?: unknown; filename?: unknown; content?: unknown; contentType?: unknown }>(req);
+      const bucket = validateBucketName(body.bucket || r2Configuration().defaultBucket);
+      const content = typeof body.content === 'string' ? body.content : '';
+      if (!content) throw new R2Error('缺少文件内容', 400);
+      const buffer = Buffer.from(content, 'base64');
+      if (!buffer.length) throw new R2Error('缺少文件内容', 400);
+      if (buffer.length > 25 * 1024 * 1024) throw new R2Error('文件大小不能超过 25MB', 400);
+      const filename = typeof body.filename === 'string' ? body.filename.trim() : '';
+      const key = body.key !== undefined && body.key !== '' ? validateObjectKey(body.key) : buildObjectKey(filename);
+      const result = await putObject({ bucket, key, body: buffer, contentType: typeof body.contentType === 'string' && body.contentType ? body.contentType : contentTypeFor(filename) });
+      return res.status(200).json({ ...result, bucket });
+    }
+    if (method === 'DELETE' && path === '/api/r2/objects') {
+      const bucket = validateBucketName(req.query.bucket);
+      const key = validateObjectKey(req.query.key);
+      await deleteObject(bucket, key);
+      return res.status(200).json({ ok: true });
     }
     if (path !== '/api/posts') return res.status(404).json({ error: 'Not found' });
     if (method === 'GET') {

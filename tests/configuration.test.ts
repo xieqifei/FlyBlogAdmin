@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { configurationStatus } from '../server/configuration.ts';
+import { configurationStatus, resolveLanguage, r2Status } from '../server/configuration.ts';
 
 const required = { SECRET_KEY: 'secret', ADMIN_USERNAME: 'admin', ADMIN_PASSWORD: 'password', GITHUB_TOKEN: 'token', GITHUB_REPOSITORY: 'owner/repo' };
 
@@ -23,4 +23,18 @@ test('reports every missing required value without treating optional values as r
   assert.deepEqual(result.missing, ['SECRET_KEY', 'ADMIN_USERNAME', 'ADMIN_PASSWORD 或 ADMIN_PASSWORD_HASH', 'GITHUB_TOKEN', 'GITHUB_REPOSITORY']);
   assert.equal(result.status.GITHUB_BRANCH, true);
   assert.equal(result.status.LLM_MODEL, true);
+});
+
+test('defaults to Chinese and accepts the built-in language values', () => {
+  assert.equal(resolveLanguage({}), 'zh');
+  assert.equal(resolveLanguage({ LANGUAGE: 'EN' }), 'en');
+  assert.equal(resolveLanguage({ LANGUAGE: 'de' }), 'de');
+  assert.equal(resolveLanguage({ LANGUAGE: 'fr' }), 'zh');
+});
+
+test('reports optional R2 image-hosting configuration without exposing secrets', () => {
+  assert.deepEqual(r2Status({ R2_ACCOUNT_ID: 'account', R2_ACCESS_KEY_ID: 'key', R2_SECRET_ACCESS_KEY: 'secret', R2_BUCKET: 'images', R2_PUBLIC_URL: 'https://img.example.com/' }), {
+    configured: true, publicUrl: 'https://img.example.com/', defaultBucket: 'images',
+  });
+  assert.equal(r2Status({ R2_ACCOUNT_ID: 'account' }).configured, false);
 });

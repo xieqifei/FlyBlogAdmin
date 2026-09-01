@@ -1,0 +1,233 @@
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
+
+export type Language = 'zh' | 'en' | 'de';
+export type Translator = (key: string, params?: Record<string, string | number>) => string;
+
+export const languageOptions: Array<{ value: Language; label: string }> = [
+  { value: 'zh', label: '中文' },
+  { value: 'en', label: 'English' },
+  { value: 'de', label: 'Deutsch' },
+];
+
+export function normalizeLanguage(value?: string): Language {
+  const normalized = String(value || '').trim().toLowerCase();
+  return normalized === 'en' ? 'en' : normalized === 'de' ? 'de' : 'zh';
+}
+
+type Dictionary = Record<string, string>;
+
+const zh: Dictionary = {
+  'menu.home': '首页', 'menu.posts': '文章管理', 'menu.graph': '关系图谱', 'menu.images': '图床', 'menu.settings': '设置',
+  'header.logout': '退出登录', 'header.closeMenu': '关闭菜单',
+  'login.title': '登录', 'login.username': '用户名', 'login.password': '密码', 'login.submit': '登录', 'login.failed': '登录失败',
+  'error.requestFailed': '请求失败', 'error.loadPosts': '文章载入失败', 'error.save': '保存失败', 'error.delete': '删除失败', 'error.aiOptimize': 'AI 优化失败',
+  'draft.restored': '已恢复', 'draft.savedAt': '草稿已自动保存（{time}）', 'draft.localOnly': '修改会自动保存在当前浏览器',
+  'editor.titleRequired': '请填写文章标题', 'editor.saved': '文章已保存到 GitHub，编辑时间已更新', 'editor.deleted': '文章已删除',
+  'editor.back': '返回文章列表', 'editor.editTitle': '编辑文章', 'editor.newTitle': '新建文章', 'editor.delete': '删除', 'editor.ai': 'AI 优化', 'editor.save': '保存并提交',
+  'editor.titleLabel': '文章标题', 'editor.titlePlaceholder': '输入标题，系统将自动生成文件名', 'editor.categoriesTags': '分类与标签',
+  'editor.categories': '分类', 'editor.tags': '标签', 'editor.enterToAdd': '输入后回车添加', 'editor.body': 'Markdown 正文',
+  'confirm.deleteTitle': '确定删除这篇文章？', 'confirm.deleteDescription': 'Git 历史中仍可恢复。',
+  'ai.title': 'AI 文章优化', 'ai.close': '关闭', 'ai.apply': '应用到文章', 'ai.generate': '生成建议',
+  'ai.previewFirst': '先预览，再应用', 'ai.previewDescription': '参考 Obsidian AI 写作插件的 Apply Edit 工作流：模型只生成建议，不会直接保存或覆盖 GitHub 内容。',
+  'ai.modeGenerate': '生成标题和内容', 'ai.modeProofread': '校对错别字与语病', 'ai.modeRewrite': '改善结构与表达', 'ai.modeConcise': '压缩冗余内容', 'ai.modeOutline': '优化标题与大纲',
+  'ai.instructionGenerate': '补充主题、要点、语气等写作要求', 'ai.instruction': '可选：补充要求，例如“保持技术术语不变”',
+  'ai.current': '当前文章', 'ai.suggestion': 'AI 建议', 'ai.generating': '正在生成建议…', 'ai.selectMode': '选择优化方式后生成建议',
+  'ai.bodyRequired': '请输入需要 AI 处理的正文', 'ai.requirementRequired': '请输入写作要求或正文素材', 'ai.applied': '已应用建议，请检查后再保存',
+  'home.title': '内容工作台', 'home.subtitle': '集中查看博客数据，快速开始下一篇创作。', 'home.newPost': '新建文章',
+  'home.articleCount': '文章总数', 'home.categories': '分类', 'home.tags': '标签', 'home.dated': '已标注日期',
+  'home.categoryDistribution': '分类分布', 'home.commonTags': '常用标签', 'home.emptyCategories': '暂无分类', 'home.emptyTags': '暂无标签',
+  'home.recentPosts': '最近文章', 'home.viewAll': '查看全部', 'home.titleCol': '标题', 'home.editDateCol': '编辑日期', 'home.edit': '编辑',
+  'posts.title': '文章', 'posts.new': '新建', 'posts.refresh': '刷新', 'posts.search': '搜索标题、分类或标签', 'posts.retry': '重试',
+  'posts.titleCol': '标题', 'posts.categoriesCol': '分类', 'posts.tagsCol': '标签', 'posts.editDateCol': '编辑日期', 'posts.actionsCol': '操作',
+  'posts.edit': '编辑', 'posts.delete': '删除', 'posts.loading': '正在从 GitHub 加载文章', 'posts.noMatch': '没有匹配的文章', 'posts.empty': '暂无文章',
+  'posts.editAria': '编辑 {title}', 'posts.deleteAria': '删除 {title}',
+  'setup.errorTitle': 'API 服务暂时不可用', 'setup.errorDescription': '无法读取 API 服务状态，请确认当前部署包含 Node.js API Functions 后重试。', 'setup.retry': '重新检测', 'setup.title': 'FlyBlog Admin 设置',
+  'md.placeholder': '开始写正文…', 'md.undo': '撤销（Ctrl/⌘+Z）', 'md.redo': '重做（Ctrl/⌘+Shift+Z）',
+  'md.bulletList': '无序列表', 'md.orderedList': '有序列表', 'md.taskList': '任务列表', 'md.link': '链接（Ctrl/⌘+K）', 'md.insertImage': '插入图片', 'md.insertTable': '插入表格', 'md.divider': '分隔线',
+  'md.codeLanguage': '代码块语言', 'md.insertCode': '插入 {language} 代码块', 'md.addRow': '在当前行后添加一行', 'md.deleteRow': '删除当前行', 'md.addColumn': '在当前列后添加一列', 'md.deleteColumn': '删除当前列（至少保留两列）',
+  'md.uploading': '正在上传图片…', 'md.uploaded': '已上传并插入 {count} 张图片', 'md.notConfigured': '图床未配置，请先在“设置”中配置 R2', 'md.uploadFailed': '图片上传失败：{error}',
+  'graph.search': '搜索文章、分类或标签', 'graph.article': '文章', 'graph.category': '分类', 'graph.tag': '标签',
+  'graph.depth': '局部图谱深度', 'graph.layers': '{n} 层', 'graph.global': '返回全局图谱', 'graph.refresh': '刷新', 'graph.fit': '适应画布',
+  'graph.empty': '没有可展示的文章关系', 'graph.edit': '编辑文章', 'graph.local': '查看局部图谱', 'graph.unpin': '取消固定',
+  'graph.hint': '拖拽节点或画布，滚轮缩放，双击文章进入编辑',
+  'cc.title': '近一年创作贡献', 'cc.total': '共创作 {total} 篇', 'cc.weekdays': '一,三,五', 'cc.aria': '近一年每日创作数量',
+  'cc.dayAria': '{date}，创作 {count} 篇', 'cc.dayTitle': '{date}：{count} 篇创作', 'cc.none': '无创作', 'cc.less': '少', 'cc.more': '多', 'cc.months': '1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月',
+  'ih.notConfiguredTitle': '图床未配置', 'ih.notConfiguredDesc': '在部署平台配置 R2_ACCOUNT_ID、R2_ACCESS_KEY_ID 和 R2_SECRET_ACCESS_KEY 后重新部署，即可自动加载 R2 存储桶。',
+  'ih.bucket': '存储桶', 'ih.selectBucket': '选择存储桶', 'ih.refresh': '刷新', 'ih.upload': '上传图片', 'ih.dragUpload': '拖拽或点击上传图片',
+  'ih.uploading': '正在上传…', 'ih.objects': '图片列表', 'ih.emptyObjects': '暂无图片，拖拽或点击上传', 'ih.loadMore': '加载更多',
+  'ih.copyMarkdown': '复制 Markdown 链接', 'ih.copyUrl': '复制 URL', 'ih.delete': '删除', 'ih.confirmDelete': '确定删除这张图片？',
+  'ih.copiedMarkdown': '已复制 Markdown 链接', 'ih.copiedUrl': '已复制 URL', 'ih.deleted': '图片已删除', 'ih.loadFailed': '图片列表载入失败',
+  'ih.uploadFailed': '上传失败：{error}', 'ih.deleteFailed': '删除失败：{error}', 'ih.noPublicUrl': '未设置 R2_PUBLIC_URL，链接使用 S3 端点生成，可能无法公开访问。',
+  'sg.ready': '必需配置已齐全', 'sg.missingWarning': '请先补齐环境变量并重新部署', 'sg.readyDescription': '此页面只显示配置状态，不会读取或显示 Token、密码和密钥。', 'sg.missingDescription': '尚缺少：{names}',
+  'sg.stepsTitle': 'Vercel 配置步骤', 'sg.step1': '打开 Vercel 项目，进入 Settings → Environment Variables。', 'sg.step2': '按下表添加变量，并选择 Production / Preview 环境。', 'sg.step3': '保存后重新部署；变量变更不会自动应用到旧部署。', 'sg.step4': '完成后回到此页检查状态，再使用左下角的退出与登录功能验证账号。',
+  'sg.generatorTitle': '密钥与密码哈希生成器', 'sg.generatorInfo': '所有计算只在当前浏览器中完成', 'sg.generatorDescription': '生成结果不会发送给 FlyBlog Admin。复制到 Vercel 后请关闭页面，不要将结果提交到代码仓库。',
+  'sg.secretHint': '生成 256 位随机登录签名密钥。', 'sg.secretPlaceholder': '点击右侧按钮生成', 'sg.regenerate': '重新生成', 'sg.generate': '生成',
+  'sg.copied': '已复制', 'sg.copy': '复制', 'sg.hashHint': '输入后台登录密码，生成带随机盐的 PBKDF2-SHA256 哈希；原密码不会保存。',
+  'sg.hashPlaceholder': '输入要使用的登录密码', 'sg.hashButton': '生成哈希', 'sg.hashResultPlaceholder': '生成后的哈希会显示在这里',
+  'sg.tokenTutorial': 'GITHUB_TOKEN 获取教程', 'sg.tokenStep1': '登录 GitHub，打开新建 Fine-grained personal access token。', 'sg.tokenStep2': '填写名称和有效期；Repository access 选择“Only select repositories”，然后只勾选博客仓库。', 'sg.tokenStep3': '在 Repository permissions 中，将 Contents 设置为“Read and write”；Metadata 保持默认的只读权限即可。', 'sg.tokenStep4': '点击 Generate token，立即复制生成的值并填入 Vercel 的 GITHUB_TOKEN。GitHub 通常只展示一次完整 Token。', 'sg.tokenStep5': '将仓库的 owner/repository 填入 GITHUB_REPOSITORY，保存变量后重新部署。',
+  'sg.orgWarning': '组织仓库可能需要管理员批准或 SSO 授权', 'sg.orgWarningDesc': '如果文章仍无法读取，请在 GitHub Token 设置页检查资源所有者、仓库范围和组织授权状态。',
+  'sg.tokenDocs': '查看 GitHub 官方 Token 文档', 'sg.envTitle': '环境变量', 'sg.footerNote': '所有敏感值只应保存在部署平台的 Secret / 加密环境变量中，不要提交到 Git 仓库，也不要添加会暴露给浏览器的前缀。',
+  'sg.required': '必需', 'sg.optional': '可选', 'sg.either': '二选一', 'sg.aiOptional': 'AI 可选', 'sg.r2Optional': '图床可选',
+  'sg.var.SECRET_KEY': '用于签名登录 Cookie 的长期随机密钥，可使用下方工具安全生成。', 'sg.var.ADMIN_USERNAME': '后台登录用户名。',
+  'sg.var.ADMIN_PASSWORD_HASH': '推荐使用下方工具由登录密码生成 PBKDF2-SHA256 哈希。', 'sg.var.ADMIN_PASSWORD': '无法生成哈希时可使用登录明文密码；请仅保存在部署平台加密环境变量中。',
+  'sg.var.GITHUB_TOKEN': '仅授予目标博客仓库 Contents 读写权限的细粒度 GitHub Token，获取步骤见下方教程。', 'sg.var.GITHUB_REPOSITORY': '目标仓库，格式 owner/repository。',
+  'sg.var.GITHUB_BRANCH': '文章写入分支，默认 main。', 'sg.var.POSTS_PATH': '文章目录，默认 source/_posts。', 'sg.var.POST_EXTENSIONS': '可编辑扩展名，默认 .md,.markdown。',
+  'sg.var.SESSION_AGE': '登录有效秒数，默认 604800（7 天）。', 'sg.var.COOKIE_SECURE': 'Vercel 自动启用安全 Cookie；其他 HTTPS 环境可设为 1。',
+  'sg.var.LANGUAGE': '界面语言：zh（中文）、en（English）、de（Deutsch），默认 zh。', 'sg.var.LLM_API_KEY': '大模型服务的 API Key；仅由服务端读取。',
+  'sg.var.LLM_MODEL': '用于文章优化的模型名称。', 'sg.var.LLM_BASE_URL': 'OpenAI 兼容接口地址，默认 https://api.openai.com/v1。',
+  'sg.var.LLM_API_STYLE': 'auto、chat 或 responses；默认 auto，会在接口不兼容时自动回退。',
+  'sg.var.R2_ACCOUNT_ID': 'Cloudflare 账户 ID，用于构造 R2 S3 端点。', 'sg.var.R2_ACCESS_KEY_ID': 'R2 API Token 的 Access Key ID。', 'sg.var.R2_SECRET_ACCESS_KEY': 'R2 API Token 的 Secret Access Key，仅由服务端读取。',
+  'sg.var.R2_BUCKET': '默认存储桶；拖拽上传的图片会写入此桶。', 'sg.var.R2_ENDPOINT': '可选，R2 S3 端点，默认 https://<ACCOUNT_ID>.r2.cloudflarestorage.com。', 'sg.var.R2_PUBLIC_URL': '可选，公开访问地址，例如自定义域名或 pub-*.r2.dev；用于生成 Markdown 图片链接。',
+};
+
+const en: Dictionary = {
+  'menu.home': 'Home', 'menu.posts': 'Posts', 'menu.graph': 'Graph', 'menu.images': 'Image Hosting', 'menu.settings': 'Settings',
+  'header.logout': 'Log out', 'header.closeMenu': 'Close menu',
+  'login.title': 'Log in', 'login.username': 'Username', 'login.password': 'Password', 'login.submit': 'Log in', 'login.failed': 'Login failed',
+  'error.requestFailed': 'Request failed', 'error.loadPosts': 'Failed to load posts', 'error.save': 'Save failed', 'error.delete': 'Delete failed', 'error.aiOptimize': 'AI optimization failed',
+  'draft.restored': 'Restored', 'draft.savedAt': 'Draft saved automatically ({time})', 'draft.localOnly': 'Changes are saved automatically in this browser',
+  'editor.titleRequired': 'Please enter a title', 'editor.saved': 'Post saved to GitHub; edit time updated', 'editor.deleted': 'Post deleted',
+  'editor.back': 'Back to posts', 'editor.editTitle': 'Edit post', 'editor.newTitle': 'New post', 'editor.delete': 'Delete', 'editor.ai': 'AI optimize', 'editor.save': 'Save & commit',
+  'editor.titleLabel': 'Title', 'editor.titlePlaceholder': 'Enter a title; a filename is generated automatically', 'editor.categoriesTags': 'Categories & tags',
+  'editor.categories': 'Categories', 'editor.tags': 'Tags', 'editor.enterToAdd': 'Press Enter to add', 'editor.body': 'Markdown body',
+  'confirm.deleteTitle': 'Delete this post?', 'confirm.deleteDescription': 'It can still be restored from Git history.',
+  'ai.title': 'AI article optimization', 'ai.close': 'Close', 'ai.apply': 'Apply to post', 'ai.generate': 'Generate suggestion',
+  'ai.previewFirst': 'Preview first, then apply', 'ai.previewDescription': 'Based on the Apply Edit workflow of the Obsidian AI writing plugin: the model only generates a suggestion and never saves or overwrites GitHub content directly.',
+  'ai.modeGenerate': 'Generate title & content', 'ai.modeProofread': 'Proofread', 'ai.modeRewrite': 'Improve structure & wording', 'ai.modeConcise': 'Make concise', 'ai.modeOutline': 'Optimize title & outline',
+  'ai.instructionGenerate': 'Add topic, key points, tone, etc.', 'ai.instruction': 'Optional: extra requirements, e.g. “keep technical terms unchanged”',
+  'ai.current': 'Current post', 'ai.suggestion': 'AI suggestion', 'ai.generating': 'Generating…', 'ai.selectMode': 'Choose a mode to generate a suggestion',
+  'ai.bodyRequired': 'Enter the text to process', 'ai.requirementRequired': 'Enter writing requirements or source text', 'ai.applied': 'Suggestion applied — review before saving',
+  'home.title': 'Dashboard', 'home.subtitle': 'Review your blog data and start your next post.', 'home.newPost': 'New post',
+  'home.articleCount': 'Posts', 'home.categories': 'Categories', 'home.tags': 'Tags', 'home.dated': 'Dated',
+  'home.categoryDistribution': 'Category distribution', 'home.commonTags': 'Common tags', 'home.emptyCategories': 'No categories', 'home.emptyTags': 'No tags',
+  'home.recentPosts': 'Recent posts', 'home.viewAll': 'View all', 'home.titleCol': 'Title', 'home.editDateCol': 'Edited', 'home.edit': 'Edit',
+  'posts.title': 'Posts', 'posts.new': 'New', 'posts.refresh': 'Refresh', 'posts.search': 'Search title, category or tag', 'posts.retry': 'Retry',
+  'posts.titleCol': 'Title', 'posts.categoriesCol': 'Categories', 'posts.tagsCol': 'Tags', 'posts.editDateCol': 'Edited', 'posts.actionsCol': 'Actions',
+  'posts.edit': 'Edit', 'posts.delete': 'Delete', 'posts.loading': 'Loading posts from GitHub…', 'posts.noMatch': 'No matching posts', 'posts.empty': 'No posts',
+  'posts.editAria': 'Edit {title}', 'posts.deleteAria': 'Delete {title}',
+  'setup.errorTitle': 'API service unavailable', 'setup.errorDescription': 'Cannot read the API status — make sure the deployment includes Node.js API Functions, then retry.', 'setup.retry': 'Re-check', 'setup.title': 'FlyBlog Admin setup',
+  'md.placeholder': 'Start writing…', 'md.undo': 'Undo (Ctrl/⌘+Z)', 'md.redo': 'Redo (Ctrl/⌘+Shift+Z)',
+  'md.bulletList': 'Bullet list', 'md.orderedList': 'Ordered list', 'md.taskList': 'Task list', 'md.link': 'Link (Ctrl/⌘+K)', 'md.insertImage': 'Insert image', 'md.insertTable': 'Insert table', 'md.divider': 'Divider',
+  'md.codeLanguage': 'Code language', 'md.insertCode': 'Insert {language} code block', 'md.addRow': 'Add row below', 'md.deleteRow': 'Delete row', 'md.addColumn': 'Add column after', 'md.deleteColumn': 'Delete column (keep at least two)',
+  'md.uploading': 'Uploading images…', 'md.uploaded': 'Uploaded and inserted {count} image(s)', 'md.notConfigured': 'Image hosting is not configured — set up R2 in Settings first', 'md.uploadFailed': 'Image upload failed: {error}',
+  'graph.search': 'Search posts, categories or tags', 'graph.article': 'Post', 'graph.category': 'Category', 'graph.tag': 'Tag',
+  'graph.depth': 'Local graph depth', 'graph.layers': '{n} layer(s)', 'graph.global': 'Back to global graph', 'graph.refresh': 'Refresh', 'graph.fit': 'Fit to canvas',
+  'graph.empty': 'No article relationships to show', 'graph.edit': 'Edit post', 'graph.local': 'View local graph', 'graph.unpin': 'Unpin',
+  'graph.hint': 'Drag nodes or the canvas, scroll to zoom, double-click a post to edit',
+  'cc.title': 'Writing contributions (last 12 months)', 'cc.total': '{total} posts', 'cc.weekdays': 'M,W,F', 'cc.aria': 'Daily writing count for the last 12 months',
+  'cc.dayAria': '{date}: {count} posts', 'cc.dayTitle': '{date}: {count} posts', 'cc.none': 'no posts', 'cc.less': 'Less', 'cc.more': 'More', 'cc.months': 'Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec',
+  'ih.notConfiguredTitle': 'Image hosting is not configured', 'ih.notConfiguredDesc': 'Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY in your deployment and redeploy to load R2 buckets automatically.',
+  'ih.bucket': 'Bucket', 'ih.selectBucket': 'Select bucket', 'ih.refresh': 'Refresh', 'ih.upload': 'Upload images', 'ih.dragUpload': 'Drag & drop or click to upload images',
+  'ih.uploading': 'Uploading…', 'ih.objects': 'Images', 'ih.emptyObjects': 'No images yet — upload some', 'ih.loadMore': 'Load more',
+  'ih.copyMarkdown': 'Copy Markdown link', 'ih.copyUrl': 'Copy URL', 'ih.delete': 'Delete', 'ih.confirmDelete': 'Delete this image?',
+  'ih.copiedMarkdown': 'Markdown link copied', 'ih.copiedUrl': 'URL copied', 'ih.deleted': 'Image deleted', 'ih.loadFailed': 'Failed to load images',
+  'ih.uploadFailed': 'Upload failed: {error}', 'ih.deleteFailed': 'Delete failed: {error}', 'ih.noPublicUrl': 'R2_PUBLIC_URL is not set — links use the S3 endpoint and may not be publicly accessible.',
+  'sg.ready': 'Required configuration complete', 'sg.missingWarning': 'Complete the environment variables and redeploy', 'sg.readyDescription': 'This page only shows configuration status; it never reads or displays tokens, passwords or keys.', 'sg.missingDescription': 'Missing: {names}',
+  'sg.stepsTitle': 'Vercel configuration steps', 'sg.step1': 'Open the Vercel project and go to Settings → Environment Variables.', 'sg.step2': 'Add the variables below and select Production / Preview environments.', 'sg.step3': 'Save and redeploy; variable changes do not apply to existing deployments.', 'sg.step4': 'Then return here to check the status and verify your account with the logout/login controls.',
+  'sg.generatorTitle': 'Secret & password hash generator', 'sg.generatorInfo': 'All computation happens in your browser', 'sg.generatorDescription': 'Generated values never leave your browser. Copy them into Vercel, close the page and never commit them to the repository.',
+  'sg.secretHint': 'Generate a 256-bit random signing key.', 'sg.secretPlaceholder': 'Click the button to generate', 'sg.regenerate': 'Regenerate', 'sg.generate': 'Generate',
+  'sg.copied': 'Copied', 'sg.copy': 'Copy', 'sg.hashHint': 'Enter the login password to generate a salted PBKDF2-SHA256 hash; the plain password is never stored.',
+  'sg.hashPlaceholder': 'Enter the password to hash', 'sg.hashButton': 'Generate hash', 'sg.hashResultPlaceholder': 'The generated hash appears here',
+  'sg.tokenTutorial': 'GITHUB_TOKEN tutorial', 'sg.tokenStep1': 'Sign in to GitHub and open Create a new fine-grained personal access token.', 'sg.tokenStep2': 'Enter a name and expiration; under Repository access choose “Only select repositories” and select only the blog repository.', 'sg.tokenStep3': 'Under Repository permissions set Contents to “Read and write”; Metadata can stay at the default read-only.', 'sg.tokenStep4': 'Click Generate token, copy the value immediately and paste it into GITHUB_TOKEN in Vercel. GitHub usually shows the full token only once.', 'sg.tokenStep5': 'Enter the repository’s owner/repository into GITHUB_REPOSITORY, save the variables and redeploy.',
+  'sg.orgWarning': 'Organization repositories may require admin approval or SSO authorization', 'sg.orgWarningDesc': 'If posts still fail to load, check the resource owner, repository scope and organization authorization in your GitHub token settings.',
+  'sg.tokenDocs': 'View GitHub’s official token docs', 'sg.envTitle': 'Environment variables', 'sg.footerNote': 'Keep all secrets in the platform’s encrypted environment variables; never commit them and never expose them with browser-visible prefixes.',
+  'sg.required': 'Required', 'sg.optional': 'Optional', 'sg.either': 'One of', 'sg.aiOptional': 'AI optional', 'sg.r2Optional': 'Image hosting optional',
+  'sg.var.SECRET_KEY': 'Long random secret used to sign login cookies; generate it safely below.', 'sg.var.ADMIN_USERNAME': 'Admin login username.',
+  'sg.var.ADMIN_PASSWORD_HASH': 'Recommended: generate a PBKDF2-SHA256 hash from the login password with the tool below.', 'sg.var.ADMIN_PASSWORD': 'Plain login password, for when you cannot generate a hash; store only in encrypted environment variables.',
+  'sg.var.GITHUB_TOKEN': 'Fine-grained GitHub token with Contents read/write access to the blog repository only; see the tutorial below.', 'sg.var.GITHUB_REPOSITORY': 'Target repository in owner/repository format.',
+  'sg.var.GITHUB_BRANCH': 'Branch for posts, default main.', 'sg.var.POSTS_PATH': 'Posts directory, default source/_posts.', 'sg.var.POST_EXTENSIONS': 'Editable extensions, default .md,.markdown.',
+  'sg.var.SESSION_AGE': 'Login validity in seconds, default 604800 (7 days).', 'sg.var.COOKIE_SECURE': 'Vercel enables secure cookies automatically; set to 1 for other HTTPS environments.',
+  'sg.var.LANGUAGE': 'UI language: zh (Chinese), en (English), de (German); default zh.', 'sg.var.LLM_API_KEY': 'API key for the LLM service; read server-side only.',
+  'sg.var.LLM_MODEL': 'Model name used for article optimization.', 'sg.var.LLM_BASE_URL': 'OpenAI-compatible endpoint, default https://api.openai.com/v1.',
+  'sg.var.LLM_API_STYLE': 'auto, chat or responses; default auto, falls back when the endpoint is incompatible.',
+  'sg.var.R2_ACCOUNT_ID': 'Cloudflare account ID used to build the R2 S3 endpoint.', 'sg.var.R2_ACCESS_KEY_ID': 'Access Key ID of the R2 API token.', 'sg.var.R2_SECRET_ACCESS_KEY': 'Secret Access Key of the R2 API token; read server-side only.',
+  'sg.var.R2_BUCKET': 'Default bucket; drag-and-drop uploads are written here.', 'sg.var.R2_ENDPOINT': 'Optional R2 S3 endpoint, default https://<ACCOUNT_ID>.r2.cloudflarestorage.com.', 'sg.var.R2_PUBLIC_URL': 'Optional public base URL, e.g. a custom domain or pub-*.r2.dev; used for Markdown image links.',
+};
+
+const de: Dictionary = {
+  'menu.home': 'Startseite', 'menu.posts': 'Beiträge', 'menu.graph': 'Graph', 'menu.images': 'Bildablage', 'menu.settings': 'Einstellungen',
+  'header.logout': 'Abmelden', 'header.closeMenu': 'Menü schließen',
+  'login.title': 'Anmelden', 'login.username': 'Benutzername', 'login.password': 'Passwort', 'login.submit': 'Anmelden', 'login.failed': 'Anmeldung fehlgeschlagen',
+  'error.requestFailed': 'Anfrage fehlgeschlagen', 'error.loadPosts': 'Beiträge konnten nicht geladen werden', 'error.save': 'Speichern fehlgeschlagen', 'error.delete': 'Löschen fehlgeschlagen', 'error.aiOptimize': 'KI-Optimierung fehlgeschlagen',
+  'draft.restored': 'Wiederhergestellt', 'draft.savedAt': 'Entwurf automatisch gespeichert ({time})', 'draft.localOnly': 'Änderungen werden automatisch in diesem Browser gespeichert',
+  'editor.titleRequired': 'Bitte einen Titel eingeben', 'editor.saved': 'Beitrag auf GitHub gespeichert; Bearbeitungszeit aktualisiert', 'editor.deleted': 'Beitrag gelöscht',
+  'editor.back': 'Zurück zu den Beiträgen', 'editor.editTitle': 'Beitrag bearbeiten', 'editor.newTitle': 'Neuer Beitrag', 'editor.delete': 'Löschen', 'editor.ai': 'KI-Optimierung', 'editor.save': 'Speichern & committen',
+  'editor.titleLabel': 'Titel', 'editor.titlePlaceholder': 'Titel eingeben; ein Dateiname wird automatisch erzeugt', 'editor.categoriesTags': 'Kategorien & Tags',
+  'editor.categories': 'Kategorien', 'editor.tags': 'Tags', 'editor.enterToAdd': 'Eingeben und Enter drücken', 'editor.body': 'Markdown-Inhalt',
+  'confirm.deleteTitle': 'Diesen Beitrag löschen?', 'confirm.deleteDescription': 'Er kann aus dem Git-Verlauf wiederhergestellt werden.',
+  'ai.title': 'KI-Artikeloptimierung', 'ai.close': 'Schließen', 'ai.apply': 'Auf Beitrag anwenden', 'ai.generate': 'Vorschlag generieren',
+  'ai.previewFirst': 'Erst Vorschau, dann anwenden', 'ai.previewDescription': 'Nach dem Apply-Edit-Workflow des Obsidian-KI-Plugins: Das Modell erzeugt nur einen Vorschlag und speichert oder überschreibt GitHub-Inhalte nie direkt.',
+  'ai.modeGenerate': 'Titel und Inhalt generieren', 'ai.modeProofread': 'Korrekturlesen', 'ai.modeRewrite': 'Struktur & Formulierung verbessern', 'ai.modeConcise': 'Straffen', 'ai.modeOutline': 'Titel & Gliederung optimieren',
+  'ai.instructionGenerate': 'Thema, Stichpunkte, Stil usw. ergänzen', 'ai.instruction': 'Optional: zusätzliche Anforderungen, z. B. „Fachbegriffe beibehalten“',
+  'ai.current': 'Aktueller Beitrag', 'ai.suggestion': 'KI-Vorschlag', 'ai.generating': 'Wird generiert…', 'ai.selectMode': 'Modus wählen, um einen Vorschlag zu generieren',
+  'ai.bodyRequired': 'Bitte Text für die KI eingeben', 'ai.requirementRequired': 'Bitte Schreibanforderungen oder Quelltext eingeben', 'ai.applied': 'Vorschlag angewendet — vor dem Speichern prüfen',
+  'home.title': 'Übersicht', 'home.subtitle': 'Blog-Daten ansehen und den nächsten Beitrag beginnen.', 'home.newPost': 'Neuer Beitrag',
+  'home.articleCount': 'Beiträge', 'home.categories': 'Kategorien', 'home.tags': 'Tags', 'home.dated': 'Mit Datum',
+  'home.categoryDistribution': 'Kategorien-Verteilung', 'home.commonTags': 'Häufige Tags', 'home.emptyCategories': 'Keine Kategorien', 'home.emptyTags': 'Keine Tags',
+  'home.recentPosts': 'Letzte Beiträge', 'home.viewAll': 'Alle anzeigen', 'home.titleCol': 'Titel', 'home.editDateCol': 'Bearbeitet', 'home.edit': 'Bearbeiten',
+  'posts.title': 'Beiträge', 'posts.new': 'Neu', 'posts.refresh': 'Aktualisieren', 'posts.search': 'Titel, Kategorie oder Tag suchen', 'posts.retry': 'Erneut versuchen',
+  'posts.titleCol': 'Titel', 'posts.categoriesCol': 'Kategorien', 'posts.tagsCol': 'Tags', 'posts.editDateCol': 'Bearbeitet', 'posts.actionsCol': 'Aktionen',
+  'posts.edit': 'Bearbeiten', 'posts.delete': 'Löschen', 'posts.loading': 'Beiträge werden von GitHub geladen…', 'posts.noMatch': 'Keine passenden Beiträge', 'posts.empty': 'Keine Beiträge',
+  'posts.editAria': '{title} bearbeiten', 'posts.deleteAria': '{title} löschen',
+  'setup.errorTitle': 'API-Dienst nicht verfügbar', 'setup.errorDescription': 'Der API-Status kann nicht gelesen werden — prüfen Sie, ob die Bereitstellung Node.js-API-Funktionen enthält, und versuchen Sie es erneut.', 'setup.retry': 'Erneut prüfen', 'setup.title': 'FlyBlog Admin-Einrichtung',
+  'md.placeholder': 'Zu schreiben beginnen…', 'md.undo': 'Rückgängig (Ctrl/⌘+Z)', 'md.redo': 'Wiederholen (Ctrl/⌘+Shift+Z)',
+  'md.bulletList': 'Aufzählungsliste', 'md.orderedList': 'Nummerierte Liste', 'md.taskList': 'Aufgabenliste', 'md.link': 'Link (Ctrl/⌘+K)', 'md.insertImage': 'Bild einfügen', 'md.insertTable': 'Tabelle einfügen', 'md.divider': 'Trennlinie',
+  'md.codeLanguage': 'Codesprache', 'md.insertCode': '{language}-Codeblock einfügen', 'md.addRow': 'Zeile darunter hinzufügen', 'md.deleteRow': 'Zeile löschen', 'md.addColumn': 'Spalte danach hinzufügen', 'md.deleteColumn': 'Spalte löschen (mindestens zwei behalten)',
+  'md.uploading': 'Bilder werden hochgeladen…', 'md.uploaded': '{count} Bild(er) hochgeladen und eingefügt', 'md.notConfigured': 'Bildablage ist nicht konfiguriert — bitte zuerst R2 in den Einstellungen einrichten', 'md.uploadFailed': 'Bild-Upload fehlgeschlagen: {error}',
+  'graph.search': 'Beiträge, Kategorien oder Tags suchen', 'graph.article': 'Beitrag', 'graph.category': 'Kategorie', 'graph.tag': 'Tag',
+  'graph.depth': 'Tiefe des Teilgraphen', 'graph.layers': '{n} Ebenen', 'graph.global': 'Zurück zum Gesamtgraphen', 'graph.refresh': 'Aktualisieren', 'graph.fit': 'An Zeichenfläche anpassen',
+  'graph.empty': 'Keine Artikel-Beziehungen vorhanden', 'graph.edit': 'Beitrag bearbeiten', 'graph.local': 'Teilgraph anzeigen', 'graph.unpin': 'Lösen',
+  'graph.hint': 'Knoten oder Zeichenfläche ziehen, mit dem Mausrad zoomen, Artikel per Doppelklick bearbeiten',
+  'cc.title': 'Schreibleistung der letzten 12 Monate', 'cc.total': '{total} Beiträge', 'cc.weekdays': 'Mo,Mi,Fr', 'cc.aria': 'Tägliche Schreibleistung der letzten 12 Monate',
+  'cc.dayAria': '{date}: {count} Beiträge', 'cc.dayTitle': '{date}: {count} Beiträge', 'cc.none': 'keine Beiträge', 'cc.less': 'Weniger', 'cc.more': 'Mehr', 'cc.months': 'Jan,Feb,Mär,Apr,Mai,Jun,Jul,Aug,Sep,Okt,Nov,Dez',
+  'ih.notConfiguredTitle': 'Bildablage nicht konfiguriert', 'ih.notConfiguredDesc': 'R2_ACCOUNT_ID, R2_ACCESS_KEY_ID und R2_SECRET_ACCESS_KEY in der Bereitstellung hinterlegen und neu bereitstellen, um R2-Buckets automatisch zu laden.',
+  'ih.bucket': 'Bucket', 'ih.selectBucket': 'Bucket auswählen', 'ih.refresh': 'Aktualisieren', 'ih.upload': 'Bilder hochladen', 'ih.dragUpload': 'Bilder ziehen oder klicken zum Hochladen',
+  'ih.uploading': 'Wird hochgeladen…', 'ih.objects': 'Bilder', 'ih.emptyObjects': 'Noch keine Bilder — hochladen', 'ih.loadMore': 'Mehr laden',
+  'ih.copyMarkdown': 'Markdown-Link kopieren', 'ih.copyUrl': 'URL kopieren', 'ih.delete': 'Löschen', 'ih.confirmDelete': 'Dieses Bild löschen?',
+  'ih.copiedMarkdown': 'Markdown-Link kopiert', 'ih.copiedUrl': 'URL kopiert', 'ih.deleted': 'Bild gelöscht', 'ih.loadFailed': 'Bilder konnten nicht geladen werden',
+  'ih.uploadFailed': 'Upload fehlgeschlagen: {error}', 'ih.deleteFailed': 'Löschen fehlgeschlagen: {error}', 'ih.noPublicUrl': 'R2_PUBLIC_URL ist nicht gesetzt — Links nutzen den S3-Endpunkt und sind möglicherweise nicht öffentlich zugänglich.',
+  'sg.ready': 'Erforderliche Konfiguration vollständig', 'sg.missingWarning': 'Umgebungsvariablen ergänzen und neu bereitstellen', 'sg.readyDescription': 'Diese Seite zeigt nur den Konfigurationsstatus; Token, Passwörter und Schlüssel werden nie gelesen oder angezeigt.', 'sg.missingDescription': 'Fehlend: {names}',
+  'sg.stepsTitle': 'Vercel-Konfigurationsschritte', 'sg.step1': 'Vercel-Projekt öffnen und zu Settings → Environment Variables gehen.', 'sg.step2': 'Variablen laut Tabelle hinzufügen und Production-/Preview-Umgebungen wählen.', 'sg.step3': 'Speichern und neu bereitstellen; Änderungen gelten nicht für bestehende Deployments.', 'sg.step4': 'Danach hierher zurückkehren, den Status prüfen und das Konto mit Abmelden/Anmelden verifizieren.',
+  'sg.generatorTitle': 'Generator für Secret und Passwort-Hash', 'sg.generatorInfo': 'Alle Berechnungen erfolgen in Ihrem Browser', 'sg.generatorDescription': 'Generierte Werte verlassen Ihren Browser nicht. In Vercel einfügen, die Seite schließen und niemals committen.',
+  'sg.secretHint': 'Zufälligen 256-Bit-Signaturschlüssel generieren.', 'sg.secretPlaceholder': 'Zum Generieren klicken', 'sg.regenerate': 'Neu generieren', 'sg.generate': 'Generieren',
+  'sg.copied': 'Kopiert', 'sg.copy': 'Kopieren', 'sg.hashHint': 'Login-Passwort eingeben, um einen PBKDF2-SHA256-Hash mit Salt zu erzeugen; das Klartext-Passwort wird nicht gespeichert.',
+  'sg.hashPlaceholder': 'Passwort zum Hashen eingeben', 'sg.hashButton': 'Hash generieren', 'sg.hashResultPlaceholder': 'Der generierte Hash erscheint hier',
+  'sg.tokenTutorial': 'GITHUB_TOKEN-Anleitung', 'sg.tokenStep1': 'Bei GitHub anmelden und „Neues Fine-grained personal access token“ öffnen.', 'sg.tokenStep2': 'Name und Ablaufdatum eingeben; unter Repository access „Only select repositories“ wählen und nur das Blog-Repository auswählen.', 'sg.tokenStep3': 'Unter Repository permissions Contents auf „Read and write“ setzen; Metadata kann auf der Standard-Read-only-Berechtigung bleiben.', 'sg.tokenStep4': 'Auf Generate token klicken, den Wert sofort kopieren und in GITHUB_TOKEN in Vercel einfügen. GitHub zeigt das vollständige Token meist nur einmal.', 'sg.tokenStep5': 'Das owner/repository des Repositories in GITHUB_REPOSITORY eintragen, Variablen speichern und neu bereitstellen.',
+  'sg.orgWarning': 'Organisations-Repositories können Administrator-Freigabe oder SSO-Autorisierung erfordern', 'sg.orgWarningDesc': 'Wenn Beiträge weiterhin nicht laden, prüfen Sie Besitzer, Repository-Umfang und Organisationsfreigaben in den GitHub-Token-Einstellungen.',
+  'sg.tokenDocs': 'Offizielle GitHub-Token-Dokumentation ansehen', 'sg.envTitle': 'Umgebungsvariablen', 'sg.footerNote': 'Alle Geheimnisse nur in verschlüsselten Umgebungsvariablen aufbewahren, nie committen und nie mit browser-sichtbaren Präfixen exponieren.',
+  'sg.required': 'Erforderlich', 'sg.optional': 'Optional', 'sg.either': 'Eines von', 'sg.aiOptional': 'KI optional', 'sg.r2Optional': 'Bildablage optional',
+  'sg.var.SECRET_KEY': 'Langfristiger Zufallsschlüssel zum Signieren der Login-Cookies; unten sicher generieren.', 'sg.var.ADMIN_USERNAME': 'Admin-Benutzername.',
+  'sg.var.ADMIN_PASSWORD_HASH': 'Empfohlen: mit dem Tool unten aus dem Login-Passwort einen PBKDF2-SHA256-Hash erzeugen.', 'sg.var.ADMIN_PASSWORD': 'Klartext-Login-Passwort, falls kein Hash erzeugt werden kann; nur in verschlüsselten Umgebungsvariablen speichern.',
+  'sg.var.GITHUB_TOKEN': 'Feingranuliertes GitHub-Token mit Contents-Lese-/Schreibzugriff nur auf das Blog-Repository; siehe Anleitung unten.', 'sg.var.GITHUB_REPOSITORY': 'Ziel-Repository im Format owner/repository.',
+  'sg.var.GITHUB_BRANCH': 'Beitrags-Branch, Standard main.', 'sg.var.POSTS_PATH': 'Beitragsverzeichnis, Standard source/_posts.', 'sg.var.POST_EXTENSIONS': 'Bearbeitbare Endungen, Standard .md,.markdown.',
+  'sg.var.SESSION_AGE': 'Gültigkeit der Anmeldung in Sekunden, Standard 604800 (7 Tage).', 'sg.var.COOKIE_SECURE': 'Vercel aktiviert sichere Cookies automatisch; für andere HTTPS-Umgebungen auf 1 setzen.',
+  'sg.var.LANGUAGE': 'UI-Sprache: zh (Chinesisch), en (Englisch), de (Deutsch); Standard zh.', 'sg.var.LLM_API_KEY': 'API-Schlüssel für den LLM-Dienst; nur serverseitig gelesen.',
+  'sg.var.LLM_MODEL': 'Modellname für die Artikeloptimierung.', 'sg.var.LLM_BASE_URL': 'OpenAI-kompatibler Endpunkt, Standard https://api.openai.com/v1.',
+  'sg.var.LLM_API_STYLE': 'auto, chat oder responses; Standard auto, mit automatischem Fallback bei inkompatiblen Endpunkten.',
+  'sg.var.R2_ACCOUNT_ID': 'Cloudflare-Konto-ID für den R2-S3-Endpunkt.', 'sg.var.R2_ACCESS_KEY_ID': 'Access Key ID des R2-API-Tokens.', 'sg.var.R2_SECRET_ACCESS_KEY': 'Secret Access Key des R2-API-Tokens; nur serverseitig gelesen.',
+  'sg.var.R2_BUCKET': 'Standard-Bucket; Drag-and-Drop-Uploads werden hier gespeichert.', 'sg.var.R2_ENDPOINT': 'Optionaler R2-S3-Endpunkt, Standard https://<ACCOUNT_ID>.r2.cloudflarestorage.com.', 'sg.var.R2_PUBLIC_URL': 'Optionale öffentliche Basis-URL, z. B. eigene Domain oder pub-*.r2.dev; für Markdown-Bildlinks.',
+};
+
+export const dictionaries: Record<Language, Dictionary> = { zh, en, de };
+
+export function translate(language: Language, key: string, params?: Record<string, string | number>): string {
+  const template = dictionaries[language][key] ?? dictionaries.zh[key] ?? key;
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match));
+}
+
+export function createTranslator(language: Language): Translator {
+  return (key, params) => translate(language, key, params);
+}
+
+const I18nContext = createContext<Translator>(() => '');
+
+export function I18nProvider({ language, children }: { language: Language; children: ReactNode }) {
+  const translator = useMemo(() => createTranslator(language), [language]);
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : language;
+  }, [language]);
+  return <I18nContext.Provider value={translator}>{children}</I18nContext.Provider>;
+}
+
+export function useI18n() { return useContext(I18nContext); }

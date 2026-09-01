@@ -11,9 +11,12 @@ import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, placeholder, ty
 import { redo, undo } from '@codemirror/commands';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef, useState } from 'react';
+import { App as AntApp } from 'antd';
 import { editMarkdownTable, parseMarkdownTable, type TableAction } from './markdownTable';
+import { uploadImageFile } from './ImageHosting';
+import { useI18n } from './i18n';
 
-type Props = { value: string; onChange: (value: string) => void };
+type Props = { value: string; onChange: (value: string) => void; r2Configured?: boolean; defaultBucket?: string };
 
 const languages = [
   LanguageDescription.of({ name: 'JavaScript', alias: ['js', 'jsx'], load: async () => javascript({ jsx: true }) }),
@@ -38,9 +41,22 @@ class BulletWidget extends WidgetType {
   toDOM() { const bullet = document.createElement('span'); bullet.className = 'cm-live-bullet'; bullet.textContent = '•'; return bullet; }
 }
 
+class TaskWidget extends WidgetType {
+  constructor(readonly from: number, readonly to: number, readonly checked: boolean) { super(); }
+  eq(other: TaskWidget) { return this.from === other.from && this.to === other.to && this.checked === other.checked; }
+  toDOM(view: EditorView) {
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.className = 'cm-task-checkbox'; checkbox.checked = this.checked;
+    checkbox.setAttribute('aria-label', this.checked ? '已完成任务' : '未完成任务');
+    checkbox.addEventListener('change', () => { view.dispatch({ changes: { from: this.from, to: this.to, insert: checkbox.checked ? '[x]' : '[ ]' } }); view.focus(); });
+    return checkbox;
+  }
+  ignoreEvent() { return false; }
+}
+
 class TableWidget extends WidgetType {
   constructor(readonly from: number, readonly source: string) { super(); }
   eq(other: TableWidget) { return this.from === other.from && this.source === other.source; }
+  get estimatedHeight() { const parsed = parseMarkdownTable(this.source); return parsed ? 52 + parsed.rows.length * 42 : 48; }
   toDOM(view: EditorView) {
     const parsed = parseMarkdownTable(this.source); const shell = document.createElement('div'); const wrapper = document.createElement('div');
     shell.className = 'cm-table-preview-shell'; wrapper.className = 'cm-table-preview'; wrapper.title = '点击表格可编辑单元格'; shell.append(wrapper);
@@ -76,6 +92,10 @@ function livePreviewDecorations(view: EditorView) {
         const marker = view.state.doc.sliceString(node.from, node.to);
         if (/^[-*+]$/.test(marker)) decorations.push(Decoration.replace({ widget: new BulletWidget() }).range(node.from, node.to));
       }
+      if (node.name === 'TaskMarker' && node.from < node.to && !activeLines.has(lineNumber)) {
+        const marker = view.state.doc.sliceString(node.from, node.to);
+        decorations.push(Decoration.replace({ widget: new TaskWidget(node.from, node.to, /x/i.test(marker)) }).range(node.from, node.to));
+      }
       if (node.name === 'FencedCode') {
         const first = view.state.doc.lineAt(node.from).number;
         const last = view.state.doc.lineAt(Math.max(node.from, node.to - 1)).number;
@@ -88,7 +108,7 @@ function livePreviewDecorations(view: EditorView) {
       if (node.name === 'Table') {
         const active = view.state.selection.ranges.some((range) => range.empty ? range.from >= node.from && range.from < node.to : range.from < node.to && range.to > node.from);
         if (!active) {
-          decorations.push(Decoration.replace({ widget: new TableWidget(node.from, view.state.doc.sliceString(node.from, node.to)) }).range(node.from, node.to));
+          decorations.push(Decoration.replace({ widget: new TableWidget(node.from, view.state.doc.sliceString(node.from, node.to)), block: true }).range(node.from, node.to));
           return false;
         }
       }
@@ -157,13 +177,30 @@ const toolbar = [
   { label: '—', title: '分隔线', run: (view: EditorView) => insertBlock(view, '---\n') },
 ];
 
-export default function MarkdownEditor({ value, onChange }: Props) {
+export default function MarkdownEditor({ value, onChange, r2Configured = false, defaultBucket = '' }: Props) {
+  const t = useI18n(); const { message } = AntApp.useApp();
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | undefined>(undefined);
   const onChangeRef = useRef(onChange);
+  const uploadRef = useRef<(files: File[], editor: EditorView) => Promise<void>>(async () => undefined);
   const syncing = useRef(false);
   const [codeLanguage, setCodeLanguage] = useState('javascript');
   onChangeRef.current = onChange;
+  uploadRef.current = async (files, editor) => {
+    const images = files.filter((file) => file.type.startsWith('image/'));
+    if (!images.length) return;
+    if (!r2Configured) { message.warning(t('md.notConfigured')); return; }
+    const links: string[] = [];
+    try {
+      for (const file of images) {
+        const result = await uploadImageFile(file, localStorage.getItem('flyblog:r2bucket') || defaultBucket);
+        const alt = file.name.replace(/\.[^.]+$/, '') || 'image'; links.push(`![${alt}](${result.url})`);
+      }
+      const position = editor.state.selection.main.head; const prefix = position > 0 && editor.state.doc.sliceString(position - 1, position) !== '\n' ? '\n\n' : '';
+      editor.dispatch({ changes: { from: position, insert: `${prefix}${links.join('\n\n')}\n` }, selection: EditorSelection.cursor(position + prefix.length + links.join('\n\n').length + 1), scrollIntoView: true });
+      message.success(t('md.uploaded', { count: links.length })); editor.focus();
+    } catch (reason) { message.error(t('md.uploadFailed', { error: reason instanceof Error ? reason.message : t('error.requestFailed') })); }
+  };
 
   useEffect(() => {
     if (!host.current) return undefined;
@@ -177,6 +214,10 @@ export default function MarkdownEditor({ value, onChange }: Props) {
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ spellcheck: 'true', 'aria-label': 'Markdown 正文编辑器' }),
           placeholder('开始写正文…'), livePreview,
+          EditorView.domEventHandlers({
+            drop(event, current) { const files = Array.from(event.dataTransfer?.files || []).filter((file) => file.type.startsWith('image/')); if (!files.length) return false; event.preventDefault(); void uploadRef.current(files, current); return true; },
+            paste(event, current) { const files = Array.from(event.clipboardData?.files || []).filter((file) => file.type.startsWith('image/')); if (!files.length) return false; event.preventDefault(); void uploadRef.current(files, current); return true; },
+          }),
           keymap.of([
             { key: 'Mod-b', run: (current) => wrap(current, '**') },
             { key: 'Mod-i', run: (current) => wrap(current, '*') },

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, Input, Select, Space, Spin, Tag, Typography } from 'antd';
 import { CompressOutlined, ReloadOutlined } from '@ant-design/icons';
+import { useI18n } from './i18n';
 
 type NodeType = 'article' | 'category' | 'tag';
 type ApiNode = { id: string; label: string; type: NodeType; path?: string; degree: number };
@@ -10,9 +11,9 @@ type SimEdge = Omit<ApiEdge, 'source' | 'target'> & { source: SimNode; target: S
 type Graph = { nodes: ApiNode[]; edges: ApiEdge[] };
 
 const colors: Record<NodeType, string> = { article: '#315efb', category: '#d97706', tag: '#059669' };
-const labels: Record<NodeType, string> = { article: '文章', category: '分类', tag: '标签' };
 
 export default function GraphView({ onEdit }: { onEdit: (path: string) => void }) {
+  const t = useI18n(); const labels: Record<NodeType, string> = { article: t('graph.article'), category: t('graph.category'), tag: t('graph.tag') };
   const canvas = useRef<HTMLCanvasElement>(null); const frame = useRef(0); const simulation = useRef<{ nodes: SimNode[]; edges: SimEdge[] }>({ nodes: [], edges: [] });
   const camera = useRef({ x: 0, y: 0, scale: 1 }); const interaction = useRef<{ mode: 'node' | 'canvas'; node?: SimNode; x: number; y: number } | undefined>(undefined);
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [query, setQuery] = useState('');
@@ -56,12 +57,13 @@ export default function GraphView({ onEdit }: { onEdit: (path: string) => void }
   const startSimulation = useCallback((data: Graph) => {
     setSelected(undefined); setFocusId('');
     const nodes: SimNode[] = data.nodes.map((node, index) => ({ ...node, x: Math.cos(index * 2.4) * (70 + index * 2), y: Math.sin(index * 2.4) * (70 + index * 2), vx: 0, vy: 0 })); const map = new Map(nodes.map((node) => [node.id, node]));
-    const edges = data.edges.flatMap((edge) => { const source = map.get(edge.source); const target = map.get(edge.target); return source && target ? [{ ...edge, source, target }] : []; }); simulation.current = { nodes, edges }; let alpha = 1; cancelAnimationFrame(frame.current);
-    const tick = () => {
-      for (const node of nodes) { if (node.fixed) continue; node.vx += -node.x * .0007 * alpha; node.vy += -node.y * .0007 * alpha; }
+    const edges = data.edges.flatMap((edge) => { const source = map.get(edge.source); const target = map.get(edge.target); return source && target ? [{ ...edge, source, target }] : []; }); simulation.current = { nodes, edges }; let alpha = 1; let ticks = 0; cancelAnimationFrame(frame.current);
+    const box = canvas.current?.getBoundingClientRect(); camera.current = { x: (box?.width || 0) / 2, y: (box?.height || 0) / 2, scale: 1 };
+    const tick = (timestamp = performance.now()) => {
+      for (const [index, node] of nodes.entries()) { if (node.fixed) continue; node.vx += -node.x * .0007 * alpha + Math.sin(timestamp / 1600 + index * 1.7) * .0025; node.vy += -node.y * .0007 * alpha + Math.cos(timestamp / 1800 + index * 1.3) * .0025; }
       for (let i = 0; i < nodes.length; i += 1) for (let j = i + 1; j < nodes.length; j += 1) { const a = nodes[i], b = nodes[j]; const dx = b.x - a.x || .1, dy = b.y - a.y || .1, d2 = dx * dx + dy * dy, force = Math.min(1.5, 650 / d2) * alpha; if (!a.fixed) { a.vx -= dx * force / Math.sqrt(d2); a.vy -= dy * force / Math.sqrt(d2); } if (!b.fixed) { b.vx += dx * force / Math.sqrt(d2); b.vy += dy * force / Math.sqrt(d2); } }
       for (const edge of edges) { const dx = edge.target.x - edge.source.x, dy = edge.target.y - edge.source.y, distance = Math.hypot(dx, dy) || 1, force = (distance - (edge.type === 'link' ? 105 : 80)) * .006 * alpha; if (!edge.source.fixed) { edge.source.vx += dx / distance * force; edge.source.vy += dy / distance * force; } if (!edge.target.fixed) { edge.target.vx -= dx / distance * force; edge.target.vy -= dy / distance * force; } }
-      for (const node of nodes) if (!node.fixed) { node.vx *= .84; node.vy *= .84; node.x += node.vx; node.y += node.vy; } draw(); alpha *= .975; if (alpha > .025) frame.current = requestAnimationFrame(tick); else fit();
+      for (const node of nodes) if (!node.fixed) { node.vx *= .84; node.vy *= .84; node.x += node.vx; node.y += node.vy; } draw(); ticks += 1; alpha = Math.max(.04, alpha * .975); if (ticks === 36) fit(); frame.current = requestAnimationFrame(tick);
     }; tick();
   }, [draw, fit]);
 
@@ -71,6 +73,7 @@ export default function GraphView({ onEdit }: { onEdit: (path: string) => void }
   useEffect(() => { load(); return () => cancelAnimationFrame(frame.current); }, []);
   useEffect(() => { draw(); }, [draw, revision]);
   useEffect(() => { if (!simulation.current.nodes.length) return; const request = requestAnimationFrame(fit); return () => cancelAnimationFrame(request); }, [focusId, depth]);
+  useEffect(() => { const element = canvas.current; if (!element || typeof ResizeObserver === 'undefined') return undefined; const observer = new ResizeObserver(() => fit()); observer.observe(element); return () => observer.disconnect(); }, [fit, revision]);
 
   const point = (event: React.MouseEvent<HTMLCanvasElement> | React.PointerEvent<HTMLCanvasElement> | React.WheelEvent<HTMLCanvasElement>) => { const box = event.currentTarget.getBoundingClientRect(); return { x: event.clientX - box.left, y: event.clientY - box.top }; };
   const findNode = (screen: { x: number; y: number }) => { const active = new Set(types); const scope = scopedIds(); const world = { x: (screen.x - camera.current.x) / camera.current.scale, y: (screen.y - camera.current.y) / camera.current.scale }; return [...simulation.current.nodes].reverse().find((node) => active.has(node.type) && (!scope || scope.has(node.id)) && Math.hypot(node.x - world.x, node.y - world.y) < 15 / camera.current.scale); };
@@ -79,10 +82,10 @@ export default function GraphView({ onEdit }: { onEdit: (path: string) => void }
   const wheel = (event: React.WheelEvent<HTMLCanvasElement>) => { event.preventDefault(); const screen = point(event); const old = camera.current.scale; const next = Math.max(.2, Math.min(3, old * Math.exp(-event.deltaY * .001))); camera.current.x = screen.x - (screen.x - camera.current.x) * next / old; camera.current.y = screen.y - (screen.y - camera.current.y) * next / old; camera.current.scale = next; draw(); };
 
   return <div className="graph-page">
-    <Card className="graph-toolbar"><Space wrap><Input.Search allowClear placeholder="搜索文章、分类或标签" value={query} onChange={(event) => setQuery(event.target.value)} /><Checkbox.Group value={types} onChange={(value) => setTypes(value as NodeType[])}>{(['article', 'category', 'tag'] as NodeType[]).map((type) => <Checkbox key={type} value={type}>{labels[type]}</Checkbox>)}</Checkbox.Group><Select aria-label="局部图谱深度" value={depth} onChange={setDepth} options={[1, 2, 3].map((value) => ({ value, label: `${value} 层` }))} />{focusId && <Button onClick={() => setFocusId('')}>返回全局图谱</Button>}<Button icon={<ReloadOutlined />} onClick={load}>刷新</Button><Button icon={<CompressOutlined />} onClick={fit}>适应画布</Button></Space></Card>
+    <Card className="graph-toolbar"><Space wrap><Input.Search allowClear placeholder={t('graph.search')} value={query} onChange={(event) => setQuery(event.target.value)} /><Checkbox.Group value={types} onChange={(value) => setTypes(value as NodeType[])}>{(['article', 'category', 'tag'] as NodeType[]).map((type) => <Checkbox key={type} value={type}>{labels[type]}</Checkbox>)}</Checkbox.Group><Select aria-label={t('graph.depth')} value={depth} onChange={setDepth} options={[1, 2, 3].map((value) => ({ value, label: t('graph.layers', { n: value }) }))} />{focusId && <Button onClick={() => setFocusId('')}>{t('graph.global')}</Button>}<Button icon={<ReloadOutlined />} onClick={load}>{t('graph.refresh')}</Button><Button icon={<CompressOutlined />} onClick={fit}>{t('graph.fit')}</Button></Space></Card>
     {error && <Alert type="error" showIcon message={error} />}
-    <Card className="graph-card" styles={{ body: { padding: 0, height: '100%' } }}>{loading ? <div className="graph-loading"><Spin /></div> : simulation.current.nodes.length ? <canvas ref={canvas} className="graph-canvas" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={() => { interaction.current = undefined; }} onPointerCancel={() => { interaction.current = undefined; }} onWheel={wheel} onDoubleClick={(event) => { const node = findNode(point(event)); if (node?.path) onEdit(node.path); }} /> : <Empty description="没有可展示的文章关系" />}</Card>
-    {selected && <Card size="small"><Space wrap><Tag color={colors[selected.type]}>{labels[selected.type]}</Tag><Typography.Text strong>{selected.label}</Typography.Text>{selected.path && <Button type="primary" onClick={() => onEdit(selected.path!)}>编辑文章</Button>}{selected.type === 'article' && focusId !== selected.id && <Button onClick={() => setFocusId(selected.id)}>查看局部图谱</Button>}<Button onClick={() => { selected.fixed = false; setSelected(undefined); }}>取消固定</Button></Space></Card>}
-    <Space wrap className="graph-legend"><Tag color={colors.article}>文章</Tag><Tag color={colors.category}>分类</Tag><Tag color={colors.tag}>标签</Tag><Typography.Text type="secondary">拖拽节点或画布，滚轮缩放，双击文章进入编辑</Typography.Text></Space>
+    <Card className="graph-card" styles={{ body: { padding: 0, height: '100%' } }}>{loading ? <div className="graph-loading"><Spin /></div> : simulation.current.nodes.length ? <canvas ref={canvas} className="graph-canvas" onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={() => { interaction.current = undefined; }} onPointerCancel={() => { interaction.current = undefined; }} onWheel={wheel} onDoubleClick={(event) => { const node = findNode(point(event)); if (node?.path) onEdit(node.path); }} /> : <Empty description={t('graph.empty')} />}</Card>
+    {selected && <Card size="small"><Space wrap><Tag color={colors[selected.type]}>{labels[selected.type]}</Tag><Typography.Text strong>{selected.label}</Typography.Text>{selected.path && <Button type="primary" onClick={() => onEdit(selected.path!)}>{t('graph.edit')}</Button>}{selected.type === 'article' && focusId !== selected.id && <Button onClick={() => setFocusId(selected.id)}>{t('graph.local')}</Button>}<Button onClick={() => { selected.fixed = false; setSelected(undefined); }}>{t('graph.unpin')}</Button></Space></Card>}
+    <Space wrap className="graph-legend"><Tag color={colors.article}>{labels.article}</Tag><Tag color={colors.category}>{labels.category}</Tag><Tag color={colors.tag}>{labels.tag}</Tag><Typography.Text type="secondary">{t('graph.hint')}</Typography.Text></Space>
   </div>;
 }

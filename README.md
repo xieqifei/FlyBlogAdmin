@@ -57,10 +57,17 @@ npm run preview
 | `POSTS_PATH` | 否 | 文章目录，默认 `source/_posts` |
 | `POST_EXTENSIONS` | 否 | 可编辑扩展名，默认 `.md,.markdown` |
 | `SESSION_AGE` | 否 | 登录有效秒数，默认 7 天 |
+| `LANGUAGE` | 否 | 界面语言：`zh`、`en` 或 `de`，默认 `zh` |
 | `LLM_API_KEY` | AI 可选 | OpenAI 兼容大模型服务的 API Key |
 | `LLM_MODEL` | AI 可选 | 模型名称 |
 | `LLM_BASE_URL` | AI 可选 | 接口根地址，默认 `https://api.openai.com/v1` |
 | `LLM_API_STYLE` | AI 可选 | `auto`、`chat` 或 `responses`，默认自动兼容 |
+| `R2_ACCOUNT_ID` | 图床可选 | Cloudflare 账户 ID |
+| `R2_ACCESS_KEY_ID` | 图床可选 | R2 API Token 的 Access Key ID |
+| `R2_SECRET_ACCESS_KEY` | 图床可选 | R2 API Token 的 Secret Access Key |
+| `R2_BUCKET` | 图床可选 | 编辑器拖拽图片时使用的默认存储桶 |
+| `R2_ENDPOINT` | 图床可选 | 自定义 S3 兼容端点；默认由账户 ID 生成 R2 端点 |
+| `R2_PUBLIC_URL` | 图床可选 | 图片公开访问基础地址（自定义域名或 `r2.dev` 地址） |
 
 不要把 Token、密码或密钥提交到仓库，也不要为这些变量添加会将其暴露到浏览器的 `VITE_` 前缀。
 
@@ -85,6 +92,10 @@ npm run preview
 配置 `LLM_API_KEY` 和 `LLM_MODEL` 后，在文章编辑页面中选择“AI 优化”。可选择生成标题和内容、校对、改善结构、精简内容或优化大纲，并补充自定义要求。系统会展示原文和建议稿；只有点击“应用到文章”后，建议才进入编辑器，仍需再次点击“保存并提交”才会写入 GitHub。
 
 这一流程借鉴 Obsidian Smart Composer 的 Apply Edit 与提示模板体验：让用户控制上下文、预览建议并明确应用，而不是让模型直接改写远端文件。
+
+## Cloudflare R2 图床
+
+配置 `R2_ACCOUNT_ID`、`R2_ACCESS_KEY_ID` 和 `R2_SECRET_ACCESS_KEY` 后，左侧“图床”会通过标准 AWS S3 SDK 自动读取 R2 存储桶，支持上传、浏览、复制 Markdown 链接和删除图片。建议同时设置 `R2_BUCKET` 与 `R2_PUBLIC_URL`；编辑器会把拖入或粘贴的图片上传到默认桶，并在光标处插入 Markdown 图片链接。
 
 ## 安全说明
 

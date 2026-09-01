@@ -1,31 +1,40 @@
-import { Card, Typography } from 'antd';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Card, Select, Space, Typography } from 'antd';
 import { contributionCalendar } from './contributionData';
+import { useI18n } from './i18n';
 
 type Props = { dates: Array<string | undefined> };
 
 export default function ContributionCalendar({ dates }: Props) {
-  const calendar = contributionCalendar(dates);
+  const t = useI18n(); const currentYear = new Date().getFullYear();
+  const years = useMemo(() => [...new Set([currentYear, ...dates.flatMap((value) => { const match = value?.match(/^(\d{4})-/); return match ? [Number(match[1])] : []; })])].sort((a, b) => b - a), [dates, currentYear]);
+  const [year, setYear] = useState(currentYear); const scroll = useRef<HTMLDivElement>(null);
+  const calendar = contributionCalendar(dates, new Date(), year);
   const weeks = Array.from({ length: calendar.weeks }, (_, index) => calendar.days.slice(index * 7, index * 7 + 7));
+  const monthNames = t('cc.months').split(',');
+  useEffect(() => { if (year === currentYear && scroll.current) scroll.current.scrollLeft = scroll.current.scrollWidth; }, [year, currentYear]);
 
-  return <Card className="contribution-card" title="近一年创作贡献" extra={<Typography.Text type="secondary">共创作 {calendar.total} 篇</Typography.Text>}>
-    <div className="contribution-scroll">
+  return <Card className="contribution-card" title={t('cc.title')} extra={<Space wrap><Typography.Text type="secondary">{t('cc.total', { total: calendar.total })}</Typography.Text><Select aria-label="Year" value={year} onChange={setYear} options={years.map((value) => ({ value, label: String(value) }))} /></Space>}>
+    <div className="contribution-scroll" ref={scroll}>
+      <div className="contribution-inner" style={{ '--contribution-weeks': calendar.weeks } as CSSProperties}>
       <div className="contribution-months" aria-hidden="true"><span /><div>{weeks.map((week) => {
         const first = week.find((day) => Number(day.date.slice(8, 10)) <= 7 && day.inRange);
-        return <span key={week[0].date}>{first ? `${Number(first.date.slice(5, 7))}月` : ''}</span>;
+        return <span key={week[0].date}>{first ? monthNames[Number(first.date.slice(5, 7)) - 1] : ''}</span>;
       })}</div></div>
       <div className="contribution-body">
-        <div className="contribution-weekdays" aria-hidden="true"><span /> <span>一</span><span /><span>三</span><span /><span>五</span><span /></div>
-        <div className="contribution-grid" role="grid" aria-label="近一年每日创作数量">
+        <div className="contribution-weekdays" aria-hidden="true"><span /> <span>{t('cc.weekdays').split(',')[0]}</span><span /><span>{t('cc.weekdays').split(',')[1]}</span><span /><span>{t('cc.weekdays').split(',')[2]}</span><span /></div>
+        <div className="contribution-grid" role="grid" aria-label={t('cc.aria')}>
           {calendar.days.map((day) => <span
             className={`contribution-cell level-${day.level}${day.inRange ? '' : ' outside'}`}
             key={day.date}
             role="gridcell"
-            aria-label={`${day.date}，${day.count ? `创作 ${day.count} 篇` : '无创作'}`}
-            title={`${day.date}：${day.count ? `${day.count} 篇创作` : '无创作'}`}
+            aria-label={day.count ? t('cc.dayAria', { date: day.date, count: day.count }) : `${day.date}: ${t('cc.none')}`}
+            title={day.count ? t('cc.dayTitle', { date: day.date, count: day.count }) : `${day.date}: ${t('cc.none')}`}
           />)}
         </div>
       </div>
-      <div className="contribution-legend"><Typography.Text type="secondary">少</Typography.Text>{[0, 1, 2, 3, 4].map((level) => <span className={`contribution-cell level-${level}`} key={level} />)}<Typography.Text type="secondary">多</Typography.Text></div>
+      <div className="contribution-legend"><Typography.Text type="secondary">{t('cc.less')}</Typography.Text>{[0, 1, 2, 3, 4].map((level) => <span className={`contribution-cell level-${level}`} key={level} />)}<Typography.Text type="secondary">{t('cc.more')}</Typography.Text></div>
+      </div>
     </div>
   </Card>;
 }
