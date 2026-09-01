@@ -3,9 +3,10 @@ import { createHash, createHmac, pbkdf2Sync, timingSafeEqual } from 'node:crypto
 import { posix } from 'node:path';
 import { configurationStatus } from './configuration.js';
 import { parseFrontMatter, values, writeFrontMatter } from '../shared/frontMatter.js';
+import { currentDateTime, normalizeDateTime } from '../shared/dateTime.js';
 
 type GitHubFile = { name: string; path: string; sha: string; type: 'file' | 'dir'; content?: string };
-type Post = { name: string; path?: string; sha?: string; content?: string };
+type Post = { name: string; path?: string; sha?: string; content?: string; clientTime?: string };
 type GraphNode = { id: string; label: string; type: 'article' | 'category' | 'tag'; path?: string; degree: number };
 type GraphEdge = { source: string; target: string; type: 'link' | 'category' | 'tag'; directed?: boolean };
 
@@ -187,7 +188,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (req.query.path) return res.status(200).json({ post: await readPost(relativePostPath(req.query.path)) });
       const files = await listPosts(); const posts = await Promise.all(files.map(async (file) => {
         const relative = file.path.slice(config().postsPath.length + 1); const article = await readPost(relative); const { fields } = parseFrontMatter(article.content);
-        return { name: file.name, path: relative, sha: file.sha, title: String(fields.title || file.name.replace(/\.(md|markdown)$/i, '')), categories: values(fields.categories || fields.category), tags: values(fields.tags || fields.tag), date: String(fields.date || ''), updated: String(fields.updated || '') };
+        return { name: file.name, path: relative, sha: file.sha, title: String(fields.title || file.name.replace(/\.(md|markdown)$/i, '')), categories: values(fields.categories || fields.category), tags: values(fields.tags || fields.tag), date: normalizeDateTime(fields.date), updated: normalizeDateTime(fields.updated) };
       }));
       return res.status(200).json({ posts: posts.sort((a, b) => metadataTime(b.updated || b.date) - metadataTime(a.updated || a.date) || a.title.localeCompare(b.title)) });
     }
@@ -200,7 +201,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await github('DELETE', `/repos/${config().repository}/contents/${encodeRepositoryPath(target)}`, { message: `Delete post ${relative}`, sha: post.sha, branch: config().branch }); return res.status(200).json({ ok: true });
     }
     if (typeof post.content !== 'string') return res.status(400).json({ error: 'content is required' });
-    const content = writeFrontMatter(post.content, { updated: new Date().toISOString() });
+    const fields = parseFrontMatter(post.content).fields; const publication = normalizeDateTime(fields.date);
+    const content = writeFrontMatter(post.content, { ...(publication ? { date: publication } : {}), updated: normalizeDateTime(post.clientTime) || currentDateTime() });
     const payload = { message: `${post.sha ? 'Update' : 'Create'} post ${relative}`, content: Buffer.from(content).toString('base64'), branch: config().branch, ...(post.sha ? { sha: post.sha } : {}) };
     const result = await github('PUT', `/repos/${config().repository}/contents/${encodeRepositoryPath(target)}`, payload) as { content: GitHubFile };
     return res.status(200).json({ ok: true, path: relative, sha: result.content.sha });

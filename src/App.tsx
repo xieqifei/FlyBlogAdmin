@@ -5,6 +5,7 @@ import GraphView from './GraphView';
 import MarkdownEditor from './MarkdownEditor';
 import SettingsGuide, { type Configuration } from './SettingsGuide';
 import { parseFrontMatter, values as frontMatterValues, writeBody, writeFrontMatter, type FrontMatterFields } from '../shared/frontMatter';
+import { currentDateTime, dateTimeInputValue, normalizeDateTime } from '../shared/dateTime';
 
 const { Sider, Header, Content } = Layout;
 const items = [
@@ -29,17 +30,12 @@ function slugify(value: string) {
 
 function list(value: string | string[] | undefined) { return frontMatterValues(value); }
 
-function dateOnly(value: string | string[] | undefined) { return String(value || '').match(/^\d{4}-\d{2}-\d{2}/)?.[0] || ''; }
 function formatDate(value?: string) {
   if (!value) return '—'; const matched = value.match(/^\d{4}-\d{2}-\d{2}/); if (matched) return matched[0];
   const parsed = new Date(value); if (Number.isNaN(parsed.getTime())) return value;
   const pad = (part: number) => String(part).padStart(2, '0'); return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
 }
 function time(value?: string) { if (!value) return 0; const parsed = new Date(value.includes('T') ? value : value.replace(' ', 'T')); return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime(); }
-function markdownDateTime(current = new Date()) {
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${current.getFullYear()}-${pad(current.getMonth() + 1)}-${pad(current.getDate())} ${pad(current.getHours())}:${pad(current.getMinutes())}:${pad(current.getSeconds())}`;
-}
 const DRAFT_PREFIX = 'flyblog:draft:';
 function draftKey(path?: string) { return `${DRAFT_PREFIX}${path || 'new'}`; }
 function readDraft(path: string, remote: Post) {
@@ -72,14 +68,14 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
   const edit = async (path: string) => {
     setSaving(true); try { const data = await api<{ post: Post }>(`/api/posts?path=${encodeURIComponent(path)}`); const restored = readDraft(path, data.post); setEditor(restored); setDraftSavedAt(restored.content === data.post.content ? '' : '已恢复'); setSection('editor'); } catch (reason) { message.error(reason instanceof Error ? reason.message : '文章载入失败'); } finally { setSaving(false); }
   };
-  const create = () => { const now = markdownDateTime(); const blank: Post = { name: '', path: '', content: `---\ntitle:\ndate: ${dateOnly(now)}\nupdated: ${now}\ncategories:\ntags:\n---\n\n` }; const restored = readDraft('', blank); setEditor(restored); setDraftSavedAt(restored.content === blank.content ? '' : '已恢复'); setSection('editor'); };
+  const create = () => { const now = currentDateTime(); const blank: Post = { name: '', path: '', content: `---\ntitle:\ndate: ${now}\nupdated: ${now}\ncategories:\ntags:\n---\n\n` }; const restored = readDraft('', blank); setEditor(restored); setDraftSavedAt(restored.content === blank.content ? '' : '已恢复'); setSection('editor'); };
   const updateMetadata = (updates: FrontMatterFields) => setEditor((value) => value ? { ...value, content: writeFrontMatter(value.content, updates) } : value);
   const metadata = useMemo(() => editor ? parseFrontMatter(editor.content).fields : {}, [editor?.content]);
   const save = async () => {
     if (!editor) return; const articleTitle = String(metadata.title || '').trim(); const path = editor.path.trim() || slugify(articleTitle);
     if (!articleTitle) return message.warning('请填写文章标题'); setSaving(true);
-    const content = writeFrontMatter(editor.content, { updated: markdownDateTime() });
-    try { await api('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...editor, content, path, name: path.split('/').pop() }) }); localStorage.removeItem(draftKey(editor.path)); localStorage.removeItem(draftKey(path)); message.success('文章已保存到 GitHub，编辑时间已更新'); setEditor(undefined); setDraftSavedAt(''); setSection('posts'); await load(); } catch (reason) { setEditor((value) => value ? { ...value, content } : value); message.error(reason instanceof Error ? reason.message : '保存失败'); } finally { setSaving(false); }
+    const clientTime = currentDateTime(); const publication = normalizeDateTime(metadata.date); const content = writeFrontMatter(editor.content, { ...(publication ? { date: publication } : {}), updated: clientTime });
+    try { await api('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...editor, content, path, name: path.split('/').pop(), clientTime }) }); localStorage.removeItem(draftKey(editor.path)); localStorage.removeItem(draftKey(path)); message.success('文章已保存到 GitHub，编辑时间已更新'); setEditor(undefined); setDraftSavedAt(''); setSection('posts'); await load(); } catch (reason) { setEditor((value) => value ? { ...value, content } : value); message.error(reason instanceof Error ? reason.message : '保存失败'); } finally { setSaving(false); }
   };
   const remove = async () => {
     if (!editor?.sha) return; setSaving(true); try { await api('/api/posts', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editor) }); localStorage.removeItem(draftKey(editor.path)); message.success('文章已删除'); setEditor(undefined); setSection('posts'); await load(); } catch (reason) { message.error(reason instanceof Error ? reason.message : '删除失败'); } finally { setSaving(false); }
@@ -129,8 +125,8 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
       <div className="editor-form">
         <label>文章标题<Input value={String(metadata.title || '')} placeholder="输入标题，系统将自动生成文件名" onChange={(event) => updateMetadata({ title: event.target.value })} /></label>
         <Collapse ghost items={[{ key: 'metadata', label: '发布日期、编辑日期、分类与标签', children: <Grid gutter={[16, 12]}>
-          <Col xs={24} md={6}><label>发布日期<Input type="date" value={dateOnly(metadata.date)} onChange={(event) => updateMetadata({ date: event.target.value })} /></label></Col>
-          <Col xs={24} md={6}><label>编辑日期<Input readOnly value={metadata.updated ? formatDate(String(metadata.updated)) : '保存时自动生成'} /></label></Col>
+          <Col xs={24} md={6}><label>发布日期<Input type="datetime-local" step={1} value={dateTimeInputValue(metadata.date)} onChange={(event) => updateMetadata({ date: normalizeDateTime(event.target.value) })} /></label></Col>
+          <Col xs={24} md={6}><label>编辑日期<Input readOnly value={metadata.updated ? normalizeDateTime(metadata.updated) : '保存时自动生成'} /></label></Col>
           <Col xs={24} md={6}><label>分类<Select mode="tags" tokenSeparators={[',']} value={list(metadata.categories)} onChange={(value) => updateMetadata({ categories: value })} placeholder="输入后回车添加" /></label></Col>
           <Col xs={24} md={6}><label>标签<Select mode="tags" tokenSeparators={[',']} value={list(metadata.tags)} onChange={(value) => updateMetadata({ tags: value })} placeholder="输入后回车添加" /></label></Col>
         </Grid> }]}/>
