@@ -3,6 +3,7 @@ import { createHash, createHmac, pbkdf2Sync, timingSafeEqual } from 'node:crypto
 import { posix } from 'node:path';
 import { configurationStatus } from './configuration.js';
 import { OptimizeError, optimizeArticle } from './llm.js';
+import { parseFrontMatter, values, writeFrontMatter } from '../shared/frontMatter.js';
 
 type GitHubFile = { name: string; path: string; sha: string; type: 'file' | 'dir'; content?: string };
 type Post = { name: string; path?: string; sha?: string; content?: string };
@@ -123,29 +124,15 @@ async function readPost(relativePath: string) {
   return { name: result.name, path: relativePath, sha: result.sha, content: Buffer.from(result.content || '', 'base64').toString('utf8') };
 }
 
-function parseScalar(value: string) { return value.trim().replace(/^(['"])(.*)\1$/, '$2'); }
-function parseFrontMatter(content: string) {
-  const result: Record<string, string | string[]> = {}; const match = content.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/);
-  if (!match) return { metadata: result, body: content };
-  let listKey = '';
-  for (const line of match[1].split(/\r?\n/)) {
-    const item = line.match(/^\s*-\s+(.+)$/); if (item && listKey) { (result[listKey] as string[]).push(parseScalar(item[1])); continue; }
-    const field = line.match(/^([\w.-]+):\s*(.*)$/); if (!field) continue;
-    const [, key, raw] = field;
-    if (!raw) { result[key] = []; listKey = key; continue; }
-    listKey = ''; result[key] = raw.startsWith('[') && raw.endsWith(']') ? raw.slice(1, -1).split(',').map(parseScalar).filter(Boolean) : parseScalar(raw);
-  }
-  return { metadata: result, body: content.slice(match[0].length) };
-}
-function values(value: string | string[] | undefined) { return Array.isArray(value) ? value : value ? [value] : []; }
 function slug(value: string) { return value.toLowerCase().replace(/\.(md|markdown)$/i, '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, ''); }
 function safeDecode(value: string) { try { return decodeURIComponent(value); } catch { return value; } }
+function metadataTime(value: string) { const parsed = Date.parse(value.includes('T') ? value : value.replace(' ', 'T')); return Number.isNaN(parsed) ? 0 : parsed; }
 
 async function buildGraph() {
   const files = await listPosts();
   const posts = await Promise.all(files.map(async (file) => {
     const relative = file.path.slice(config().postsPath.length + 1); const article = await readPost(relative); const parsed = parseFrontMatter(article.content);
-    return { ...article, ...parsed, title: String(parsed.metadata.title || file.name.replace(/\.(md|markdown)$/i, '')) };
+    return { ...article, metadata: parsed.fields, body: parsed.body, title: String(parsed.fields.title || file.name.replace(/\.(md|markdown)$/i, '')) };
   }));
   const nodes = new Map<string, GraphNode>(); const edges: GraphEdge[] = []; const edgeKeys = new Set<string>(); const aliases = new Map<string, string>();
   for (const post of posts) {
@@ -195,10 +182,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (method === 'GET') {
       if (req.query.path) return res.status(200).json({ post: await readPost(relativePostPath(req.query.path)) });
       const files = await listPosts(); const posts = await Promise.all(files.map(async (file) => {
-        const relative = file.path.slice(config().postsPath.length + 1); const article = await readPost(relative); const { metadata } = parseFrontMatter(article.content);
-        return { name: file.name, path: relative, sha: file.sha, title: String(metadata.title || file.name.replace(/\.(md|markdown)$/i, '')), categories: values(metadata.categories || metadata.category), tags: values(metadata.tags || metadata.tag), date: String(metadata.date || ''), updated: String(metadata.updated || '') };
+        const relative = file.path.slice(config().postsPath.length + 1); const article = await readPost(relative); const { fields } = parseFrontMatter(article.content);
+        return { name: file.name, path: relative, sha: file.sha, title: String(fields.title || file.name.replace(/\.(md|markdown)$/i, '')), categories: values(fields.categories || fields.category), tags: values(fields.tags || fields.tag), date: String(fields.date || ''), updated: String(fields.updated || '') };
       }));
-      return res.status(200).json({ posts: posts.sort((a, b) => (b.updated || b.date).localeCompare(a.updated || a.date) || a.title.localeCompare(b.title)) });
+      return res.status(200).json({ posts: posts.sort((a, b) => metadataTime(b.updated || b.date) - metadataTime(a.updated || a.date) || a.title.localeCompare(b.title)) });
     }
     if (!['PUT', 'DELETE'].includes(method)) return res.status(405).json({ error: 'Method not allowed' });
     const post = jsonBody<Post>(req); const relative = relativePostPath(post.path || post.name);
@@ -209,7 +196,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await github('DELETE', `/repos/${config().repository}/contents/${encodeRepositoryPath(target)}`, { message: `Delete post ${relative}`, sha: post.sha, branch: config().branch }); return res.status(200).json({ ok: true });
     }
     if (typeof post.content !== 'string') return res.status(400).json({ error: 'content is required' });
-    const payload = { message: `${post.sha ? 'Update' : 'Create'} post ${relative}`, content: Buffer.from(post.content).toString('base64'), branch: config().branch, ...(post.sha ? { sha: post.sha } : {}) };
+    const content = writeFrontMatter(post.content, { updated: new Date().toISOString() });
+    const payload = { message: `${post.sha ? 'Update' : 'Create'} post ${relative}`, content: Buffer.from(content).toString('base64'), branch: config().branch, ...(post.sha ? { sha: post.sha } : {}) };
     const result = await github('PUT', `/repos/${config().repository}/contents/${encodeRepositoryPath(target)}`, payload) as { content: GitHubFile };
     return res.status(200).json({ ok: true, path: relative, sha: result.content.sha });
   } catch (error) { return res.status(error instanceof OptimizeError ? error.status : 500).json({ error: error instanceof Error ? error.message : 'Unexpected error' }); }

@@ -12,6 +12,7 @@ body { color: #172033; background: #f5f7fa; }
 .content { min-width: 0; padding: 24px; background: #f5f7fa; }
 .content-stack { display: grid; gap: 16px; }
 .table-alert { margin-bottom: 16px; }
+.post-search { width: min(460px, 100%); margin-bottom: 16px; }
 .post-title { display: block; min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
 .auth-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: linear-gradient(140deg, #edf3ff, #f7f9fc 60%, #eafaf3); }
 .auth-card { width: min(420px, calc(100vw - 40px)); box-shadow: 0 24px 70px rgb(23 32 51 / 12%); }
@@ -28,28 +29,53 @@ body { color: #172033; background: #f5f7fa; }
 .missing { color: #dc2626; }
 .editor-form { display: grid; gap: 16px; }
 .editor-form label { display: grid; gap: 8px; font-weight: 650; }
+.article-editor-page { display: grid; gap: 16px; min-width: 0; }
+.editor-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.editor-page-heading h3 { margin: 0; }
+.editor-body { display: grid; gap: 8px; min-width: 0; }
+.editor-metadata-card .ant-card-body { padding-bottom: 8px; }
+.markdown-workspace-editor { min-width: 0; border-radius: 10px; box-shadow: 0 8px 30px rgb(23 32 51 / 7%); }
+.markdown-toolbar { position: sticky; top: 0; z-index: 8; display: flex; align-items: center; gap: 3px; overflow-x: auto; padding: 8px 10px; border: 1px solid #d9d9d9; border-bottom: 0; border-radius: 10px 10px 0 0; background: rgb(255 255 255 / 96%); backdrop-filter: blur(12px); scrollbar-width: thin; }
+.markdown-toolbar button { flex: 0 0 auto; min-width: 32px; height: 32px; padding: 0 7px; border: 0; border-radius: 6px; color: #414754; background: transparent; font: 600 14px/32px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
+.markdown-toolbar button:hover { color: #315efb; background: #eef2ff; }
+.markdown-toolbar .strong { font-weight: 850; }
+.markdown-toolbar .emphasis { font-style: italic; }
+.markdown-toolbar .strike { text-decoration: line-through; }
 .markdown-editor { min-height: 560px; width: 100%; margin-bottom: 0 !important; border: 1px solid #d9d9d9; border-radius: 10px; overflow: hidden; background: #fff; transition: border-color .2s, box-shadow .2s; }
+.markdown-workspace-editor .markdown-editor { border-radius: 0 0 10px 10px; }
 .markdown-editor:focus-within { border-color: #597ef7; box-shadow: 0 0 0 2px rgb(49 94 251 / 10%); }
 .obsidian-editor .cm-editor { min-height: 560px; color: #252525; background: #fff; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 16px; }
 .obsidian-editor .cm-editor.cm-focused { outline: none; }
 .obsidian-editor .cm-scroller { overflow: auto; font-family: inherit; }
-.obsidian-editor .cm-content { width: min(100%, 860px); min-height: 560px; box-sizing: border-box; margin: 0 auto; padding: 30px 42px 100px; caret-color: #315efb; }
-.obsidian-editor .cm-line { line-height: 1.75; }
+.obsidian-editor .cm-content { width: min(100%, 920px); min-height: 68vh; box-sizing: border-box; margin: 0 auto; padding: 38px 48px 120px; caret-color: #315efb; }
+.obsidian-editor .cm-line { line-height: 1.82; }
 .obsidian-editor .cm-gutters { border: 0; color: #a8adb8; background: #fafafa; }
 .obsidian-editor .cm-activeLine, .obsidian-editor .cm-activeLineGutter { background: rgb(49 94 251 / 4%); }
 .obsidian-editor .cm-selectionBackground, .obsidian-editor .cm-content ::selection { background: rgb(49 94 251 / 18%) !important; }
 .obsidian-editor .cm-placeholder { color: #a0a5af; font-style: normal; }
 .obsidian-editor .cm-live-h1, .obsidian-editor .cm-live-h2, .obsidian-editor .cm-live-h3, .obsidian-editor .cm-live-h4, .obsidian-editor .cm-live-h5, .obsidian-editor .cm-live-h6 { color: #171717; font-weight: 750; }
-.obsidian-editor .cm-live-h1 { font-size: 2em; line-height: 1.35; }
-.obsidian-editor .cm-live-h2 { font-size: 1.6em; line-height: 1.45; }
-.obsidian-editor .cm-live-h3 { font-size: 1.32em; line-height: 1.5; }
+.obsidian-editor .cm-live-h1 { font-size: 2.15em; line-height: 1.4; letter-spacing: -.025em; }
+.obsidian-editor .cm-live-h2 { font-size: 1.68em; line-height: 1.5; letter-spacing: -.018em; }
+.obsidian-editor .cm-live-h3 { font-size: 1.36em; line-height: 1.55; }
 .obsidian-editor .cm-live-h4 { font-size: 1.15em; }
 .obsidian-editor .cm-live-strong { font-weight: 750; }
 .obsidian-editor .cm-live-emphasis { font-style: italic; }
+.obsidian-editor .cm-live-strike { color: #777; text-decoration: line-through; }
 .obsidian-editor .cm-live-code { padding: 2px 5px; border-radius: 4px; color: #d6336c; background: #f4f4f5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
-.obsidian-editor .cm-live-codeblock { color: #334155; background: #f6f7f9; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.obsidian-editor .cm-live-code-line { padding-inline: 18px; color: #d6deeb; background: #1f2430; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; line-height: 1.65; }
+.obsidian-editor .cm-live-code-first { margin-top: 10px; padding-top: 10px; border-radius: 8px 8px 0 0; }
+.obsidian-editor .cm-live-code-last { margin-bottom: 10px; padding-bottom: 10px; border-radius: 0 0 8px 8px; }
+.obsidian-editor .cm-live-code-line .tok-keyword { color: #c792ea; }
+.obsidian-editor .cm-live-code-line .tok-string { color: #ecc48d; }
+.obsidian-editor .cm-live-code-line .tok-number, .obsidian-editor .cm-live-code-line .tok-bool { color: #f78c6c; }
+.obsidian-editor .cm-live-code-line .tok-comment { color: #697098; font-style: italic; }
+.obsidian-editor .cm-live-code-line .tok-variableName, .obsidian-editor .cm-live-code-line .tok-propertyName { color: #82aaff; }
+.obsidian-editor .cm-live-code-line .tok-typeName, .obsidian-editor .cm-live-code-line .tok-className { color: #ffcb6b; }
 .obsidian-editor .cm-live-quote { color: #60646c; }
 .obsidian-editor .cm-live-link { color: #315efb; text-decoration: underline; text-underline-offset: 3px; }
+.obsidian-editor .cm-live-bullet { display: inline-block; width: 1.2em; color: #6d4aff; font-size: 1.2em; font-weight: 800; text-align: center; }
+.obsidian-editor .cm-live-list { color: #303642; }
+.obsidian-editor .cm-live-table { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #374151; }
 .dashboard-page { display: grid; gap: 16px; }
 .welcome { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border-radius: 14px; color: #fff; background: linear-gradient(125deg, #315efb, #6d4aff); box-shadow: 0 16px 40px rgb(49 94 251 / 18%); }
 .welcome h2, .welcome .ant-typography { color: inherit; margin: 0; }
@@ -73,6 +99,8 @@ body { color: #172033; background: #f5f7fa; }
   .header { padding: 0 12px; }
   .content { padding: 12px; }
   .graph-card { height: max(440px, 68dvh); }
+  .editor-page-heading { align-items: flex-start; flex-direction: column; }
+  .editor-page-heading > .ant-space:last-child { width: 100%; }
 }
 @media (max-width: 640px) {
   .setup-shell { width: min(100% - 24px, 1040px); margin: 18px auto; }
