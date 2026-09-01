@@ -55,6 +55,7 @@ npm run preview
 | `LLM_API_KEY` | AI 可选 | OpenAI 兼容大模型服务的 API Key |
 | `LLM_MODEL` | AI 可选 | 模型名称 |
 | `LLM_BASE_URL` | AI 可选 | 接口根地址，默认 `https://api.openai.com/v1` |
+| `LLM_API_STYLE` | AI 可选 | `auto`、`chat` 或 `responses`，默认自动兼容 |
 
 不要把 Token、密码或密钥提交到仓库，也不要为这些变量添加会将其暴露到浏览器的 `VITE_` 前缀。
 

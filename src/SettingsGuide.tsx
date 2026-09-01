@@ -18,6 +18,7 @@ const variables = [
   ['LLM_API_KEY', 'AI 可选', '大模型服务的 API Key；仅由服务端读取。'],
   ['LLM_MODEL', 'AI 可选', '用于文章优化的模型名称。'],
   ['LLM_BASE_URL', 'AI 可选', 'OpenAI 兼容接口地址，默认 https://api.openai.com/v1。'],
+  ['LLM_API_STYLE', 'AI 可选', 'auto、chat 或 responses；默认 auto，会在接口不兼容时自动回退。'],
 ];
 
 export default function SettingsGuide({ configuration }: { configuration: Configuration }) {
