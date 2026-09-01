@@ -1,32 +1,117 @@
-import { useEffect, useId, useRef } from 'react';
+import { basicSetup } from 'codemirror';
+import { markdown } from '@codemirror/lang-markdown';
+import { syntaxTree } from '@codemirror/language';
+import { EditorState, type Range } from '@codemirror/state';
+import {
+  Decoration,
+  EditorView,
+  ViewPlugin,
+  placeholder,
+  type DecorationSet,
+  type ViewUpdate,
+} from '@codemirror/view';
+import { useEffect, useRef } from 'react';
 
-type EditorInstance = { getMarkdown: () => string; setMarkdown: (value: string) => void };
-declare global { interface Window { editormd?: (id: string, options: Record<string, unknown>) => EditorInstance } }
+type Props = { value: string; onChange: (value: string) => void };
 
-const assets = [
-  { type: 'style', src: '/vendor/editor-md/css/editormd.min.css' },
-  { type: 'script', src: '/vendor/editor-md/lib/jquery.min.js' },
-  { type: 'script', src: '/vendor/editor-md/editormd.min.js' },
-] as const;
+const nodeClasses: Record<string, string> = {
+  ATXHeading1: 'cm-live-h1',
+  ATXHeading2: 'cm-live-h2',
+  ATXHeading3: 'cm-live-h3',
+  ATXHeading4: 'cm-live-h4',
+  ATXHeading5: 'cm-live-h5',
+  ATXHeading6: 'cm-live-h6',
+  StrongEmphasis: 'cm-live-strong',
+  Emphasis: 'cm-live-emphasis',
+  InlineCode: 'cm-live-code',
+  FencedCode: 'cm-live-codeblock',
+  Blockquote: 'cm-live-quote',
+  Link: 'cm-live-link',
+  URL: 'cm-live-link',
+};
 
-function loadAsset(asset: typeof assets[number]) {
-  return new Promise<void>((resolve, reject) => {
-    const selector = `[data-flyblog-asset="${asset.src}"]`; const existing = document.querySelector(selector) as HTMLScriptElement | HTMLLinkElement | null;
-    if (existing?.dataset.loaded === 'true') return resolve();
-    const element = existing || (asset.type === 'style' ? document.createElement('link') : document.createElement('script'));
-    element.dataset.flyblogAsset = asset.src;
-    if (asset.type === 'style') { (element as HTMLLinkElement).rel = 'stylesheet'; (element as HTMLLinkElement).href = asset.src; } else { (element as HTMLScriptElement).src = asset.src; }
-    element.addEventListener('load', () => { element.dataset.loaded = 'true'; resolve(); }, { once: true }); element.addEventListener('error', () => reject(new Error(`Failed to load ${asset.src}`)), { once: true });
-    if (!existing) document.head.appendChild(element);
-  });
+const hiddenMarkers = new Set(['HeaderMark', 'EmphasisMark', 'CodeMark', 'LinkMark']);
+
+function livePreviewDecorations(view: EditorView) {
+  const decorations: Range<Decoration>[] = [];
+  const activeLines = new Set<number>();
+  for (const range of view.state.selection.ranges) {
+    const fromLine = view.state.doc.lineAt(range.from).number;
+    const toLine = view.state.doc.lineAt(range.to).number;
+    for (let line = fromLine; line <= toLine; line += 1) activeLines.add(line);
+  }
+
+  for (const visible of view.visibleRanges) {
+    syntaxTree(view.state).iterate({
+      from: visible.from,
+      to: visible.to,
+      enter(node) {
+        const className = nodeClasses[node.name];
+        if (className && node.from < node.to) {
+          decorations.push(Decoration.mark({ class: className }).range(node.from, node.to));
+        }
+        if (hiddenMarkers.has(node.name) && node.from < node.to && !activeLines.has(view.state.doc.lineAt(node.from).number)) {
+          decorations.push(Decoration.replace({}).range(node.from, node.to));
+        }
+      },
+    });
+  }
+  return Decoration.set(decorations, true);
 }
 
-export default function MarkdownEditor({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  const id = `editor-${useId().replace(/:/g, '')}`; const instance = useRef<EditorInstance | undefined>(undefined); const latest = useRef(onChange); latest.current = onChange;
-  useEffect(() => { let active = true; (async () => {
-    for (const asset of assets) await loadAsset(asset); if (!active || !window.editormd) return;
-    instance.current = window.editormd(id, { width: '100%', height: 560, path: '/vendor/editor-md/lib/', markdown: value, watch: true, saveHTMLToTextarea: false, emoji: false, taskList: true, flowChart: false, sequenceDiagram: false, onchange() { if (instance.current) latest.current(instance.current.getMarkdown()); } });
-  })(); return () => { active = false; instance.current = undefined; }; }, [id]);
-  useEffect(() => { if (instance.current && instance.current.getMarkdown() !== value) instance.current.setMarkdown(value); }, [value]);
-  return <div id={id} className="markdown-editor"><textarea defaultValue={value} /></div>;
+const livePreview = ViewPlugin.fromClass(class {
+  decorations: DecorationSet;
+
+  constructor(view: EditorView) {
+    this.decorations = livePreviewDecorations(view);
+  }
+
+  update(update: ViewUpdate) {
+    if (update.docChanged || update.viewportChanged || update.selectionSet) {
+      this.decorations = livePreviewDecorations(update.view);
+    }
+  }
+}, { decorations: (plugin) => plugin.decorations });
+
+export default function MarkdownEditor({ value, onChange }: Props) {
+  const host = useRef<HTMLDivElement>(null);
+  const view = useRef<EditorView | undefined>(undefined);
+  const onChangeRef = useRef(onChange);
+  const syncing = useRef(false);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    if (!host.current) return undefined;
+    const editor = new EditorView({
+      parent: host.current,
+      state: EditorState.create({
+        doc: value,
+        extensions: [
+          basicSetup,
+          markdown(),
+          EditorView.lineWrapping,
+          placeholder('开始写正文…'),
+          livePreview,
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged && !syncing.current) onChangeRef.current(update.state.doc.toString());
+          }),
+        ],
+      }),
+    });
+    view.current = editor;
+    return () => {
+      editor.destroy();
+      view.current = undefined;
+    };
+  }, []);
+
+  useEffect(() => {
+    const editor = view.current;
+    if (!editor || editor.state.doc.toString() === value) return;
+    syncing.current = true;
+    editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: value } });
+    syncing.current = false;
+  }, [value]);
+
+  return <div ref={host} className="markdown-editor obsidian-editor" />;
 }

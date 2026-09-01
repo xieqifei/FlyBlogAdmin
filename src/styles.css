@@ -25,7 +25,28 @@ body { color: #172033; background: #f5f7fa; }
 .missing { color: #dc2626; }
 .editor-form { display: grid; gap: 16px; }
 .editor-form label { display: grid; gap: 8px; font-weight: 650; }
-.markdown-editor { min-height: 560px; width: 100%; margin-bottom: 0 !important; border-radius: 8px; overflow: hidden; }
+.markdown-editor { min-height: 560px; width: 100%; margin-bottom: 0 !important; border: 1px solid #d9d9d9; border-radius: 10px; overflow: hidden; background: #fff; transition: border-color .2s, box-shadow .2s; }
+.markdown-editor:focus-within { border-color: #597ef7; box-shadow: 0 0 0 2px rgb(49 94 251 / 10%); }
+.obsidian-editor .cm-editor { min-height: 560px; color: #252525; background: #fff; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 16px; }
+.obsidian-editor .cm-editor.cm-focused { outline: none; }
+.obsidian-editor .cm-scroller { overflow: auto; font-family: inherit; }
+.obsidian-editor .cm-content { width: min(100%, 860px); min-height: 560px; box-sizing: border-box; margin: 0 auto; padding: 30px 42px 100px; caret-color: #315efb; }
+.obsidian-editor .cm-line { line-height: 1.75; }
+.obsidian-editor .cm-gutters { border: 0; color: #a8adb8; background: #fafafa; }
+.obsidian-editor .cm-activeLine, .obsidian-editor .cm-activeLineGutter { background: rgb(49 94 251 / 4%); }
+.obsidian-editor .cm-selectionBackground, .obsidian-editor .cm-content ::selection { background: rgb(49 94 251 / 18%) !important; }
+.obsidian-editor .cm-placeholder { color: #a0a5af; font-style: normal; }
+.obsidian-editor .cm-live-h1, .obsidian-editor .cm-live-h2, .obsidian-editor .cm-live-h3, .obsidian-editor .cm-live-h4, .obsidian-editor .cm-live-h5, .obsidian-editor .cm-live-h6 { color: #171717; font-weight: 750; }
+.obsidian-editor .cm-live-h1 { font-size: 2em; line-height: 1.35; }
+.obsidian-editor .cm-live-h2 { font-size: 1.6em; line-height: 1.45; }
+.obsidian-editor .cm-live-h3 { font-size: 1.32em; line-height: 1.5; }
+.obsidian-editor .cm-live-h4 { font-size: 1.15em; }
+.obsidian-editor .cm-live-strong { font-weight: 750; }
+.obsidian-editor .cm-live-emphasis { font-style: italic; }
+.obsidian-editor .cm-live-code { padding: 2px 5px; border-radius: 4px; color: #d6336c; background: #f4f4f5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
+.obsidian-editor .cm-live-codeblock { color: #334155; background: #f6f7f9; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.obsidian-editor .cm-live-quote { color: #60646c; }
+.obsidian-editor .cm-live-link { color: #315efb; text-decoration: underline; text-underline-offset: 3px; }
 .dashboard-page { display: grid; gap: 16px; }
 .welcome { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border-radius: 14px; color: #fff; background: linear-gradient(125deg, #315efb, #6d4aff); box-shadow: 0 16px 40px rgb(49 94 251 / 18%); }
 .welcome h2, .welcome .ant-typography { color: inherit; margin: 0; }
@@ -64,7 +85,11 @@ body { color: #172033; background: #f5f7fa; }
   .graph-toolbar .ant-space { width: 100%; }
   .welcome { align-items: flex-start; flex-direction: column; padding: 20px; }
   .welcome .ant-btn { width: 100%; }
-  .markdown-editor { min-height: 480px; }
+  .markdown-editor, .obsidian-editor .cm-editor, .obsidian-editor .cm-content { min-height: 480px; }
+  .obsidian-editor .cm-gutters { display: none; }
+  .obsidian-editor .cm-content { width: 100%; padding: 22px 18px 72px; font-size: 15px; }
+  .obsidian-editor .cm-live-h1 { font-size: 1.7em; }
+  .obsidian-editor .cm-live-h2 { font-size: 1.45em; }
   .ai-controls, .ai-preview { grid-template-columns: 1fr; }
   .ai-preview textarea { min-height: 260px; }
 }
