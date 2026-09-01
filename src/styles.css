@@ -90,11 +90,12 @@ body { color: #172033; background: #f5f7fa; }
 .obsidian-editor .cm-table-preview th { color: #24292f; background: #f6f8fa; font-weight: 650; }
 .obsidian-editor .cm-table-preview tr:last-child td { border-bottom: 0; }
 .obsidian-editor .cm-table-preview th:last-child, .obsidian-editor .cm-table-preview td:last-child { border-right: 0; }
-.dashboard-page { display: grid; gap: 16px; }
+.dashboard-page { display: grid; gap: 16px; min-width: 0; }
 .welcome { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border-radius: 14px; color: #fff; background: linear-gradient(125deg, #315efb, #6d4aff); box-shadow: 0 16px 40px rgb(49 94 251 / 18%); }
 .welcome h2, .welcome .ant-typography { color: inherit; margin: 0; }
 .welcome .ant-btn { color: #315efb; background: #fff; border-color: #fff; }
-.contribution-card .ant-card-body { overflow: hidden; }
+.contribution-card { min-width: 0; max-width: 100%; overflow: hidden; }
+.contribution-card .ant-card-body { min-width: 0; overflow: hidden; }
 .contribution-card .ant-card-head-wrapper { gap: 12px; }
 .contribution-card .ant-card-extra { margin-inline-start: auto; }
 .contribution-scroll { min-width: 0; overflow-x: auto; padding-bottom: 6px; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
@@ -153,11 +154,15 @@ body { color: #172033; background: #f5f7fa; }
   .ant-card .ant-card-body { padding: 16px; }
   .contribution-card .ant-card-head-wrapper { align-items: flex-start; flex-direction: column; padding-block: 12px; }
   .contribution-card .ant-card-extra { margin-inline-start: 0; }
-  .contribution-months, .contribution-body { grid-template-columns: 22px max-content; gap: 6px; }
-  .contribution-months > :last-child { grid-template-columns: repeat(var(--contribution-weeks, 53), 10px); gap: 2px; }
-  .contribution-weekdays { grid-template-rows: repeat(7, 10px); gap: 2px; line-height: 10px; }
-  .contribution-grid { grid-template-rows: repeat(7, 10px); grid-auto-columns: 10px; gap: 2px; }
-  .contribution-cell { width: 10px; height: 10px; border-radius: 2px; }
+  .contribution-scroll { width: 100%; max-width: 100%; overflow-x: hidden; }
+  .contribution-inner { width: 100%; min-width: 0; }
+  .contribution-months, .contribution-body { grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; }
+  .contribution-months > span, .contribution-weekdays { display: none; }
+  .contribution-months > :last-child { grid-template-columns: repeat(var(--contribution-weeks, 53), minmax(0, 1fr)); gap: 1px; }
+  .contribution-months { font-size: 9px; }
+  .contribution-grid { grid-template-columns: repeat(var(--contribution-weeks, 53), minmax(0, 1fr)); grid-template-rows: repeat(7, minmax(0, 1fr)); grid-auto-columns: auto; gap: 1px; }
+  .contribution-cell { width: 100%; height: auto; aspect-ratio: 1; border-radius: 1px; }
+  .contribution-legend .contribution-cell { width: 9px; height: 9px; aspect-ratio: auto; }
   .image-hosting-page .ant-card-head-wrapper { align-items: flex-start; flex-direction: column; gap: 10px; padding-block: 12px; }
   .image-hosting-page .ant-card-extra, .image-hosting-page .ant-card-extra .ant-space { width: 100%; }
   .image-hosting-page .ant-select { flex: 1; min-width: 0 !important; }

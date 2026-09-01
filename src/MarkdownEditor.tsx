@@ -12,7 +12,7 @@ import { redo, undo } from '@codemirror/commands';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef, useState } from 'react';
 import { App as AntApp } from 'antd';
-import { editMarkdownTable, parseMarkdownTable, type TableAction } from './markdownTable';
+import { editMarkdownTable, findMarkdownTables, parseMarkdownTable, type TableAction } from './markdownTable';
 import { uploadImageFile } from './ImageHosting';
 import { useI18n } from './i18n';
 
@@ -32,7 +32,7 @@ const nodeClasses: Record<string, string> = {
   ATXHeading4: 'cm-live-h4', ATXHeading5: 'cm-live-h5', ATXHeading6: 'cm-live-h6',
   StrongEmphasis: 'cm-live-strong', Emphasis: 'cm-live-emphasis', Strikethrough: 'cm-live-strike',
   InlineCode: 'cm-live-code', Blockquote: 'cm-live-quote', Link: 'cm-live-link', URL: 'cm-live-link',
-  BulletList: 'cm-live-list', OrderedList: 'cm-live-list', Table: 'cm-live-table',
+  BulletList: 'cm-live-list', OrderedList: 'cm-live-list',
 };
 
 const hiddenMarkers = new Set(['HeaderMark', 'EmphasisMark', 'CodeMark', 'LinkMark', 'StrikethroughMark']);
@@ -80,10 +80,15 @@ function livePreviewDecorations(view: EditorView) {
     const toLine = view.state.doc.lineAt(range.to).number;
     for (let line = fromLine; line <= toLine; line += 1) activeLines.add(line);
   }
+  const tables = findMarkdownTables(view.state.doc.toString());
+  const previewTables = tables.filter((table) => !view.state.selection.ranges.some((range) => range.empty
+    ? range.from >= table.from && range.from < table.to
+    : range.from < table.to && range.to > table.from));
   syntaxTree(view.state).iterate({
     from: 0,
     to: view.state.doc.length,
     enter(node) {
+      if (previewTables.some((table) => node.from >= table.from && node.to <= table.to)) return false;
       const className = nodeClasses[node.name];
       if (className && node.from < node.to) decorations.push(Decoration.mark({ class: className }).range(node.from, node.to));
       const lineNumber = view.state.doc.lineAt(node.from).number;
@@ -105,15 +110,9 @@ function livePreviewDecorations(view: EditorView) {
           decorations.push(Decoration.line({ class: `cm-live-code-line${extra}` }).range(line.from));
         }
       }
-      if (node.name === 'Table') {
-        const active = view.state.selection.ranges.some((range) => range.empty ? range.from >= node.from && range.from < node.to : range.from < node.to && range.to > node.from);
-        if (!active) {
-          decorations.push(Decoration.replace({ widget: new TableWidget(node.from, view.state.doc.sliceString(node.from, node.to)), block: true }).range(node.from, node.to));
-          return false;
-        }
-      }
     },
   });
+  previewTables.forEach((table) => decorations.push(Decoration.replace({ widget: new TableWidget(table.from, table.source), block: true }).range(table.from, table.to)));
   return Decoration.set(decorations, true);
 }
 

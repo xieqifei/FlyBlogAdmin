@@ -7,12 +7,28 @@ export type MarkdownTable = {
 };
 
 function cells(line: string) {
-  const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
-  return trimmed.split(/(?<!\\)\|/).map((cell) => cell.trim().replace(/\\\|/g, '|'));
+  const result: string[] = []; let cell = ''; let codeFence = 0;
+  const trimmed = line.trim();
+  for (let index = 0; index < trimmed.length; index += 1) {
+    const character = trimmed[index];
+    if (character === '`') {
+      let length = 1;
+      while (trimmed[index + length] === '`') length += 1;
+      codeFence = codeFence === length ? 0 : codeFence ? codeFence : length;
+      cell += '`'.repeat(length); index += length - 1; continue;
+    }
+    if (character === '\\' && trimmed[index + 1] === '|') { cell += '|'; index += 1; continue; }
+    if (character === '|' && !codeFence) { result.push(cell.trim()); cell = ''; continue; }
+    cell += character;
+  }
+  result.push(cell.trim());
+  if (trimmed.startsWith('|')) result.shift();
+  if (trimmed.endsWith('|') && !trimmed.endsWith('\\|')) result.pop();
+  return result;
 }
 
 function isRow(line: string) { return line.includes('|') && cells(line).length > 1; }
-function isDelimiter(line: string) { return cells(line).every((cell) => /^:?-{3,}:?$/.test(cell)); }
+function isDelimiter(line: string) { const values = cells(line); return values.length > 1 && values.every((cell) => /^:?-+:?$/.test(cell)); }
 
 export function parseMarkdownTable(markdown: string): MarkdownTable | undefined {
   const lines = markdown.trim().split(/\r?\n/);
@@ -35,19 +51,35 @@ function serialize(table: MarkdownTable) {
   return [table.headers, alignment, ...table.rows].map((row) => `| ${row.join(' | ')} |`).join('\n');
 }
 
+export type MarkdownTableRange = { from: number; to: number; source: string };
+
 function tableRanges(content: string) {
   const lines = content.split('\n');
   const offsets: number[] = []; let offset = 0;
   for (const line of lines) { offsets.push(offset); offset += line.length + 1; }
   const ranges: Array<{ from: number; to: number; firstLine: number; lastLine: number }> = [];
+  let fenced = false; let fenceMarker = '';
   for (let index = 0; index < lines.length - 1; index += 1) {
+    const fence = lines[index].match(/^\s{0,3}(`{3,}|~{3,})/);
+    if (fence) {
+      const marker = fence[1][0];
+      if (!fenced) { fenced = true; fenceMarker = marker; }
+      else if (marker === fenceMarker) { fenced = false; fenceMarker = ''; }
+      continue;
+    }
+    if (fenced) continue;
     if (!isRow(lines[index]) || !isDelimiter(lines[index + 1])) continue;
+    if (cells(lines[index]).length !== cells(lines[index + 1]).length) continue;
     let lastLine = index + 1;
     while (lastLine + 1 < lines.length && isRow(lines[lastLine + 1])) lastLine += 1;
     ranges.push({ from: offsets[index], to: offsets[lastLine] + lines[lastLine].length, firstLine: index, lastLine });
     index = lastLine;
   }
   return { lines, offsets, ranges };
+}
+
+export function findMarkdownTables(content: string): MarkdownTableRange[] {
+  return tableRanges(content).ranges.map(({ from, to }) => ({ from, to, source: content.slice(from, to) }));
 }
 
 export function editMarkdownTable(content: string, position: number, action: TableAction) {

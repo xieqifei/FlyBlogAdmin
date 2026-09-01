@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { editMarkdownTable, parseMarkdownTable } from '../src/markdownTable.ts';
+import { editMarkdownTable, findMarkdownTables, parseMarkdownTable } from '../src/markdownTable.ts';
 
 const source = '| 姓名 | 年龄 |\n| --- | ---: |\n| 小明 | 18 |';
 
@@ -20,4 +20,30 @@ test('adds and removes columns while preserving a valid markdown table', () => {
   assert.deepEqual(parseMarkdownTable(added!.content)?.headers, ['姓名', '年龄', '新列']);
   const removed = editMarkdownTable(added!.content, added!.content.indexOf('新列'), 'delete-column');
   assert.equal(removed?.content, source);
+});
+
+test('finds and parses a table in a mixed markdown document', () => {
+  const document = [
+    '# 综合示例',
+    '',
+    '**粗体**和普通段落。',
+    '',
+    '```ts',
+    'const fake = "| not | a table |";',
+    '| --- | --- |',
+    '```',
+    '',
+    '| 名称 | 类型 | 说明 |',
+    '| :- | -: | --- |',
+    '| 联合类型 | `string | number` | **可选值** |',
+    '',
+    '- 列表项',
+  ].join('\n');
+  const tables = findMarkdownTables(document);
+  assert.equal(tables.length, 1);
+  assert.deepEqual(parseMarkdownTable(tables[0].source), {
+    headers: ['名称', '类型', '说明'],
+    rows: [['联合类型', '`string | number`', '**可选值**']],
+    alignments: ['left', 'right', 'left'],
+  });
 });
