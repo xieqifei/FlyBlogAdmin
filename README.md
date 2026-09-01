@@ -1,6 +1,6 @@
 # FlyBlogAdmin
 
-FlyBlogAdmin 是一个面向 Hexo 等 Git 仓库博客的无数据库管理后台。文章直接通过 GitHub Contents API 读取和提交，前端使用 React、TypeScript 与 Ant Design，服务端使用 Vercel Node.js Functions。项目完全使用 Node.js/TypeScript，不包含 Python 或 Django 运行时。
+FlyBlogAdmin 是一个面向 Hexo 等 Git 仓库博客的无数据库管理后台。文章直接通过 GitHub Contents API 读取和提交，前端使用 React、TypeScript 与 Ant Design，服务端使用 Vercel Node.js Functions。项目完全使用 Node.js/TypeScript，不包含 Python 或 Django 运行时。每个 `/api/*` 地址都有独立的 Vercel Function 入口，刷新或无痕访问时不会被前端路由误接管。
 
 首次访问时，必需环境变量未齐全会一直显示设置引导页；配置齐全并重新部署后进入登录页。设置页会逐项显示必需与可选变量的实际配置状态。
 

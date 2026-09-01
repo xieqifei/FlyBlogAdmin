@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { OptimizeError, optimizeArticle, validateOptimizeInput } from './llm.ts';
+import { OptimizeError, optimizeArticle, validateOptimizeInput } from '../server/llm.ts';
 
 const originalEnvironment = { ...process.env };
 afterEach(() => { process.env = { ...originalEnvironment }; });

@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --test --experimental-strip-types api/*.test.ts && tsc --noEmit"
+    "test": "node --test --experimental-strip-types tests/*.test.ts && tsc --noEmit"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",

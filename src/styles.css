@@ -6,12 +6,13 @@ body { color: #172033; background: #f5f7fa; }
 .logo { height: 64px; display: flex; align-items: center; justify-content: center; color: #172033; font-size: 19px; font-weight: 700; border-bottom: 1px solid #f5f5f5; white-space: nowrap; overflow: hidden; }
 .mobile-menu-close { position: absolute; right: 8px; }
 .mobile-menu-mask { display: none; }
-.logout { position: absolute; bottom: 18px; left: 16px; max-width: calc(100% - 32px); }
 .header { display: flex; align-items: center; gap: 18px; background: #fff; padding: 0 24px; border-bottom: 1px solid #f0f0f0; }
 .header h4 { margin: 0; flex: 1; }
+.header-logout { flex: 0 0 auto; }
 .content { min-width: 0; padding: 24px; background: #f5f7fa; }
 .content-stack { display: grid; gap: 16px; }
 .table-alert { margin-bottom: 16px; }
+.post-title { display: block; min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
 .auth-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: linear-gradient(140deg, #edf3ff, #f7f9fc 60%, #eafaf3); }
 .auth-card { width: min(420px, calc(100vw - 40px)); box-shadow: 0 24px 70px rgb(23 32 51 / 12%); }
 .auth-brand { color: #315efb; font-size: 18px; font-weight: 750; margin-bottom: 16px; }
@@ -53,6 +54,12 @@ body { color: #172033; background: #f5f7fa; }
   .setup-shell { width: min(100% - 24px, 1040px); margin: 18px auto; }
   .setup-heading { align-items: flex-start; }
   .ant-card .ant-card-body { padding: 16px; }
+  .settings-page .ant-descriptions-row { display: block; }
+  .settings-page .ant-descriptions-item-label, .settings-page .ant-descriptions-item-content { display: block; width: 100%; box-sizing: border-box; }
+  .settings-page .ant-descriptions-item-label { border-inline-end: 0 !important; white-space: normal; }
+  .settings-page .ant-descriptions-item-label .ant-space { display: flex; flex-wrap: wrap; }
+  .settings-page .ant-descriptions-item-label code { white-space: nowrap; word-break: normal; }
+  .ant-table-cell { overflow-wrap: anywhere; }
   .graph-toolbar .ant-input-search { width: 100%; }
   .graph-toolbar .ant-space { width: 100%; }
   .welcome { align-items: flex-start; flex-direction: column; padding: 20px; }

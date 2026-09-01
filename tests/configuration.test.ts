@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { configurationStatus } from './configuration.ts';
+import { configurationStatus } from '../server/configuration.ts';
 
 const required = { SECRET_KEY: 'secret', ADMIN_USERNAME: 'admin', ADMIN_PASSWORD: 'password', GITHUB_TOKEN: 'token', GITHUB_REPOSITORY: 'owner/repo' };
 
