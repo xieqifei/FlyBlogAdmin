@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, App as AntApp, Button, Card, Col, Collapse, Empty, Form, Input, Layout, Menu, Modal, Popconfirm, Row as Grid, Select, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
 import { ApartmentOutlined, ArrowLeftOutlined, CloseOutlined, CloudOutlined, DeleteOutlined, EditOutlined, FileAddOutlined, FileTextOutlined, FolderOutlined, HomeOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, ReloadOutlined, RobotOutlined, SearchOutlined, SettingOutlined, TagsOutlined } from '@ant-design/icons';
 import GraphView from './GraphView';
+import ContributionCalendar from './ContributionCalendar';
 import MarkdownEditor from './MarkdownEditor';
 import SettingsGuide, { type Configuration } from './SettingsGuide';
 import { parseFrontMatter, values as frontMatterValues, writeBody, writeFrontMatter, type FrontMatterFields } from '../shared/frontMatter';
@@ -53,7 +54,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
 function Dashboard({ configuration, onLogout }: { configuration: Configuration; onLogout: () => void }) {
   const { message } = AntApp.useApp(); const [collapsed, setCollapsed] = useState(false); const [isMobile, setIsMobile] = useState(false); const [mobileOpen, setMobileOpen] = useState(false); const [section, setSection] = useState('home');
   const [rows, setRows] = useState<Row[]>([]); const [loading, setLoading] = useState(false); const [loadError, setLoadError] = useState(''); const [editor, setEditor] = useState<Post>(); const [saving, setSaving] = useState(false); const [query, setQuery] = useState(''); const [draftSavedAt, setDraftSavedAt] = useState('');
-  const [optimizeMode, setOptimizeMode] = useState<OptimizeMode>('proofread'); const [instruction, setInstruction] = useState(''); const [suggestion, setSuggestion] = useState(''); const [optimizing, setOptimizing] = useState(false); const [aiOpen, setAiOpen] = useState(false);
+  const [optimizeMode, setOptimizeMode] = useState<OptimizeMode>('generate'); const [instruction, setInstruction] = useState(''); const [suggestion, setSuggestion] = useState(''); const [optimizing, setOptimizing] = useState(false); const [aiOpen, setAiOpen] = useState(false);
   const load = useCallback(async () => { setLoading(true); setLoadError(''); try { const data = await api<{ posts: Row[] }>('/api/posts'); setRows(data.posts); } catch (reason) { setRows([]); setLoadError(reason instanceof Error ? reason.message : '文章载入失败'); } finally { setLoading(false); } }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -84,7 +85,9 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
     if (!row.sha) return; setSaving(true); try { await api('/api/posts', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(row) }); localStorage.removeItem(draftKey(row.path)); message.success('文章已删除'); await load(); } catch (reason) { message.error(reason instanceof Error ? reason.message : '删除失败'); } finally { setSaving(false); }
   };
   const optimize = async () => {
-    if (!editor?.content.trim()) return; setOptimizing(true); setSuggestion('');
+    if (!editor) return; const body = parseFrontMatter(editor.content).body.trim();
+    if (!body && (optimizeMode !== 'generate' || !instruction.trim())) return message.warning(optimizeMode === 'generate' ? '请输入写作要求或正文素材' : '请输入需要 AI 处理的正文');
+    setOptimizing(true); setSuggestion('');
     try { const data = await api<{ suggestion: string }>('/api/ai/optimize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: editor.content, mode: optimizeMode, instruction }) }); setSuggestion(data.suggestion); } catch (reason) { message.error(reason instanceof Error ? reason.message : 'AI 优化失败'); } finally { setOptimizing(false); }
   };
   const logout = async () => { try { await api('/api/auth/logout', { method: 'POST' }); } finally { onLogout(); } };
@@ -101,6 +104,7 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
     <div className="welcome"><div><Typography.Title level={2}>内容工作台</Typography.Title><Typography.Text type="secondary">集中查看博客数据，快速开始下一篇创作。</Typography.Text></div><Button size="large" type="primary" icon={<FileAddOutlined />} onClick={create}>新建文章</Button></div>
     <Grid gutter={[16, 16]}><Col xs={24} sm={12} xl={6}><Card><Statistic title="文章总数" value={rows.length} prefix={<FileTextOutlined />} /></Card></Col><Col xs={24} sm={12} xl={6}><Card><Statistic title="分类" value={categories.length} prefix={<FolderOutlined />} /></Card></Col><Col xs={24} sm={12} xl={6}><Card><Statistic title="标签" value={tags.length} prefix={<TagsOutlined />} /></Card></Col><Col xs={24} sm={12} xl={6}><Card><Statistic title="已标注日期" value={rows.filter((row) => row.updated || row.date).length} prefix={<EditOutlined />} /></Card></Col></Grid>
     <Grid gutter={[16, 16]}><Col xs={24} lg={12}><Card title="分类分布">{categories.length ? <Space wrap>{categories.map((category) => <Tag color="blue" key={category}>{category} · {rows.filter((row) => row.categories?.includes(category)).length}</Tag>)}</Space> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无分类" />}</Card></Col><Col xs={24} lg={12}><Card title="常用标签">{tags.length ? <Space wrap>{tags.sort((a, b) => rows.filter((row) => row.tags?.includes(b)).length - rows.filter((row) => row.tags?.includes(a)).length).slice(0, 20).map((tag) => <Tag color="green" key={tag}>{tag} · {rows.filter((row) => row.tags?.includes(tag)).length}</Tag>)}</Space> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无标签" />}</Card></Col></Grid>
+    <ContributionCalendar dates={rows.map((row) => row.date)} />
     <Card title="最近文章" extra={<Button type="link" onClick={() => setSection('posts')}>查看全部</Button>}><Table<Row> size="small" tableLayout="fixed" pagination={false} rowKey="path" dataSource={recentRows.slice(0, 5)} columns={[{ title: '标题', render: (_, row) => <span className="post-title">{row.title || row.name}</span> }, { title: '编辑日期', responsive: ['sm'], render: (_, row) => formatDate(row.updated || row.date) }, { title: '', width: 64, render: (_, row) => <Button type="link" onClick={() => edit(row.path)}>编辑</Button> }]} /></Card>
   </div>;
 

@@ -91,6 +91,21 @@ body { color: #172033; background: #f5f7fa; }
 .welcome { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border-radius: 14px; color: #fff; background: linear-gradient(125deg, #315efb, #6d4aff); box-shadow: 0 16px 40px rgb(49 94 251 / 18%); }
 .welcome h2, .welcome .ant-typography { color: inherit; margin: 0; }
 .welcome .ant-btn { color: #315efb; background: #fff; border-color: #fff; }
+.contribution-card .ant-card-body { overflow: hidden; }
+.contribution-scroll { min-width: 0; overflow-x: auto; padding-bottom: 2px; }
+.contribution-months, .contribution-body { display: grid; grid-template-columns: 28px max-content; gap: 8px; min-width: max-content; }
+.contribution-months > :last-child { display: grid; grid-template-columns: repeat(53, 12px); gap: 3px; }
+.contribution-months { margin-bottom: 6px; color: #667085; font-size: 12px; }
+.contribution-months > div > span { overflow: visible; white-space: nowrap; }
+.contribution-weekdays { display: grid; grid-template-rows: repeat(7, 12px); gap: 3px; color: #667085; font-size: 10px; line-height: 12px; text-align: right; }
+.contribution-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; gap: 3px; }
+.contribution-cell { display: inline-block; width: 12px; height: 12px; box-sizing: border-box; border: 1px solid rgb(27 31 36 / 6%); border-radius: 3px; background: #ebedf0; }
+.contribution-cell.level-1 { background: #9be9a8; }
+.contribution-cell.level-2 { background: #40c463; }
+.contribution-cell.level-3 { background: #30a14e; }
+.contribution-cell.level-4 { background: #216e39; }
+.contribution-cell.outside { border-color: transparent; background: transparent; }
+.contribution-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; width: 828px; margin-top: 10px; font-size: 12px; }
 .ai-controls { display: grid; grid-template-columns: 260px 1fr; gap: 12px; margin: 16px 0; }
 .ai-preview { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .ai-preview > div { display: grid; gap: 8px; }

@@ -1,5 +1,3 @@
-import { writeFrontMatter } from '../shared/frontMatter.ts';
-
 export type OptimizeMode = 'generate' | 'rewrite' | 'proofread' | 'concise' | 'outline';
 export type OptimizeInput = { content?: unknown; mode?: unknown; instruction?: unknown };
 type LLMConfig = { apiKey: string; model: string; baseUrl: string; apiStyle: 'auto' | 'chat' | 'responses' };
@@ -28,7 +26,7 @@ function configuration(): LLMConfig {
 export function validateOptimizeInput(input: OptimizeInput) {
   const content = typeof input.content === 'string' ? input.content : ''; const mode = typeof input.mode === 'string' && input.mode in instructions ? input.mode as OptimizeMode : 'proofread';
   const custom = typeof input.instruction === 'string' ? input.instruction.trim() : '';
-  if (!content.trim()) throw new OptimizeError('请输入需要 AI 处理的正文', 400);
+  if (!content.trim() && mode !== 'generate') throw new OptimizeError('请输入需要 AI 处理的正文', 400);
   if (content.length > 100_000) throw new OptimizeError('单次 AI 处理不能超过 100000 个字符', 400);
   if (custom.length > 1000) throw new OptimizeError('补充要求不能超过 1000 个字符', 400);
   return { content, mode, custom, instruction: `${instructions[mode]}${custom ? `\n补充要求：${custom}` : ''}` };
@@ -61,11 +59,18 @@ function cleanResult(result: string) {
   return result.trim().replace(/^```(?:markdown)?\s*\n?|\n?```$/g, '');
 }
 
+function frontMatterWithTitle(source: string, title: string) {
+  const parsed = source.match(/^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/);
+  if (!parsed) return `---\ntitle: ${title}\n---\n\n`;
+  const fields = /^title:/m.test(parsed[1]) ? parsed[1].replace(/^title:.*$/m, `title: ${title}`) : `title: ${title}\n${parsed[1]}`;
+  return `---\n${fields}\n---\n\n`;
+}
+
 function generatedArticle(source: string, result: string) {
   const cleaned = cleanResult(result);
   const match = cleaned.match(/^\s*\[\[TITLE\]\]\s*\r?\n([^\r\n]+)\r?\n\s*\[\[CONTENT\]\]\s*\r?\n([\s\S]+)$/i);
   if (!match?.[1].trim() || !match[2].trim()) throw new OptimizeError('AI 未按要求返回标题和正文，请重试', 502);
-  return writeFrontMatter(source, { title: match[1].trim() }).replace(/(^---[\s\S]*?\r?\n---\s*(?:\r?\n|$))[\s\S]*$/, (_whole, prefix: string) => `${prefix}${match[2].trim()}`);
+  return frontMatterWithTitle(source, match[1].trim()) + match[2].trim();
 }
 
 export async function optimizeArticle(input: OptimizeInput, fetcher: typeof fetch = fetch) {

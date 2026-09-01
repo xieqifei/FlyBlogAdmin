@@ -35,6 +35,13 @@ test('generation supports a new article with only front matter and a writing req
   assert.match(result, /---\n\n正文$/);
 });
 
+test('generation supports completely empty editor content when a writing requirement is provided', async () => {
+  configure();
+  const fetcher = async () => Response.json({ choices: [{ message: { content: '[[TITLE]]\n空白起稿\n[[CONTENT]]\n正文' } }] });
+  const result = await optimizeArticle({ content: '', mode: 'generate', instruction: '从零写一篇文章' }, fetcher as typeof fetch);
+  assert.equal(result, '---\ntitle: 空白起稿\n---\n\n正文');
+});
+
 test('auto mode falls back to Responses API', async () => {
   configure('auto'); const calls: string[] = [];
   const fetcher = async (url: string | URL | Request) => { calls.push(String(url)); return calls.length === 1 ? Response.json({ error: { message: 'unsupported' } }, { status: 404 }) : Response.json({ output: [{ type: 'message', content: [{ type: 'output_text', text: '优化结果' }] }] }); };
