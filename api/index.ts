@@ -21,6 +21,9 @@ function config() {
     passwordHash: process.env.ADMIN_PASSWORD_HASH || '',
     secret: process.env.SECRET_KEY || '',
     sessionAge: Math.max(300, Number(process.env.SESSION_AGE) || 604800),
+    llmKey: process.env.LLM_API_KEY?.trim() || '',
+    llmModel: process.env.LLM_MODEL?.trim() || '',
+    llmBaseUrl: (process.env.LLM_BASE_URL?.trim() || 'https://api.openai.com/v1').replace(/\/$/, ''),
   };
 }
 
@@ -174,6 +177,29 @@ async function buildGraph() {
   return { nodes: [...nodes.values()], edges };
 }
 
+async function optimizeArticle(content: string, mode: string, instruction: string) {
+  const current = config();
+  if (!current.llmKey || !current.llmModel) throw new Error('请先配置 LLM_API_KEY 和 LLM_MODEL');
+  if (!content.trim() || content.length > 120000) throw new Error('文章为空或内容过长');
+  const tasks: Record<string, string> = {
+    proofread: '校对错别字、标点和语病，尽量少改动原意与文风。',
+    rewrite: '改善段落结构、逻辑衔接和表达清晰度，保留作者观点。',
+    concise: '删除重复与冗余表达，让文章更精炼，同时保留重要信息。',
+    outline: '优化标题、各级标题和文章结构，不虚构新的事实。',
+  };
+  const response = await fetch(`${current.llmBaseUrl}/chat/completions`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${current.llmKey}` },
+    body: JSON.stringify({ model: current.llmModel, temperature: 0.2, messages: [
+      { role: 'system', content: '你是严谨的中文 Markdown 编辑。返回优化后的完整 Markdown 原文，不要使用代码围栏，不要解释。必须保留 YAML Front Matter、链接、代码块和事实；不确定的信息不要改写。' },
+      { role: 'user', content: `任务：${tasks[mode] || tasks.proofread}\n补充要求：${instruction || '无'}\n\n原文：\n${content}` },
+    ] }),
+  });
+  const result = await response.json().catch(() => ({})) as { choices?: { message?: { content?: string } }[]; error?: { message?: string } };
+  if (!response.ok) throw new Error(result.error?.message || `大模型请求失败 (${response.status})`);
+  const suggestion = result.choices?.[0]?.message?.content?.trim(); if (!suggestion) throw new Error('大模型没有返回可用内容');
+  return suggestion.replace(/^```(?:markdown)?\s*\n?|\n?```$/g, '');
+}
+
 function jsonBody<T>(req: VercelRequest) { return (typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {}) as T; }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -193,10 +219,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isAuthenticated(req)) return res.status(401).json({ error: '请先登录' });
     if (method !== 'GET' && !mutationOriginAllowed(req)) return res.status(403).json({ error: 'Invalid request origin' });
     if (method === 'GET' && path === '/api/graph') return res.status(200).json(await buildGraph());
+    if (method === 'POST' && path === '/api/ai/optimize') {
+      const body = jsonBody<{ content?: string; mode?: string; instruction?: string }>(req);
+      return res.status(200).json({ suggestion: await optimizeArticle(String(body.content || ''), String(body.mode || 'proofread'), String(body.instruction || '').slice(0, 1000)) });
+    }
     if (path !== '/api/posts') return res.status(404).json({ error: 'Not found' });
     if (method === 'GET') {
       if (req.query.path) return res.status(200).json({ post: await readPost(relativePostPath(req.query.path)) });
-      const files = await listPosts(); return res.status(200).json({ posts: files.map((file) => ({ name: file.name, path: file.path.slice(config().postsPath.length + 1), sha: file.sha })) });
+      const files = await listPosts(); const posts = await Promise.all(files.map(async (file) => {
+        const relative = file.path.slice(config().postsPath.length + 1); const article = await readPost(relative); const { metadata } = parseFrontMatter(article.content);
+        return { name: file.name, path: relative, sha: file.sha, title: String(metadata.title || file.name.replace(/\.(md|markdown)$/i, '')), categories: values(metadata.categories || metadata.category), tags: values(metadata.tags || metadata.tag), date: String(metadata.date || ''), updated: String(metadata.updated || '') };
+      }));
+      return res.status(200).json({ posts: posts.sort((a, b) => (b.updated || b.date).localeCompare(a.updated || a.date) || a.title.localeCompare(b.title)) });
     }
     if (!['PUT', 'DELETE'].includes(method)) return res.status(405).json({ error: 'Method not allowed' });
     const post = jsonBody<Post>(req); const relative = relativePostPath(post.path || post.name);

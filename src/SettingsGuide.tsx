@@ -15,6 +15,9 @@ const variables = [
   ['POST_EXTENSIONS', '可选', '可编辑扩展名，默认 .md,.markdown。'],
   ['SESSION_AGE', '可选', '登录有效秒数，默认 604800（7 天）。'],
   ['COOKIE_SECURE', '可选', 'Vercel 自动启用安全 Cookie；其他 HTTPS 环境可设为 1。'],
+  ['LLM_API_KEY', 'AI 可选', '大模型服务的 API Key；仅由服务端读取。'],
+  ['LLM_MODEL', 'AI 可选', '用于文章优化的模型名称。'],
+  ['LLM_BASE_URL', 'AI 可选', 'OpenAI 兼容接口地址，默认 https://api.openai.com/v1。'],
 ];
 
 export default function SettingsGuide({ configuration }: { configuration: Configuration }) {

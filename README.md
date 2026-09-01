@@ -1,120 +1,92 @@
-# Qexo
-[![GitHub Release](https://img.shields.io/github/release/qexo/qexo.svg?style=for-the-badge&logo=Qase&color=005AA4)](https://github.com/qexo/qexo/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/abudulin/qexo.svg?style=for-the-badge&logo=docker&logoColor=fff&color=005AA4&label=docker.io%20pulls)](https://hub.docker.com/r/abudulin/qexo)
-[![GHCR](https://img.shields.io/badge/ghcr.io-qexo%2Fqexo-blue?style=for-the-badge&logo=github&logoColor=fff&color=005AA4&label=ghcr.io)](https://github.com/Qexo/Qexo/pkgs/container/qexo)<br>
-[![Contributors](https://img.shields.io/github/contributors-anon/qexo/qexo.svg?style=flat-square&logo=Qase&color=005AA4)](https://github.com/qexo/qexo/graphs/contributors)
-[![Forks](https://img.shields.io/github/forks/qexo/qexo.svg?style=flat-square&logo=github&logoColor=fff&color=005AA4)](https://github.com/qexo/qexo/network/members)
-[![Stars](https://img.shields.io/github/stars/qexo/qexo.svg?style=flat-square&logo=github&logoColor=fff&color=005AA4)](https://github.com/qexo/qexo/stargazers)
-[![Issues Open](https://img.shields.io/github/issues/qexo/qexo.svg?style=flat-square&logo=github&logoColor=fff&color=005AA4&cacheSeconds=300)](https://github.com/qexo/qexo/issues)
-[![Issues Closed](https://img.shields.io/github/issues-closed/qexo/qexo.svg?style=flat-square&logo=github&logoColor=fff&color=005AA4&cacheSeconds=300)](https://github.com/qexo/qexo/issues?q=is%3Aissue+is%3Aclosed)<br>
-[![GPL-3.0 Licensed](https://img.shields.io/github/license/qexo/qexo.svg?style=flat-square&logo=Qase&color=e97536&cacheSeconds=14400)](https://github.com/qexo/qexo/blob/main/LICENSE.txt)
-[![GitHub Discussions](https://img.shields.io/github/discussions/qexo/qexo?style=flat-square&logo=github&logoColor=fff&color=953B00&cacheSeconds=300)](https://github.com/qexo/qexo/discussions)
-[![Docker Release](https://github.com/Qexo/Qexo/actions/workflows/docker-image-release.yml/badge.svg)](https://github.com/Qexo/Qexo/actions/workflows/docker-image-release.yml)
-[![Docker Testing](https://github.com/Qexo/Qexo/actions/workflows/docker-image-testing.yml/badge.svg)](https://github.com/Qexo/Qexo/actions/workflows/docker-image-testing.yml)
+# FlyBlogAdmin
 
-Qexo 是一个快速、强大、美观的在线 静态博客编辑器。使用 GPL3.0 开源协议。支持包括且不限于在 Vercel 等平台部署, 为您的静态博客添加动态的元素
+FlyBlogAdmin 是一个面向 Hexo 等 Git 仓库博客的无数据库管理后台。文章直接通过 GitHub Contents API 读取和提交，前端使用 React、TypeScript 与 Ant Design，服务端使用 Vercel Node.js Functions。
 
-**Qexo** is a fast, powerful and beautiful online **static blog editor**. Uses the GPL3.0 **Open Source** license. Support includes and is not limited to deployment on platforms such as **Vercel**, adding **dynamic** elements to your static blogs
-![](https://s2.loli.net/2024/07/19/r1XJPHnYANKbcRl.png)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fxieqifei%2FFlyBlogAdmin&env=SECRET_KEY,ADMIN_USERNAME,ADMIN_PASSWORD,GITHUB_TOKEN,GITHUB_REPOSITORY&envDescription=FlyBlogAdmin%20%E8%BF%90%E8%A1%8C%E6%89%80%E9%9C%80%E7%9A%84%E7%99%BB%E5%BD%95%E4%B8%8E%20GitHub%20%E9%85%8D%E7%BD%AE&project-name=fly-blog-admin&repository-name=fly-blog-admin)
 
-[请阅读文档](https://oplog.cn/qexo/)
+![FlyBlogAdmin 设置引导](docs/screenshots/setup-guide.png)
 
-[Please read Wiki first](https://oplog.cn/qexo/en/)
-## Features 特性
+## 功能
 
-- **Article Management ~ New Interface**
+- 首页内容看板：文章、分类、标签统计及最近文章。
+- 文章自动加载、新建、编辑和删除，使用 Editor.md 编写 Markdown。
+- 日期自动生成，标题自动生成文章文件名，分类和标签通过表单维护。
+- Obsidian 风格文章关系图谱，支持拖拽、缩放、筛选和局部图谱。
+- 可选 AI 文章校对与改写，先对比预览再手动应用，不会自动覆盖文章。
+- 单管理员 Cookie 登录及环境变量配置引导。
+- 响应式布局，可在桌面和手机浏览器使用。
 
-  Version 3.0 of Qexo redesigned the post editing page, you can edit posts more elegantly.
+## 本地运行
 
-  Support multiple image uploading, uploading is just a click away!
-![](https://s2.loli.net/2024/07/19/q3LlJutFDCvpbMh.png)
-- **Smaller than a sparrow ~ complete in every way** 
-
-  - Modularized Architecture
-  - Supports multiple Hexo, Hugo, Valaxy hosts Github, Gitlab, Local
-  - Multiple graph bed protocols support Github, S3, FTP, remote APIs
-  - Markdown syntax + multiple editing interfaces, what you see is what you get.
-  - New interface: Night/Day with one click
-  - Multi-format push Bark, Telegram, Pushdeer, Wechat...
-  - reCaptcha Spam Prevention
-  - Links Front-end application, one-click access
-  - Automatic update Easy and convenient, keep the latest
-  - Customized Fields / Site Statistics / Page Management / Configuration Editing
-  - Comment Notification / Image Upload / Logo Generation / API Expansion
-
-## 无数据库模式
-
-## Node.js + TypeScript 管理端
-
-管理端已提供 Node.js/TypeScript 与 React + Ant Design 实现，适合直接部署到 Vercel：前端由 Vite 构建为静态资源，`api/index.ts` 提供无状态的 GitHub Contents API，不写入数据库。文章列表通过 `GET /api/posts` 读取，使用 `PUT /api/posts` 创建或更新，使用 `DELETE /api/posts` 删除；请求体中的 `name`、`content` 和（更新/删除时）`sha` 与 GitHub Contents 数据格式保持兼容。
-
-本地开发：
+需要 Node.js 22 和 npm。
 
 ```bash
+git clone https://github.com/xieqifei/FlyBlogAdmin.git
+cd FlyBlogAdmin
 npm install
 npm run dev
 ```
 
-生产构建使用 `npm run build`。Vercel 会自动执行该命令并发布 `dist`，同时将 `api/index.ts` 作为 Node.js Serverless Function。部署时仍只需配置下方的 GitHub 环境变量；运行时不会创建或依赖数据库。
+Vite 开发服务器默认地址为 `http://localhost:5173`。仅查看设置页和界面构建不需要连接数据库；访问实际文章及登录接口时，需要通过 Vercel 本地开发环境或其他方式为 `/api` Node Function 提供下列环境变量。
 
-此分支固定运行无数据库 GitHub 文章编辑器，不加载 Django 用户、Session、缓存、Passkeys 或任何 Qexo 动态功能数据表，只提供单管理员登录和文章的列表、新建、编辑、删除。MySQL、PostgreSQL、MongoDB、PlanetScale 及 `configs.py` 均不再需要；旧数据库环境变量即使残留也不会被读取。
-
-首次部署不需要模式开关。若必需变量未齐全，访问网站会直接显示设置引导页，并检查 GitHub Token、仓库和登录变量的配置状态。
-
-必需环境变量：
-
-| 名称 | 说明 |
-| --- | --- |
-| `SECRET_KEY` | 用于签名登录 Cookie 的长期随机密钥；轮换后所有登录失效 |
-| `ADMIN_USERNAME` | 管理员用户名 |
-| `ADMIN_PASSWORD_HASH` | 推荐：Django `pbkdf2_sha256` 或 `sha256$<hex>` 格式的密码哈希 |
-| `ADMIN_PASSWORD` | 可选替代项：明文密码；与哈希同时设置时优先使用哈希 |
-| `GITHUB_TOKEN` | 仅授予目标仓库 Contents 读写权限的 GitHub Token |
-| `GITHUB_REPOSITORY` | 目标仓库，格式为 `owner/repository` |
-| `GITHUB_BRANCH` | 写入分支，例如 `main` |
-| `POSTS_PATH` | 文章目录，例如 Hexo 的 `source/_posts` |
-| `LLM_API_KEY` | 可选：旧版 Django 编辑器的 AI 服务 API Key |
-| `LLM_MODEL` | 可选：旧版 Django 编辑器的 AI 模型名称 |
-| `LLM_BASE_URL` | 可选：OpenAI 兼容 API 地址，默认 `https://api.openai.com/v1` |
-| `LLM_API_STYLE` | 可选：`auto`、`chat` 或 `responses`，默认 `auto` |
-
-可选的 `SESSION_AGE` 设置登录 Cookie 秒数（默认 7 天），`POST_EXTENSIONS` 设置可编辑扩展名（默认 `.md,.markdown`）。非 Vercel 的 HTTPS 反向代理部署应设置 `COOKIE_SECURE=1` 和 `SSL_REDIRECT=1`；Vercel 会默认启用安全 Cookie。
-
-旧版 Django 编辑器的 AI 文章优化为可选功能。设置 `LLM_API_KEY` 和 `LLM_MODEL` 后即可使用；可通过 `LLM_BASE_URL` 指向兼容服务，通过 `LLM_API_STYLE=responses` 选择 Responses API。
-
-当前 React 管理端使用内置 Markdown 文本编辑器直接编辑完整文件（包括 Front Matter），不依赖外部编辑器服务或第三方 CDN。
-
-文章页会在登录后自动从 GitHub 加载 Markdown 文件，并过滤隐藏文件、`.password` 和非文章扩展名。关系图谱以文章、分类和标签为节点，识别 Markdown 内链及 `[[Wiki Link]]`。
-
-旧版 Django 全文搜索的进程内索引默认缓存 300 秒，可用 `SEARCH_CACHE_SECONDS` 调整为 0–3600 秒。
-
-可在安装 Django 依赖的本地环境中交互式生成兼容密码哈希，密码不会进入命令历史：
+执行生产构建：
 
 ```bash
-python3 -c 'from django.conf import settings; settings.configure(); from django.contrib.auth.hashers import make_password; from getpass import getpass; print(make_password(getpass("Password: ")))'
+npm run build
+npm run preview
 ```
 
-所有敏感值都应保存在部署平台的 Secret/加密环境变量中，不要写进 Git 仓库或前端代码。`ADMIN_PASSWORD` 明文方式便于配置，但项目管理员和运行中的程序可以读取它；`ADMIN_PASSWORD_HASH` 可提供额外保护，因此更推荐。更新任一种密码配置后，已有登录 Cookie 会自动失效；轮换 `SECRET_KEY` 也会使全部登录失效。保存已有文章时会提交当前 GitHub blob SHA；若远端文章已变化，GitHub 会拒绝覆盖并在编辑页保留未保存内容。
-## Acknowledgements 鸣谢
-- [Ace](https://ace.c9.io/)
-- [Argon-Dashboard-Django](https://github.com/creativetimofficial/argon-dashboard-django)
-- [Bootstrap](https://getbootstrap.com/)
-- [Editor.md](https://github.com/pandao/editor.md)
-- [Notyf](https://github.com/caroso1222/notyf)
-- [Django](https://github.com/django/django)
-- [HexoPlusPlus](https://github.com/HexoPlusPlus/HexoPlusPlus)
-- [jQuery](https://jquery.com/)
-- [OnePush](https://github.com/y1ndan/onepush)
-- [Vercel-Python-WSGI](https://github.com/ardnt/vercel-python-wsgi)
-- ...
-## Sponsor 赞助
-作为一个开源项目，本项目并未给我带来直接利益。若您觉得本项目对您有帮助，您的支持将是我最大的动力。
+构建产物位于 `dist`。`npm test` 会执行 TypeScript 类型检查。
 
-您可以在备注中附上您的姓名和网站博客。赞助1元及以上者，将在[文档页面](https://www.oplog.cn/qexo/dev/thanks.html)永久展示。
+## 环境变量
 
-As an open-source project, this project does not provide me with any direct benefits. If you find this project helpful, your support is my greatest motivation.
+| 变量 | 必需 | 说明 |
+| --- | --- | --- |
+| `SECRET_KEY` | 是 | 登录 Cookie 签名密钥，请使用长期随机值 |
+| `ADMIN_USERNAME` | 是 | 管理员用户名 |
+| `ADMIN_PASSWORD_HASH` | 二选一 | 推荐，支持 Django `pbkdf2_sha256` 或 `sha256$<hex>` |
+| `ADMIN_PASSWORD` | 二选一 | 管理员明文密码，仅应存放在部署平台的加密变量中 |
+| `GITHUB_TOKEN` | 是 | 对目标仓库具有 Contents 读写权限的细粒度 Token |
+| `GITHUB_REPOSITORY` | 是 | 目标博客仓库，格式为 `owner/repository` |
+| `GITHUB_BRANCH` | 否 | 文章分支，默认 `main` |
+| `POSTS_PATH` | 否 | 文章目录，默认 `source/_posts` |
+| `POST_EXTENSIONS` | 否 | 可编辑扩展名，默认 `.md,.markdown` |
+| `SESSION_AGE` | 否 | 登录有效秒数，默认 7 天 |
+| `LLM_API_KEY` | AI 可选 | OpenAI 兼容大模型服务的 API Key |
+| `LLM_MODEL` | AI 可选 | 模型名称 |
+| `LLM_BASE_URL` | AI 可选 | 接口根地址，默认 `https://api.openai.com/v1` |
 
-You can include your name and website blog in the remarks. Sponsorship of 1 RMB or more will be 
-permanently displayed on the [documentation page](https://www.oplog.cn/qexo/en/dev/thanks.html).
+不要把 Token、密码或密钥提交到仓库，也不要为这些变量添加会将其暴露到浏览器的 `VITE_` 前缀。
 
-![Alipay/WeChat](https://github.com/user-attachments/assets/3ad5cf14-9296-4a7e-9a1b-1e4d317532a4)
+## 部署到 Vercel
+
+### 一键导入
+
+点击文首的 **Deploy with Vercel** 按钮，Vercel 会克隆本仓库并提示填写必需变量。部署完成后打开站点；若配置不完整，设置引导页会列出缺少的变量。
+
+### 手动导入
+
+1. 在 Vercel 新建项目并导入此 GitHub 仓库。
+2. Framework Preset 可保持自动检测；仓库中的 `vercel.json` 已指定 `npm run build` 和 `dist`。
+3. 在 Settings → Environment Variables 中添加必需变量，并应用到 Production 和需要使用的 Preview 环境。
+4. 重新部署。环境变量变更不会自动进入已经完成的旧部署。
+5. 打开站点登录，确认文章列表能够从目标博客仓库载入。
+
+推送到连接的 GitHub 分支后，Vercel 会按项目的 Git 集成设置自动创建新部署。本项目不需要数据库，也不会在 Serverless Function 的临时磁盘中保存文章。
+
+## AI 优化工作流
+
+配置 `LLM_API_KEY` 和 `LLM_MODEL` 后，在文章编辑弹窗中选择“AI 优化”。可选择校对、改善结构、精简内容或优化大纲，并补充自定义要求。系统会并排展示原文和建议稿；只有点击“应用到文章”后，建议才进入编辑器，仍需再次点击“保存并提交”才会写入 GitHub。
+
+这一流程借鉴 Obsidian Smart Composer 的 Apply Edit 与提示模板体验：让用户控制上下文、预览建议并明确应用，而不是让模型直接改写远端文件。
+
+## 安全说明
+
+- 使用只授权目标博客仓库的细粒度 GitHub Token。
+- 优先使用 `ADMIN_PASSWORD_HASH`，并定期轮换 Token 与密钥。
+- 服务端会校验写请求来源、文章相对路径和当前 GitHub blob SHA，避免跨站写入、路径穿越及静默覆盖远端新版本。
+- AI 功能会把当前文章发送到配置的大模型服务；敏感文章应先确认服务商的数据处理政策。
+
+## License
+
+本项目沿用仓库中的 GPL-3.0 许可证，第三方 Editor.md 资源使用其原许可证。
