@@ -2,17 +2,19 @@ html, body, #root { margin: 0; min-height: 100%; }
 body { color: #172033; background: #f5f7fa; }
 .boot, .graph-loading { min-height: 100vh; display: grid; place-items: center; }
 .app { min-height: 100vh; }
-.sider { min-height: 100vh; background: #fff !important; border-right: 1px solid #f0f0f0; position: relative !important; z-index: 20; }
+.sider { position: sticky !important; top: 0; align-self: flex-start; height: 100vh; overflow-y: auto; background: #fff !important; border-right: 1px solid #f0f0f0; z-index: 20; }
 .logo { height: 64px; display: flex; align-items: center; justify-content: center; color: #172033; font-size: 19px; font-weight: 700; border-bottom: 1px solid #f5f5f5; white-space: nowrap; overflow: hidden; }
 .mobile-menu-close { position: absolute; right: 8px; }
 .mobile-menu-mask { display: none; }
 .header { display: flex; align-items: center; gap: 18px; background: #fff; padding: 0 24px; border-bottom: 1px solid #f0f0f0; }
 .header h4 { margin: 0; flex: 1; }
 .header-logout { flex: 0 0 auto; }
-.content { min-width: 0; padding: 24px; background: #f5f7fa; }
-.content-stack { display: grid; gap: 16px; }
+.app > .ant-layout, .content { min-width: 0; }
+.content { padding: 24px; background: #f5f7fa; }
+.content-stack { display: grid; min-width: 0; gap: 16px; }
 .table-alert { margin-bottom: 16px; }
 .post-search { width: min(460px, 100%); margin-bottom: 16px; }
+.posts-card, .posts-card .ant-card-body, .posts-card .ant-table-wrapper { min-width: 0; max-width: 100%; }
 .post-title { display: block; min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
 .auth-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: linear-gradient(140deg, #edf3ff, #f7f9fc 60%, #eafaf3); }
 .auth-card { width: min(420px, calc(100vw - 40px)); box-shadow: 0 24px 70px rgb(23 32 51 / 12%); }
