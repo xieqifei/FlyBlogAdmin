@@ -2,6 +2,8 @@
 
 FlyBlogAdmin 是一个面向 Hexo 等 Git 仓库博客的无数据库管理后台。文章直接通过 GitHub Contents API 读取和提交，前端使用 React、TypeScript 与 Ant Design，服务端使用 Vercel Node.js Functions。
 
+未配置 API 环境变量时也可以直接访问主页和浏览管理界面；登录、文章读取、保存和 AI 优化等依赖服务端的功能会提示先完成配置。
+
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fxieqifei%2FFlyBlogAdmin&env=SECRET_KEY,ADMIN_USERNAME,ADMIN_PASSWORD,GITHUB_TOKEN,GITHUB_REPOSITORY&envDescription=FlyBlogAdmin%20%E8%BF%90%E8%A1%8C%E6%89%80%E9%9C%80%E7%9A%84%E7%99%BB%E5%BD%95%E4%B8%8E%20GitHub%20%E9%85%8D%E7%BD%AE&project-name=fly-blog-admin&repository-name=fly-blog-admin)
 
 ![FlyBlogAdmin 设置引导](docs/screenshots/setup-guide.png)
