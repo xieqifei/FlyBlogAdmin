@@ -31,8 +31,9 @@ function list(value: string | string[] | undefined) { return frontMatterValues(v
 
 function dateOnly(value: string | string[] | undefined) { return String(value || '').match(/^\d{4}-\d{2}-\d{2}/)?.[0] || ''; }
 function formatDate(value?: string) {
-  if (!value) return '—'; const normalized = value.includes('T') ? value : value.replace(' ', 'T'); const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: value.length > 10 ? 'short' : undefined }).format(parsed);
+  if (!value) return '—'; const matched = value.match(/^\d{4}-\d{2}-\d{2}/); if (matched) return matched[0];
+  const parsed = new Date(value); if (Number.isNaN(parsed.getTime())) return value;
+  const pad = (part: number) => String(part).padStart(2, '0'); return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
 }
 function time(value?: string) { if (!value) return 0; const parsed = new Date(value.includes('T') ? value : value.replace(' ', 'T')); return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime(); }
 function markdownDateTime(current = new Date()) {
@@ -45,12 +46,12 @@ function readDraft(path: string, remote: Post) {
   try { const saved = JSON.parse(localStorage.getItem(draftKey(path)) || '') as { post?: Post }; return saved.post?.content ? { ...remote, ...saved.post, path: remote.path, name: remote.name, sha: remote.sha } : remote; } catch { return remote; }
 }
 
-function Login({ onLogin, onSetup }: { onLogin: () => void; onSetup: () => void }) {
+function Login({ onLogin }: { onLogin: () => void }) {
   const [loading, setLoading] = useState(false); const [error, setError] = useState('');
   const submit = async (values: { username: string; password: string }) => {
     setLoading(true); setError(''); try { await api('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) }); onLogin(); } catch (reason) { setError(reason instanceof Error ? reason.message : '登录失败'); } finally { setLoading(false); }
   };
-  return <main className="auth-page"><Card className="auth-card"><div className="auth-brand">FlyBlog Admin</div><Typography.Title level={3}>登录</Typography.Title>{error && <Alert showIcon type="error" message={error} />}<Form layout="vertical" onFinish={submit}><Form.Item label="用户名" name="username" rules={[{ required: true }]}><Input autoComplete="username" autoFocus /></Form.Item><Form.Item label="密码" name="password" rules={[{ required: true }]}><Input.Password autoComplete="current-password" /></Form.Item><Button type="primary" htmlType="submit" block loading={loading}>登录</Button></Form><Button type="link" block onClick={onSetup}>查看环境变量设置指南</Button></Card></main>;
+  return <main className="auth-page"><Card className="auth-card"><div className="auth-brand">FlyBlog Admin</div><Typography.Title level={3}>登录</Typography.Title>{error && <Alert showIcon type="error" message={error} />}<Form layout="vertical" onFinish={submit}><Form.Item label="用户名" name="username" rules={[{ required: true }]}><Input autoComplete="username" autoFocus /></Form.Item><Form.Item label="密码" name="password" rules={[{ required: true }]}><Input.Password autoComplete="current-password" /></Form.Item><Button type="primary" htmlType="submit" block loading={loading}>登录</Button></Form></Card></main>;
 }
 
 function Dashboard({ configuration, onLogout }: { configuration: Configuration; onLogout: () => void }) {
@@ -104,18 +105,18 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
     <div className="welcome"><div><Typography.Title level={2}>内容工作台</Typography.Title><Typography.Text type="secondary">集中查看博客数据，快速开始下一篇创作。</Typography.Text></div><Button size="large" type="primary" icon={<FileAddOutlined />} onClick={create}>新建文章</Button></div>
     <Grid gutter={[16, 16]}><Col xs={24} sm={12} xl={6}><Card><Statistic title="文章总数" value={rows.length} prefix={<FileTextOutlined />} /></Card></Col><Col xs={24} sm={12} xl={6}><Card><Statistic title="分类" value={categories.length} prefix={<FolderOutlined />} /></Card></Col><Col xs={24} sm={12} xl={6}><Card><Statistic title="标签" value={tags.length} prefix={<TagsOutlined />} /></Card></Col><Col xs={24} sm={12} xl={6}><Card><Statistic title="已标注日期" value={rows.filter((row) => row.updated || row.date).length} prefix={<EditOutlined />} /></Card></Col></Grid>
     <Grid gutter={[16, 16]}><Col xs={24} lg={12}><Card title="分类分布">{categories.length ? <Space wrap>{categories.map((category) => <Tag color="blue" key={category}>{category} · {rows.filter((row) => row.categories?.includes(category)).length}</Tag>)}</Space> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无分类" />}</Card></Col><Col xs={24} lg={12}><Card title="常用标签">{tags.length ? <Space wrap>{tags.sort((a, b) => rows.filter((row) => row.tags?.includes(b)).length - rows.filter((row) => row.tags?.includes(a)).length).slice(0, 20).map((tag) => <Tag color="green" key={tag}>{tag} · {rows.filter((row) => row.tags?.includes(tag)).length}</Tag>)}</Space> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无标签" />}</Card></Col></Grid>
-    <Card title="最近文章" extra={<Button type="link" onClick={() => setSection('posts')}>查看全部</Button>}><Table<Row> size="small" tableLayout="fixed" pagination={false} rowKey="path" dataSource={recentRows.slice(0, 5)} columns={[{ title: '标题', render: (_, row) => <span className="post-title">{row.title || row.name}</span> }, { title: '编辑时间', responsive: ['sm'], render: (_, row) => formatDate(row.updated || row.date) }, { title: '', width: 64, render: (_, row) => <Button type="link" onClick={() => edit(row.path)}>编辑</Button> }]} /></Card>
+    <Card title="最近文章" extra={<Button type="link" onClick={() => setSection('posts')}>查看全部</Button>}><Table<Row> size="small" tableLayout="fixed" pagination={false} rowKey="path" dataSource={recentRows.slice(0, 5)} columns={[{ title: '标题', render: (_, row) => <span className="post-title">{row.title || row.name}</span> }, { title: '编辑日期', responsive: ['sm'], render: (_, row) => formatDate(row.updated || row.date) }, { title: '', width: 64, render: (_, row) => <Button type="link" onClick={() => edit(row.path)}>编辑</Button> }]} /></Card>
   </div>;
 
   const posts = <Card title="文章" extra={<Space><Button icon={<FileAddOutlined />} type="primary" onClick={create}>新建</Button><Button icon={<ReloadOutlined />} onClick={load}>刷新</Button></Space>}>
     <Input className="post-search" allowClear prefix={<SearchOutlined />} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索标题、分类或标签" />
     {loadError && <Alert className="table-alert" showIcon type="error" message={loadError} action={<Button size="small" onClick={load}>重试</Button>} />}
-    <Table<Row> rowKey="path" tableLayout="fixed" loading={loading} dataSource={filteredRows} showSorterTooltip={{ target: 'sorter-icon' }} scroll={isMobile ? undefined : { x: 880 }} columns={[
-      { title: '标题', key: 'title', sorter: (left, right) => (left.title || left.name).localeCompare(right.title || right.name, 'zh-CN'), render: (_, row) => <span className="post-title">{row.title || row.name}</span> },
-      { title: '分类', key: 'categories', responsive: ['sm'], sorter: (left, right) => (left.categories || []).join('/').localeCompare((right.categories || []).join('/'), 'zh-CN'), render: (_, row) => <Space wrap>{row.categories?.map((value) => <Tag color="blue" key={value}>{value}</Tag>)}</Space> },
-      { title: '标签', key: 'tags', responsive: ['md'], sorter: (left, right) => (left.tags || []).join('/').localeCompare((right.tags || []).join('/'), 'zh-CN'), render: (_, row) => <Space wrap>{row.tags?.map((value) => <Tag color="green" key={value}>{value}</Tag>)}</Space> },
-      { title: '编辑时间', key: 'updated', width: isMobile ? 112 : 168, defaultSortOrder: 'descend', sorter: (left, right) => time(left.updated || left.date) - time(right.updated || right.date), render: (_, row) => formatDate(row.updated || row.date) },
-      { title: '操作', key: 'actions', width: isMobile ? 98 : 126, render: (_, row) => <Space size={0}><Button type="link" onClick={() => edit(row.path)}>编辑</Button><Popconfirm title="确定删除这篇文章？" description="Git 历史中仍可恢复。" onConfirm={() => removeRow(row)}><Button type="link" danger aria-label={`删除 ${row.title || row.name}`} icon={<DeleteOutlined />}>{isMobile ? '' : '删除'}</Button></Popconfirm></Space> },
+    <Table<Row> rowKey="path" tableLayout="fixed" loading={loading} dataSource={filteredRows} showSorterTooltip={{ target: 'sorter-icon' }} scroll={isMobile ? undefined : { x: 940 }} columns={[
+      { title: '标题', key: 'title', width: isMobile ? undefined : 360, sorter: (left, right) => (left.title || left.name).localeCompare(right.title || right.name, 'zh-CN'), render: (_, row) => <span className="post-title">{row.title || row.name}</span> },
+      { title: '分类', key: 'categories', width: 150, responsive: ['sm'], sorter: (left, right) => (left.categories || []).join('/').localeCompare((right.categories || []).join('/'), 'zh-CN'), render: (_, row) => <Space wrap>{row.categories?.map((value) => <Tag color="blue" key={value}>{value}</Tag>)}</Space> },
+      { title: '标签', key: 'tags', width: 160, responsive: ['md'], sorter: (left, right) => (left.tags || []).join('/').localeCompare((right.tags || []).join('/'), 'zh-CN'), render: (_, row) => <Space wrap>{row.tags?.map((value) => <Tag color="green" key={value}>{value}</Tag>)}</Space> },
+      { title: '编辑日期', key: 'updated', width: 160, responsive: ['sm'], defaultSortOrder: 'descend', sorter: (left, right) => time(left.updated || left.date) - time(right.updated || right.date), render: (_, row) => formatDate(row.updated || row.date) },
+      { title: '操作', key: 'actions', width: isMobile ? 88 : 110, render: (_, row) => <Space size={4}><Button type="text" aria-label={`编辑 ${row.title || row.name}`} title="编辑" icon={<EditOutlined />} onClick={() => edit(row.path)} /><Popconfirm title="确定删除这篇文章？" description="Git 历史中仍可恢复。" onConfirm={() => removeRow(row)}><Button type="text" danger aria-label={`删除 ${row.title || row.name}`} title="删除" icon={<DeleteOutlined />} /></Popconfirm></Space> },
     ]} locale={{ emptyText: <Empty description={loading ? '正在从 GitHub 加载文章' : query ? '没有匹配的文章' : '暂无文章'} /> }} />
   </Card>;
 
@@ -127,9 +128,9 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
     <Card className="editor-metadata-card">
       <div className="editor-form">
         <label>文章标题<Input value={String(metadata.title || '')} placeholder="输入标题，系统将自动生成文件名" onChange={(event) => updateMetadata({ title: event.target.value })} /></label>
-        <Collapse ghost items={[{ key: 'metadata', label: '发布日期、编辑时间、分类与标签', children: <Grid gutter={[16, 12]}>
+        <Collapse ghost items={[{ key: 'metadata', label: '发布日期、编辑日期、分类与标签', children: <Grid gutter={[16, 12]}>
           <Col xs={24} md={6}><label>发布日期<Input type="date" value={dateOnly(metadata.date)} onChange={(event) => updateMetadata({ date: event.target.value })} /></label></Col>
-          <Col xs={24} md={6}><label>编辑时间<Input readOnly value={String(metadata.updated || '保存时自动生成')} /></label></Col>
+          <Col xs={24} md={6}><label>编辑日期<Input readOnly value={metadata.updated ? formatDate(String(metadata.updated)) : '保存时自动生成'} /></label></Col>
           <Col xs={24} md={6}><label>分类<Select mode="tags" tokenSeparators={[',']} value={list(metadata.categories)} onChange={(value) => updateMetadata({ categories: value })} placeholder="输入后回车添加" /></label></Col>
           <Col xs={24} md={6}><label>标签<Select mode="tags" tokenSeparators={[',']} value={list(metadata.tags)} onChange={(value) => updateMetadata({ tags: value })} placeholder="输入后回车添加" /></label></Col>
         </Grid> }]}/>
@@ -151,7 +152,7 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
 }
 
 export default function Root() {
-  const [configuration, setConfiguration] = useState<Configuration>(); const [authenticated, setAuthenticated] = useState<boolean>(); const [showSetup, setShowSetup] = useState(false);
+  const [configuration, setConfiguration] = useState<Configuration>(); const [authenticated, setAuthenticated] = useState<boolean>();
   useEffect(() => { (async () => {
     let current: Configuration;
     try { current = await api<Configuration>('/api/config'); if (typeof current.configured !== 'boolean' || !Array.isArray(current.missing)) throw new Error('API unavailable'); }
@@ -161,7 +162,7 @@ export default function Root() {
     try { await api('/api/auth/session'); setAuthenticated(true); } catch { setAuthenticated(false); }
   })(); }, []);
   if (!configuration || authenticated === undefined) return <div className="boot"><Spin size="large" /></div>;
-  if (!configuration.configured || showSetup) return <main className="setup-shell"><div className="setup-heading"><Typography.Title level={2}>FlyBlog Admin 设置</Typography.Title>{configuration.configured && <Button onClick={() => setShowSetup(false)}>返回登录</Button>}</div><SettingsGuide configuration={configuration} /></main>;
-  if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} onSetup={() => setShowSetup(true)} />;
+  if (!configuration.configured) return <main className="setup-shell"><div className="setup-heading"><Typography.Title level={2}>FlyBlog Admin 设置</Typography.Title></div><SettingsGuide configuration={configuration} /></main>;
+  if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
   return <AntApp><Dashboard configuration={configuration} onLogout={() => setAuthenticated(false)} /></AntApp>;
 }
