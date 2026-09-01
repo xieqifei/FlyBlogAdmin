@@ -1,4 +1,5 @@
 import { basicSetup } from 'codemirror';
+import { CodeOutlined, DeleteColumnOutlined, DeleteRowOutlined, InsertRowBelowOutlined, InsertRowRightOutlined, PictureOutlined, TableOutlined } from '@ant-design/icons';
 import { css } from '@codemirror/lang-css';
 import { html } from '@codemirror/lang-html';
 import { javascript } from '@codemirror/lang-javascript';
@@ -8,8 +9,9 @@ import { LanguageDescription, syntaxTree } from '@codemirror/language';
 import { EditorSelection, EditorState, type Range } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, placeholder, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { redo, undo } from '@codemirror/commands';
-import { Strikethrough, TaskList } from '@lezer/markdown';
-import { useEffect, useRef } from 'react';
+import { Strikethrough, Table, TaskList } from '@lezer/markdown';
+import { useEffect, useRef, useState } from 'react';
+import { editMarkdownTable, parseMarkdownTable, type TableAction } from './markdownTable';
 
 type Props = { value: string; onChange: (value: string) => void };
 
@@ -34,6 +36,24 @@ const hiddenMarkers = new Set(['HeaderMark', 'EmphasisMark', 'CodeMark', 'LinkMa
 
 class BulletWidget extends WidgetType {
   toDOM() { const bullet = document.createElement('span'); bullet.className = 'cm-live-bullet'; bullet.textContent = '•'; return bullet; }
+}
+
+class TableWidget extends WidgetType {
+  constructor(readonly from: number, readonly source: string) { super(); }
+  eq(other: TableWidget) { return this.from === other.from && this.source === other.source; }
+  toDOM(view: EditorView) {
+    const parsed = parseMarkdownTable(this.source); const wrapper = document.createElement('div');
+    wrapper.className = 'cm-table-preview'; wrapper.title = '点击表格可编辑单元格';
+    if (!parsed) return wrapper;
+    const table = document.createElement('table'); const head = document.createElement('thead'); const headRow = document.createElement('tr');
+    parsed.headers.forEach((value, index) => { const cell = document.createElement('th'); cell.textContent = value; cell.style.textAlign = parsed.alignments[index]; headRow.append(cell); });
+    head.append(headRow); table.append(head);
+    if (parsed.rows.length) { const body = document.createElement('tbody'); parsed.rows.forEach((row) => { const tableRow = document.createElement('tr'); row.forEach((value, index) => { const cell = document.createElement('td'); cell.textContent = value; cell.style.textAlign = parsed.alignments[index]; tableRow.append(cell); }); body.append(tableRow); }); table.append(body); }
+    wrapper.append(table);
+    wrapper.addEventListener('click', () => { view.dispatch({ selection: EditorSelection.cursor(this.from), scrollIntoView: true }); view.focus(); });
+    return wrapper;
+  }
+  ignoreEvent() { return false; }
 }
 
 function livePreviewDecorations(view: EditorView) {
@@ -67,6 +87,13 @@ function livePreviewDecorations(view: EditorView) {
           decorations.push(Decoration.line({ class: `cm-live-code-line${extra}` }).range(line.from));
         }
       }
+      if (node.name === 'Table') {
+        const active = view.state.selection.ranges.some((range) => range.empty ? range.from >= node.from && range.from < node.to : range.from < node.to && range.to > node.from);
+        if (!active) {
+          decorations.push(Decoration.replace({ widget: new TableWidget(node.from, view.state.doc.sliceString(node.from, node.to)) }).range(node.from, node.to));
+          return false;
+        }
+      }
     },
   });
   return Decoration.set(decorations, true);
@@ -96,7 +123,7 @@ function prefixLines(view: EditorView, prefix: string) {
   view.dispatch({ changes, scrollIntoView: true }); view.focus(); return true;
 }
 
-function insertBlock(view: EditorView, template: string, selectText?: string) {
+function insertBlock(view: EditorView, template: string, selectText?: string, placeAfter = false) {
   const range = view.state.selection.main;
   const selected = view.state.sliceDoc(range.from, range.to);
   const block = template.replace('$SELECTION', selected || selectText || '');
@@ -104,7 +131,14 @@ function insertBlock(view: EditorView, template: string, selectText?: string) {
   const insert = `${leading}${block}`;
   const selectionText = selected || selectText;
   const offset = selectionText ? insert.indexOf(selectionText) : -1;
-  view.dispatch({ changes: { from: range.from, to: range.to, insert }, selection: offset >= 0 ? EditorSelection.single(range.from + offset, range.from + offset + selectionText!.length) : undefined, scrollIntoView: true });
+  view.dispatch({ changes: { from: range.from, to: range.to, insert }, selection: offset >= 0 ? EditorSelection.single(range.from + offset, range.from + offset + selectionText!.length) : placeAfter ? EditorSelection.cursor(range.from + insert.length) : undefined, scrollIntoView: true });
+  view.focus(); return true;
+}
+
+function editTable(view: EditorView, action: TableAction) {
+  const current = view.state.doc.toString(); const edited = editMarkdownTable(current, view.state.selection.main.head, action);
+  if (!edited) return false;
+  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: edited.content }, selection: EditorSelection.cursor(Math.min(edited.content.length, edited.to + 1)), scrollIntoView: true });
   view.focus(); return true;
 }
 
@@ -115,14 +149,13 @@ const toolbar = [
   { label: 'I', title: '斜体（Ctrl/⌘+I）', className: 'emphasis', run: (view: EditorView) => wrap(view, '*') },
   { label: 'S', title: '删除线', className: 'strike', run: (view: EditorView) => wrap(view, '~~') },
   { label: '</>', title: '行内代码（Ctrl/⌘+E）', run: (view: EditorView) => wrap(view, '`', '`', '代码') },
-  { label: '```', title: '代码块', run: (view: EditorView) => insertBlock(view, '```javascript\n$SELECTION\n```', '代码') },
   { label: '❝', title: '引用', run: (view: EditorView) => prefixLines(view, '> ') },
   { label: '•', title: '无序列表', run: (view: EditorView) => prefixLines(view, '- ') },
   { label: '1.', title: '有序列表', run: (view: EditorView) => prefixLines(view, '1. ') },
   { label: '☑', title: '任务列表', run: (view: EditorView) => prefixLines(view, '- [ ] ') },
   { label: '🔗', title: '链接（Ctrl/⌘+K）', run: (view: EditorView) => wrap(view, '[', '](https://)', '链接文字') },
-  { label: '▧', title: '图片', run: (view: EditorView) => wrap(view, '![', '](https://)', '图片说明') },
-  { label: '▦', title: '表格', run: (view: EditorView) => insertBlock(view, '| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |\n') },
+  { label: <PictureOutlined />, title: '插入图片', className: 'icon-tool', run: (view: EditorView) => wrap(view, '![', '](https://)', '图片说明') },
+  { label: <TableOutlined />, title: '插入表格', className: 'icon-tool', run: (view: EditorView) => insertBlock(view, '| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |\n\n', undefined, true) },
   { label: '—', title: '分隔线', run: (view: EditorView) => insertBlock(view, '---\n') },
 ];
 
@@ -131,6 +164,7 @@ export default function MarkdownEditor({ value, onChange }: Props) {
   const view = useRef<EditorView | undefined>(undefined);
   const onChangeRef = useRef(onChange);
   const syncing = useRef(false);
+  const [codeLanguage, setCodeLanguage] = useState('javascript');
   onChangeRef.current = onChange;
 
   useEffect(() => {
@@ -141,7 +175,7 @@ export default function MarkdownEditor({ value, onChange }: Props) {
         doc: value,
         extensions: [
           basicSetup,
-          markdown({ codeLanguages: languages, extensions: [Strikethrough, TaskList] }),
+          markdown({ codeLanguages: languages, extensions: [Strikethrough, TaskList, Table] }),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ spellcheck: 'true', 'aria-label': 'Markdown 正文编辑器' }),
           placeholder('开始写正文…'), livePreview,
@@ -173,6 +207,8 @@ export default function MarkdownEditor({ value, onChange }: Props) {
       <button type="button" title="撤销（Ctrl/⌘+Z）" aria-label="撤销" onClick={() => run(undo)}>↶</button>
       <button type="button" title="重做（Ctrl/⌘+Shift+Z）" aria-label="重做" onClick={() => run(redo)}>↷</button>
       {toolbar.map((tool) => <button key={tool.title} type="button" title={tool.title} aria-label={tool.title} className={tool.className} onClick={() => run(tool.run)}>{tool.label}</button>)}
+      <span className="code-block-tool"><select aria-label="代码块语言" title="代码块语言" value={codeLanguage} onChange={(event) => setCodeLanguage(event.target.value)}><option value="javascript">JS</option><option value="typescript">TS</option><option value="python">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="json">JSON</option></select><button type="button" title={`插入 ${codeLanguage} 代码块`} aria-label="插入代码块" className="icon-tool" onClick={() => run((editor) => insertBlock(editor, `\`\`\`${codeLanguage}\n$SELECTION\n\`\`\``, '代码'))}><CodeOutlined /></button></span>
+      <span className="table-tools" aria-label="表格行列操作"><button type="button" title="在当前行后添加一行" aria-label="添加表格行" className="icon-tool" onClick={() => run((editor) => editTable(editor, 'add-row'))}><InsertRowBelowOutlined /></button><button type="button" title="删除当前行" aria-label="删除表格行" className="icon-tool" onClick={() => run((editor) => editTable(editor, 'delete-row'))}><DeleteRowOutlined /></button><button type="button" title="在当前列后添加一列" aria-label="添加表格列" className="icon-tool" onClick={() => run((editor) => editTable(editor, 'add-column'))}><InsertRowRightOutlined /></button><button type="button" title="删除当前列（至少保留两列）" aria-label="删除表格列" className="icon-tool" onClick={() => run((editor) => editTable(editor, 'delete-column'))}><DeleteColumnOutlined /></button></span>
     </div>
     <div ref={host} className="markdown-editor obsidian-editor" />
   </div>;

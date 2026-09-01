@@ -38,6 +38,9 @@ body { color: #172033; background: #f5f7fa; }
 .markdown-toolbar { position: sticky; top: 0; z-index: 8; display: flex; align-items: center; gap: 3px; overflow-x: auto; padding: 8px 10px; border: 1px solid #d9d9d9; border-bottom: 0; border-radius: 10px 10px 0 0; background: rgb(255 255 255 / 96%); backdrop-filter: blur(12px); scrollbar-width: thin; }
 .markdown-toolbar button { flex: 0 0 auto; min-width: 32px; height: 32px; padding: 0 7px; border: 0; border-radius: 6px; color: #414754; background: transparent; font: 600 14px/32px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
 .markdown-toolbar button:hover { color: #315efb; background: #eef2ff; }
+.markdown-toolbar .icon-tool { font-family: inherit; font-size: 17px; }
+.markdown-toolbar .code-block-tool, .markdown-toolbar .table-tools { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 2px; padding-left: 4px; border-left: 1px solid #e5e7eb; }
+.markdown-toolbar .code-block-tool select { height: 28px; padding: 0 5px; border: 1px solid #d9dce3; border-radius: 5px; color: #414754; background: #fff; font-size: 12px; cursor: pointer; }
 .markdown-toolbar .strong { font-weight: 850; }
 .markdown-toolbar .emphasis { font-style: italic; }
 .markdown-toolbar .strike { text-decoration: line-through; }
@@ -62,20 +65,26 @@ body { color: #172033; background: #f5f7fa; }
 .obsidian-editor .cm-live-emphasis { font-style: italic; }
 .obsidian-editor .cm-live-strike { color: #777; text-decoration: line-through; }
 .obsidian-editor .cm-live-code { padding: 2px 5px; border-radius: 4px; color: #d6336c; background: #f4f4f5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
-.obsidian-editor .cm-live-code-line { padding-inline: 18px; color: #d6deeb; background: #1f2430; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; line-height: 1.65; }
+.obsidian-editor .cm-live-code-line { padding-inline: 18px; color: #24292f; background: #f6f8fa; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; line-height: 1.65; }
 .obsidian-editor .cm-live-code-first { margin-top: 10px; padding-top: 10px; border-radius: 8px 8px 0 0; }
 .obsidian-editor .cm-live-code-last { margin-bottom: 10px; padding-bottom: 10px; border-radius: 0 0 8px 8px; }
-.obsidian-editor .cm-live-code-line .tok-keyword { color: #c792ea; }
-.obsidian-editor .cm-live-code-line .tok-string { color: #ecc48d; }
-.obsidian-editor .cm-live-code-line .tok-number, .obsidian-editor .cm-live-code-line .tok-bool { color: #f78c6c; }
-.obsidian-editor .cm-live-code-line .tok-comment { color: #697098; font-style: italic; }
-.obsidian-editor .cm-live-code-line .tok-variableName, .obsidian-editor .cm-live-code-line .tok-propertyName { color: #82aaff; }
-.obsidian-editor .cm-live-code-line .tok-typeName, .obsidian-editor .cm-live-code-line .tok-className { color: #ffcb6b; }
+.obsidian-editor .cm-live-code-line .tok-keyword, .obsidian-editor .cm-live-code-line .tok-operator { color: #cf222e; }
+.obsidian-editor .cm-live-code-line .tok-string, .obsidian-editor .cm-live-code-line .tok-regexp { color: #0a3069; }
+.obsidian-editor .cm-live-code-line .tok-number, .obsidian-editor .cm-live-code-line .tok-bool, .obsidian-editor .cm-live-code-line .tok-null { color: #0550ae; }
+.obsidian-editor .cm-live-code-line .tok-comment { color: #6e7781; font-style: italic; }
+.obsidian-editor .cm-live-code-line .tok-variableName, .obsidian-editor .cm-live-code-line .tok-propertyName { color: #953800; }
+.obsidian-editor .cm-live-code-line .tok-typeName, .obsidian-editor .cm-live-code-line .tok-className, .obsidian-editor .cm-live-code-line .tok-definition { color: #8250df; }
 .obsidian-editor .cm-live-quote { color: #60646c; }
 .obsidian-editor .cm-live-link { color: #315efb; text-decoration: underline; text-underline-offset: 3px; }
 .obsidian-editor .cm-live-bullet { display: inline-block; width: 1.2em; color: #6d4aff; font-size: 1.2em; font-weight: 800; text-align: center; }
 .obsidian-editor .cm-live-list { color: #303642; }
 .obsidian-editor .cm-live-table { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #374151; }
+.obsidian-editor .cm-table-preview { display: block; margin: 10px 0; overflow-x: auto; border: 1px solid #d8dee4; border-radius: 8px; background: #fff; cursor: text; }
+.obsidian-editor .cm-table-preview table { width: 100%; border-collapse: collapse; font-size: .95em; }
+.obsidian-editor .cm-table-preview th, .obsidian-editor .cm-table-preview td { min-width: 110px; padding: 9px 12px; border-right: 1px solid #d8dee4; border-bottom: 1px solid #d8dee4; line-height: 1.55; }
+.obsidian-editor .cm-table-preview th { color: #24292f; background: #f6f8fa; font-weight: 650; }
+.obsidian-editor .cm-table-preview tr:last-child td { border-bottom: 0; }
+.obsidian-editor .cm-table-preview th:last-child, .obsidian-editor .cm-table-preview td:last-child { border-right: 0; }
 .dashboard-page { display: grid; gap: 16px; }
 .welcome { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border-radius: 14px; color: #fff; background: linear-gradient(125deg, #315efb, #6d4aff); box-shadow: 0 16px 40px rgb(49 94 251 / 18%); }
 .welcome h2, .welcome .ant-typography { color: inherit; margin: 0; }

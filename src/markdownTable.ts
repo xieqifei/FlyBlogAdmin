@@ -1,0 +1,91 @@
+export type TableAction = 'add-row' | 'delete-row' | 'add-column' | 'delete-column';
+
+export type MarkdownTable = {
+  headers: string[];
+  rows: string[][];
+  alignments: Array<'left' | 'center' | 'right'>;
+};
+
+function cells(line: string) {
+  const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  return trimmed.split(/(?<!\\)\|/).map((cell) => cell.trim().replace(/\\\|/g, '|'));
+}
+
+function isRow(line: string) { return line.includes('|') && cells(line).length > 1; }
+function isDelimiter(line: string) { return cells(line).every((cell) => /^:?-{3,}:?$/.test(cell)); }
+
+export function parseMarkdownTable(markdown: string): MarkdownTable | undefined {
+  const lines = markdown.trim().split(/\r?\n/);
+  if (lines.length < 2 || !isRow(lines[0]) || !isDelimiter(lines[1])) return undefined;
+  const headers = cells(lines[0]);
+  const delimiters = cells(lines[1]);
+  const alignments = headers.map((_, index) => {
+    const delimiter = delimiters[index] || '---';
+    return delimiter.startsWith(':') && delimiter.endsWith(':') ? 'center' : delimiter.endsWith(':') ? 'right' : 'left';
+  });
+  const rows = lines.slice(2).filter(isRow).map((line) => {
+    const row = cells(line).slice(0, headers.length);
+    return [...row, ...Array(Math.max(0, headers.length - row.length)).fill('')];
+  });
+  return { headers, rows, alignments };
+}
+
+function serialize(table: MarkdownTable) {
+  const alignment = table.alignments.map((value) => value === 'center' ? ':---:' : value === 'right' ? '---:' : '---');
+  return [table.headers, alignment, ...table.rows].map((row) => `| ${row.join(' | ')} |`).join('\n');
+}
+
+function tableRanges(content: string) {
+  const lines = content.split('\n');
+  const offsets: number[] = []; let offset = 0;
+  for (const line of lines) { offsets.push(offset); offset += line.length + 1; }
+  const ranges: Array<{ from: number; to: number; firstLine: number; lastLine: number }> = [];
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    if (!isRow(lines[index]) || !isDelimiter(lines[index + 1])) continue;
+    let lastLine = index + 1;
+    while (lastLine + 1 < lines.length && isRow(lines[lastLine + 1])) lastLine += 1;
+    ranges.push({ from: offsets[index], to: offsets[lastLine] + lines[lastLine].length, firstLine: index, lastLine });
+    index = lastLine;
+  }
+  return { lines, offsets, ranges };
+}
+
+export function editMarkdownTable(content: string, position: number, action: TableAction) {
+  const { lines, offsets, ranges } = tableRanges(content);
+  const range = ranges.find((candidate) => position >= candidate.from && position <= candidate.to + 2);
+  if (!range) return undefined;
+  const original = content.slice(range.from, range.to);
+  const table = parseMarkdownTable(original);
+  if (!table) return undefined;
+
+  let sourceLine = range.lastLine;
+  for (let index = range.firstLine; index <= range.lastLine; index += 1) {
+    const lineEnd = offsets[index] + lines[index].length;
+    if (position >= offsets[index] && position <= lineEnd) { sourceLine = index; break; }
+  }
+  const rowIndex = sourceLine <= range.firstLine + 1 ? 0 : sourceLine - range.firstLine - 1;
+  const line = lines[sourceLine] || '';
+  const withinLine = Math.max(0, position - (offsets[sourceLine] || 0));
+  const beforeCursor = line.slice(0, withinLine);
+  const leadingPipe = line.trimStart().startsWith('|') ? 1 : 0;
+  const columnIndex = Math.max(0, Math.min(table.headers.length - 1, (beforeCursor.match(/(?<!\\)\|/g)?.length || 0) - leadingPipe));
+
+  if (action === 'add-row') table.rows.splice(Math.min(rowIndex + 1, table.rows.length), 0, table.headers.map(() => '内容'));
+  if (action === 'delete-row') {
+    if (!table.rows.length) return undefined;
+    table.rows.splice(Math.min(Math.max(0, rowIndex - 1), table.rows.length - 1), 1);
+  }
+  if (action === 'add-column') {
+    const insertAt = columnIndex + 1;
+    table.headers.splice(insertAt, 0, '新列'); table.alignments.splice(insertAt, 0, 'left');
+    table.rows.forEach((row) => row.splice(insertAt, 0, '内容'));
+  }
+  if (action === 'delete-column') {
+    if (table.headers.length <= 2) return undefined;
+    table.headers.splice(columnIndex, 1); table.alignments.splice(columnIndex, 1);
+    table.rows.forEach((row) => row.splice(columnIndex, 1));
+  }
+
+  const replacement = serialize(table);
+  return { content: `${content.slice(0, range.from)}${replacement}${content.slice(range.to)}`, from: range.from, to: range.from + replacement.length };
+}
