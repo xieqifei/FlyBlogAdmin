@@ -30,8 +30,9 @@ const languages = [
 const nodeClasses: Record<string, string> = {
   ATXHeading1: 'cm-live-h1', ATXHeading2: 'cm-live-h2', ATXHeading3: 'cm-live-h3',
   ATXHeading4: 'cm-live-h4', ATXHeading5: 'cm-live-h5', ATXHeading6: 'cm-live-h6',
+  SetextHeading1: 'cm-live-h1', SetextHeading2: 'cm-live-h2',
   StrongEmphasis: 'cm-live-strong', Emphasis: 'cm-live-emphasis', Strikethrough: 'cm-live-strike',
-  InlineCode: 'cm-live-code', Blockquote: 'cm-live-quote', Link: 'cm-live-link', URL: 'cm-live-link',
+  InlineCode: 'cm-live-code', Blockquote: 'cm-live-quote', Link: 'cm-live-link', Autolink: 'cm-live-link',
   BulletList: 'cm-live-list', OrderedList: 'cm-live-list',
 };
 
@@ -49,6 +50,40 @@ class TaskWidget extends WidgetType {
     checkbox.setAttribute('aria-label', this.checked ? '已完成任务' : '未完成任务');
     checkbox.addEventListener('change', () => { view.dispatch({ changes: { from: this.from, to: this.to, insert: checkbox.checked ? '[x]' : '[ ]' } }); view.focus(); });
     return checkbox;
+  }
+  ignoreEvent() { return false; }
+}
+
+class HorizontalRuleWidget extends WidgetType {
+  constructor(readonly from: number) { super(); }
+  eq(other: HorizontalRuleWidget) { return this.from === other.from; }
+  toDOM(view: EditorView) {
+    const rule = document.createElement('hr'); rule.className = 'cm-live-horizontal-rule';
+    rule.addEventListener('click', () => { view.dispatch({ selection: EditorSelection.cursor(this.from), scrollIntoView: true }); view.focus(); });
+    return rule;
+  }
+  ignoreEvent() { return false; }
+}
+
+class FootnoteWidget extends WidgetType {
+  constructor(readonly from: number, readonly label: string, readonly definition = false) { super(); }
+  eq(other: FootnoteWidget) { return this.from === other.from && this.label === other.label && this.definition === other.definition; }
+  toDOM(view: EditorView) {
+    const note = document.createElement(this.definition ? 'span' : 'sup'); note.className = this.definition ? 'cm-live-footnote-definition' : 'cm-live-footnote';
+    note.textContent = this.definition ? `${this.label}.` : `[${this.label}]`;
+    note.addEventListener('click', () => { view.dispatch({ selection: EditorSelection.cursor(this.from), scrollIntoView: true }); view.focus(); });
+    return note;
+  }
+  ignoreEvent() { return false; }
+}
+
+class ImageWidget extends WidgetType {
+  constructor(readonly from: number, readonly source: string, readonly alt: string, readonly url: string) { super(); }
+  eq(other: ImageWidget) { return this.from === other.from && this.source === other.source; }
+  toDOM(view: EditorView) {
+    const image = document.createElement('img'); image.className = 'cm-live-image-preview'; image.src = this.url; image.alt = this.alt; image.title = this.alt;
+    image.addEventListener('click', () => { view.dispatch({ selection: EditorSelection.cursor(this.from), scrollIntoView: true }); view.focus(); });
+    return image;
   }
   ignoreEvent() { return false; }
 }
@@ -79,6 +114,24 @@ function livePreviewDecorations(state: EditorState) {
     const toLine = state.doc.lineAt(range.to).number;
     for (let line = fromLine; line <= toLine; line += 1) activeLines.add(line);
   }
+  const customReplacements: Array<{ from: number; to: number }> = [];
+  for (let number = 1; number <= state.doc.lines; number += 1) {
+    if (activeLines.has(number)) continue;
+    const line = state.doc.line(number); const text = line.text;
+    const definition = text.match(/^\s*\[\^([^\]\s]+)\]:\s*/);
+    if (definition) {
+      const start = line.from + text.indexOf('[^'); const to = line.from + definition[0].length;
+      customReplacements.push({ from: start, to });
+      decorations.push(Decoration.replace({ widget: new FootnoteWidget(start, definition[1], true) }).range(start, to));
+    }
+    const references = text.matchAll(/\[\^([^\]\s]+)\]/g);
+    for (const reference of references) {
+      const from = line.from + reference.index!; const to = from + reference[0].length;
+      if (definition && from === line.from + text.indexOf('[^')) continue;
+      customReplacements.push({ from, to });
+      decorations.push(Decoration.replace({ widget: new FootnoteWidget(from, reference[1]) }).range(from, to));
+    }
+  }
   const tables = findMarkdownTables(state.doc.toString());
   const previewTables = tables.filter((table) => !state.selection.ranges.some((range) => range.empty
     ? range.from >= table.from && range.from < table.to
@@ -88,16 +141,34 @@ function livePreviewDecorations(state: EditorState) {
     to: state.doc.length,
     enter(node) {
       if (previewTables.some((table) => node.from >= table.from && node.to <= table.to)) return false;
+      if (customReplacements.some((range) => node.from >= range.from && node.to <= range.to)) return false;
       const className = nodeClasses[node.name];
       if (className && node.from < node.to) decorations.push(Decoration.mark({ class: className }).range(node.from, node.to));
       const lineNumber = state.doc.lineAt(node.from).number;
-      if (hiddenMarkers.has(node.name) && node.from < node.to && !activeLines.has(lineNumber)) decorations.push(Decoration.replace({}).range(node.from, node.to));
+      const active = activeLines.has(lineNumber); const parentName = node.node.parent?.name;
+      const source = node.from < node.to ? state.doc.sliceString(node.from, node.to) : '';
+      if (node.name === 'HeaderMark' && /^\s*[=-]{2,}\s*$/.test(source)) decorations.push(Decoration.replace({}).range(node.from, node.to));
+      else if (hiddenMarkers.has(node.name) && node.from < node.to && !active) decorations.push(Decoration.replace({}).range(node.from, node.to));
+      if (!active && node.name === 'URL' && (parentName === 'Link' || parentName === 'Image')) decorations.push(Decoration.replace({}).range(node.from, node.to));
+      if (!active && node.name === 'LinkLabel' && parentName === 'Link') decorations.push(Decoration.replace({}).range(node.from, node.to));
+      if (!active && node.name === 'LinkTitle' && (parentName === 'Link' || parentName === 'Image')) decorations.push(Decoration.replace({}).range(node.from, node.to));
+      if (!active && node.name === 'Image') {
+        const matched = source.match(/^!\[([^\]]*)\]\(\s*(\S+?)(?:\s+["'][^"']*["'])?\s*\)$/);
+        if (matched) { decorations.push(Decoration.replace({ widget: new ImageWidget(node.from, source, matched[1], matched[2]) }).range(node.from, node.to)); return false; }
+      }
+      if (!active && /^ATXHeading|^SetextHeading/.test(node.name)) {
+        const anchor = source.match(/\s*\{#[A-Za-z][\w:.-]*\}\s*$/);
+        if (anchor) decorations.push(Decoration.replace({}).range(node.to - anchor[0].length, node.to));
+      }
+      if (!active && node.name === 'HorizontalRule') {
+        decorations.push(Decoration.replace({ widget: new HorizontalRuleWidget(node.from), block: true }).range(node.from, node.to)); return false;
+      }
       if (node.name === 'ListMark' && node.from < node.to && !activeLines.has(lineNumber)) {
-        const marker = state.doc.sliceString(node.from, node.to);
+        const marker = source;
         if (/^[-*+]$/.test(marker)) decorations.push(Decoration.replace({ widget: new BulletWidget() }).range(node.from, node.to));
       }
       if (node.name === 'TaskMarker' && node.from < node.to && !activeLines.has(lineNumber)) {
-        const marker = state.doc.sliceString(node.from, node.to);
+        const marker = source;
         decorations.push(Decoration.replace({ widget: new TaskWidget(node.from, node.to, /x/i.test(marker)) }).range(node.from, node.to));
       }
       if (node.name === 'FencedCode') {
@@ -172,7 +243,7 @@ const toolbar = [
   { label: '🔗', title: '链接（Ctrl/⌘+K）', run: (view: EditorView) => wrap(view, '[', '](https://)', '链接文字') },
   { label: <PictureOutlined />, title: '插入图片', className: 'icon-tool', run: (view: EditorView) => wrap(view, '![', '](https://)', '图片说明') },
   { label: <TableOutlined />, title: '插入表格', className: 'icon-tool', run: (view: EditorView) => insertBlock(view, '| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |\n\n', undefined, true) },
-  { label: '—', title: '分隔线', run: (view: EditorView) => insertBlock(view, '---\n') },
+  { label: '—', title: '分隔线', run: (view: EditorView) => insertBlock(view, '---\n\n', undefined, true) },
 ];
 
 export default function MarkdownEditor({ value, onChange, r2Configured = false, defaultBucket = '' }: Props) {

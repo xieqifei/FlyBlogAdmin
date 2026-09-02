@@ -58,7 +58,7 @@ body { color: #172033; background: #f5f7fa; }
 .obsidian-editor .cm-activeLine, .obsidian-editor .cm-activeLineGutter { background: rgb(49 94 251 / 4%); }
 .obsidian-editor .cm-selectionBackground, .obsidian-editor .cm-content ::selection { background: rgb(49 94 251 / 18%) !important; }
 .obsidian-editor .cm-placeholder { color: #a0a5af; font-style: normal; }
-.obsidian-editor .cm-live-h1, .obsidian-editor .cm-live-h2, .obsidian-editor .cm-live-h3, .obsidian-editor .cm-live-h4, .obsidian-editor .cm-live-h5, .obsidian-editor .cm-live-h6 { color: #171717; font-weight: 750; text-decoration: none !important; border-bottom: 0; }
+.obsidian-editor .cm-live-h1, .obsidian-editor .cm-live-h2, .obsidian-editor .cm-live-h3, .obsidian-editor .cm-live-h4, .obsidian-editor .cm-live-h5, .obsidian-editor .cm-live-h6 { color: #171717; font-weight: 750; text-decoration: none !important; border-block: 0 !important; box-shadow: none !important; background-image: none !important; }
 .obsidian-editor :is(.cm-live-h1, .cm-live-h2, .cm-live-h3, .cm-live-h4, .cm-live-h5, .cm-live-h6) .cm-live-link, .obsidian-editor .cm-live-link:is(.cm-live-h1, .cm-live-h2, .cm-live-h3, .cm-live-h4, .cm-live-h5, .cm-live-h6) { text-decoration: none; }
 .obsidian-editor .cm-live-h1 { font-size: 2.15em; line-height: 1.4; letter-spacing: -.025em; }
 .obsidian-editor .cm-live-h2 { font-size: 1.68em; line-height: 1.5; letter-spacing: -.018em; }
@@ -79,6 +79,10 @@ body { color: #172033; background: #f5f7fa; }
 .obsidian-editor .cm-live-code-line .tok-typeName, .obsidian-editor .cm-live-code-line .tok-className, .obsidian-editor .cm-live-code-line .tok-definition { color: #8250df; }
 .obsidian-editor .cm-live-quote { color: #60646c; }
 .obsidian-editor .cm-live-link { color: #315efb; text-decoration: underline; text-underline-offset: 3px; }
+.obsidian-editor .cm-live-image-preview { display: inline-block; max-width: 100%; max-height: 420px; object-fit: contain; vertical-align: middle; border-radius: 8px; cursor: text; }
+.obsidian-editor .cm-live-horizontal-rule { width: 100%; height: 0; box-sizing: border-box; margin: 18px 0; border: 0; border-top: 1px solid #d8dee4; cursor: text; }
+.obsidian-editor .cm-live-footnote { margin-inline: 1px; color: #315efb; font-size: .75em; font-weight: 700; vertical-align: super; cursor: text; }
+.obsidian-editor .cm-live-footnote-definition { display: inline-block; min-width: 1.8em; color: #315efb; font-size: .85em; font-weight: 700; vertical-align: baseline; cursor: text; }
 .obsidian-editor .cm-live-bullet { display: inline-block; width: 1.2em; color: #6d4aff; font-size: 1.2em; font-weight: 800; text-align: center; }
 .obsidian-editor .cm-live-list { color: #303642; }
 .obsidian-editor .cm-task-checkbox { width: 18px; height: 18px; margin: 0 8px 0 2px; vertical-align: -3px; accent-color: #315efb; cursor: pointer; }
