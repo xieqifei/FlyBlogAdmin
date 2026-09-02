@@ -12,7 +12,7 @@ import { redo, undo } from '@codemirror/commands';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef, useState } from 'react';
 import { App as AntApp } from 'antd';
-import { editMarkdownTable, findMarkdownTables, type MarkdownTable, type TableAction } from './markdownTable';
+import { editMarkdownTable, findMarkdownTables, markdownTableCellPosition, updateMarkdownTableCell, type MarkdownTable, type TableAction } from './markdownTable';
 import { uploadImageFile } from './ImageHosting';
 import { useI18n } from './i18n';
 
@@ -95,16 +95,36 @@ class TableWidget extends WidgetType {
   eq(other: TableWidget) { return this.from === other.from && this.source === other.source; }
   toDOM(view: EditorView) {
     const shell = document.createElement('div'); const wrapper = document.createElement('div');
-    shell.className = 'cm-table-preview-shell'; wrapper.className = 'cm-table-preview'; wrapper.title = '点击表格可编辑单元格'; shell.append(wrapper);
+    shell.className = 'cm-table-preview-shell'; wrapper.className = 'cm-table-preview'; wrapper.title = '点击单元格直接编辑'; shell.append(wrapper);
+    const editableCell = (tag: 'th' | 'td', value: string, rowIndex: number, columnIndex: number) => {
+      const cell = document.createElement(tag);
+      cell.contentEditable = 'plaintext-only'; cell.spellcheck = true; cell.textContent = value;
+      cell.style.textAlign = this.parsed.alignments[columnIndex];
+      cell.addEventListener('focus', () => {
+        const position = markdownTableCellPosition(view.state.doc.toString(), this.from, rowIndex, columnIndex);
+        if (position !== undefined) view.dispatch({ selection: EditorSelection.cursor(position) });
+      });
+      const save = () => {
+        const next = (cell.textContent || '').replace(/[\r\n]+/g, ' ').trim();
+        if (next === value) return;
+        const updated = updateMarkdownTableCell(view.state.doc.toString(), this.from, rowIndex, columnIndex, next);
+        if (updated) view.dispatch({ changes: { from: this.from, to: this.from + this.source.length, insert: updated.content.slice(updated.from, updated.to) } });
+      };
+      cell.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') { event.preventDefault(); cell.blur(); }
+        if (event.key === 'Escape') { event.preventDefault(); cell.textContent = value; cell.blur(); }
+      });
+      cell.addEventListener('blur', save);
+      return cell;
+    };
     const table = document.createElement('table'); const head = document.createElement('thead'); const headRow = document.createElement('tr');
-    this.parsed.headers.forEach((value, index) => { const cell = document.createElement('th'); cell.textContent = value || '\u00a0'; cell.style.textAlign = this.parsed.alignments[index]; headRow.append(cell); });
+    this.parsed.headers.forEach((value, index) => headRow.append(editableCell('th', value, -1, index)));
     head.append(headRow); table.append(head);
-    if (this.parsed.rows.length) { const body = document.createElement('tbody'); this.parsed.rows.forEach((row) => { const tableRow = document.createElement('tr'); row.forEach((value, index) => { const cell = document.createElement('td'); cell.textContent = value || '\u00a0'; cell.style.textAlign = this.parsed.alignments[index]; tableRow.append(cell); }); body.append(tableRow); }); table.append(body); }
+    if (this.parsed.rows.length) { const body = document.createElement('tbody'); this.parsed.rows.forEach((row, rowIndex) => { const tableRow = document.createElement('tr'); row.forEach((value, columnIndex) => tableRow.append(editableCell('td', value, rowIndex, columnIndex))); body.append(tableRow); }); table.append(body); }
     wrapper.append(table);
-    wrapper.addEventListener('click', () => { view.dispatch({ selection: EditorSelection.cursor(this.from), scrollIntoView: true }); view.focus(); });
     return shell;
   }
-  ignoreEvent() { return false; }
+  ignoreEvent() { return true; }
 }
 
 function livePreviewDecorations(state: EditorState) {
@@ -133,10 +153,7 @@ function livePreviewDecorations(state: EditorState) {
       decorations.push(Decoration.replace({ widget: new FootnoteWidget(from, reference[1]) }).range(from, to));
     }
   }
-  const tables = findMarkdownTables(state.doc.toString());
-  const previewTables = tables.filter((table) => !state.selection.ranges.some((range) => range.empty
-    ? range.from >= table.from && range.from < table.to
-    : range.from < table.to && range.to > table.from));
+  const previewTables = findMarkdownTables(state.doc.toString());
   syntaxTree(state).iterate({
     from: 0,
     to: state.doc.length,

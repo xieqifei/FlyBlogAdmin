@@ -88,9 +88,13 @@ body { color: #172033; background: #f5f7fa; }
 .obsidian-editor .cm-task-checkbox { width: 18px; height: 18px; margin: 0 8px 0 2px; vertical-align: -3px; accent-color: #315efb; cursor: pointer; }
 .obsidian-editor .cm-live-table { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #374151; }
 .obsidian-editor .cm-table-preview-shell { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; overflow: hidden; padding: 10px 0; }
-.obsidian-editor .cm-table-preview { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; overflow-x: auto; border: 1px solid #d8dee4; border-radius: 8px; background: #fff; cursor: text; }
+.obsidian-editor .cm-table-preview { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; overflow-x: auto; border: 1px solid #d8dee4; border-radius: 8px; background: #fff; }
 .obsidian-editor .cm-table-preview table { width: 100%; min-width: 100%; table-layout: fixed; border-collapse: collapse; color: #24292f; font-size: .95em; }
 .obsidian-editor .cm-table-preview th, .obsidian-editor .cm-table-preview td { min-width: 0; padding: 9px 12px; overflow-wrap: anywhere; word-break: break-word; white-space: normal; border-right: 1px solid #d8dee4; border-bottom: 1px solid #d8dee4; line-height: 1.55; }
+.obsidian-editor .cm-table-preview [contenteditable] { cursor: text; outline: none; transition: background .15s, box-shadow .15s; }
+.obsidian-editor .cm-table-preview [contenteditable]:hover { background: #fafbff; }
+.obsidian-editor .cm-table-preview [contenteditable]:focus { position: relative; background: #fff; box-shadow: inset 0 0 0 2px #597ef7; }
+.obsidian-editor .cm-table-preview [contenteditable]:empty::before { color: #a8adb8; content: '输入内容'; pointer-events: none; }
 .obsidian-editor .cm-table-preview th { color: #24292f; background: #f6f8fa; font-weight: 650; }
 .obsidian-editor .cm-table-preview tr:last-child td { border-bottom: 0; }
 .obsidian-editor .cm-table-preview th:last-child, .obsidian-editor .cm-table-preview td:last-child { border-right: 0; }

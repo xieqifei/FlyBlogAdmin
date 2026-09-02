@@ -30,6 +30,21 @@ function cells(line: string) {
 function isRow(line: string) { return line.includes('|') && cells(line).length > 1; }
 function isDelimiter(line: string) { const values = cells(line); return values.length > 1 && values.every((cell) => /^:?-+:?$/.test(cell)); }
 
+function pipeOffsets(line: string) {
+  const offsets: number[] = []; let codeFence = 0;
+  for (let index = 0; index < line.length; index += 1) {
+    if (line[index] === '`') {
+      let length = 1;
+      while (line[index + length] === '`') length += 1;
+      codeFence = codeFence === length ? 0 : codeFence ? codeFence : length;
+      index += length - 1; continue;
+    }
+    if (line[index] === '\\') { index += 1; continue; }
+    if (line[index] === '|' && !codeFence) offsets.push(index);
+  }
+  return offsets;
+}
+
 export function parseMarkdownTable(markdown: string): MarkdownTable | undefined {
   const lines = markdown.trim().split(/\r?\n/);
   if (lines.length < 2 || !isRow(lines[0]) || !isDelimiter(lines[1])) return undefined;
@@ -46,9 +61,26 @@ export function parseMarkdownTable(markdown: string): MarkdownTable | undefined 
   return { headers, rows, alignments };
 }
 
+function serializeCell(value: string) {
+  const singleLine = value.replace(/[\r\n]+/g, ' ').trim();
+  let result = ''; let codeFence = 0;
+  for (let index = 0; index < singleLine.length; index += 1) {
+    const character = singleLine[index];
+    if (character === '`') {
+      let length = 1;
+      while (singleLine[index + length] === '`') length += 1;
+      codeFence = codeFence === length ? 0 : codeFence ? codeFence : length;
+      result += '`'.repeat(length); index += length - 1; continue;
+    }
+    if (character === '|' && !codeFence && singleLine[index - 1] !== '\\') result += '\\|';
+    else result += character;
+  }
+  return result;
+}
+
 function serialize(table: MarkdownTable) {
   const alignment = table.alignments.map((value) => value === 'center' ? ':---:' : value === 'right' ? '---:' : '---');
-  return [table.headers, alignment, ...table.rows].map((row) => `| ${row.join(' | ')} |`).join('\n');
+  return [table.headers, alignment, ...table.rows].map((row, index) => `| ${(index === 1 ? row : row.map(serializeCell)).join(' | ')} |`).join('\n');
 }
 
 export type MarkdownTableRange = { from: number; to: number; source: string; table: MarkdownTable };
@@ -103,7 +135,7 @@ export function editMarkdownTable(content: string, position: number, action: Tab
   const withinLine = Math.max(0, position - (offsets[sourceLine] || 0));
   const beforeCursor = line.slice(0, withinLine);
   const leadingPipe = line.trimStart().startsWith('|') ? 1 : 0;
-  const columnIndex = Math.max(0, Math.min(table.headers.length - 1, (beforeCursor.match(/(?<!\\)\|/g)?.length || 0) - leadingPipe));
+  const columnIndex = Math.max(0, Math.min(table.headers.length - 1, pipeOffsets(beforeCursor).length - leadingPipe));
 
   if (action === 'add-row') table.rows.splice(Math.min(rowIndex + 1, table.rows.length), 0, table.headers.map(() => '内容'));
   if (action === 'delete-row') {
@@ -123,4 +155,30 @@ export function editMarkdownTable(content: string, position: number, action: Tab
 
   const replacement = serialize(table);
   return { content: `${content.slice(0, range.from)}${replacement}${content.slice(range.to)}`, from: range.from, to: range.from + replacement.length };
+}
+
+export function updateMarkdownTableCell(content: string, tableFrom: number, rowIndex: number, columnIndex: number, value: string) {
+  const range = tableRanges(content).ranges.find((candidate) => candidate.from === tableFrom);
+  if (!range) return undefined;
+  const table = parseMarkdownTable(content.slice(range.from, range.to));
+  if (!table || columnIndex < 0 || columnIndex >= table.headers.length) return undefined;
+  const normalized = value.replace(/[\r\n]+/g, ' ').trim();
+  if (rowIndex < 0) table.headers[columnIndex] = normalized;
+  else {
+    if (rowIndex >= table.rows.length) return undefined;
+    table.rows[rowIndex][columnIndex] = normalized;
+  }
+  const replacement = serialize(table);
+  return { content: `${content.slice(0, range.from)}${replacement}${content.slice(range.to)}`, from: range.from, to: range.from + replacement.length };
+}
+
+export function markdownTableCellPosition(content: string, tableFrom: number, rowIndex: number, columnIndex: number) {
+  const { lines, offsets, ranges } = tableRanges(content);
+  const range = ranges.find((candidate) => candidate.from === tableFrom);
+  if (!range || columnIndex < 0) return undefined;
+  const lineIndex = rowIndex < 0 ? range.firstLine : range.firstLine + rowIndex + 2;
+  if (lineIndex > range.lastLine) return undefined;
+  const line = lines[lineIndex]; const pipes = pipeOffsets(line); const leadingPipe = line.trimStart().startsWith('|');
+  const relative = columnIndex === 0 && !leadingPipe ? 0 : (pipes[columnIndex - (leadingPipe ? 0 : 1)] ?? line.length - 1) + 1;
+  return offsets[lineIndex] + Math.min(line.length, relative);
 }

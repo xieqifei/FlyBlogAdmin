@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { editMarkdownTable, findMarkdownTables, parseMarkdownTable } from '../src/markdownTable.ts';
+import { editMarkdownTable, findMarkdownTables, markdownTableCellPosition, parseMarkdownTable, updateMarkdownTableCell } from '../src/markdownTable.ts';
 
 const source = '| 姓名 | 年龄 |\n| --- | ---: |\n| 小明 | 18 |';
 
@@ -46,4 +46,19 @@ test('finds and parses a table in a mixed markdown document', () => {
     rows: [['联合类型', '`string | number`', '**可选值**']],
     alignments: ['left', 'right', 'left'],
   });
+});
+
+test('updates rendered table cells while keeping valid markdown', () => {
+  const header = updateMarkdownTableCell(source, 0, -1, 0, '姓名与称呼');
+  assert.equal(parseMarkdownTable(header!.content)?.headers[0], '姓名与称呼');
+  const body = updateMarkdownTableCell(header!.content, 0, 0, 1, '18 | 19');
+  assert.deepEqual(parseMarkdownTable(body!.content)?.rows[0], ['小明', '18 | 19']);
+  assert.match(body!.content, /18 \\| 19/);
+});
+
+test('maps rendered cells back to their markdown positions for toolbar operations', () => {
+  const position = markdownTableCellPosition(source, 0, 0, 1);
+  assert.equal(source.slice(position, position! + 3), ' 18');
+  const added = editMarkdownTable(source, position!, 'add-column');
+  assert.deepEqual(parseMarkdownTable(added!.content)?.headers, ['姓名', '年龄', '新列']);
 });
