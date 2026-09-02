@@ -1,6 +1,14 @@
 export type ContributionLevel = 0 | 1 | 2 | 3 | 4;
 export type ContributionDay = { date: string; count: number; level: ContributionLevel; inRange: boolean };
 
+export function contributionMonthStarts(weeks: ContributionDay[][]) {
+  return weeks.map((week, index) => {
+    const monthStart = week.find((day) => day.inRange && day.date.endsWith('-01'));
+    const firstVisible = index === 0 ? week.find((day) => day.inRange) : undefined;
+    return (monthStart || firstVisible)?.date.slice(0, 7) || '';
+  });
+}
+
 function startOfDay(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }

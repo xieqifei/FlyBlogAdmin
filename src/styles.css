@@ -96,23 +96,26 @@ body { color: #172033; background: #f5f7fa; }
 .welcome .ant-btn { color: #315efb; background: #fff; border-color: #fff; }
 .contribution-card { min-width: 0; max-width: 100%; overflow: hidden; }
 .contribution-card .ant-card-body { min-width: 0; overflow: hidden; }
+.contribution-card .ant-card-head, .contribution-card .ant-card-head-wrapper, .contribution-card .ant-card-head-title, .contribution-card .ant-card-extra { min-width: 0; max-width: 100%; }
 .contribution-card .ant-card-head-wrapper { gap: 12px; }
 .contribution-card .ant-card-extra { margin-inline-start: auto; }
-.contribution-scroll { min-width: 0; overflow-x: auto; padding-bottom: 6px; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
-.contribution-inner { width: max-content; min-width: 100%; }
-.contribution-months, .contribution-body { display: grid; grid-template-columns: 28px max-content; gap: 8px; min-width: max-content; }
-.contribution-months > :last-child { display: grid; grid-template-columns: repeat(var(--contribution-weeks, 53), 12px); gap: 3px; }
+.contribution-scroll, .contribution-inner, .contribution-period { width: 100%; min-width: 0; max-width: 100%; }
+.contribution-scroll { overflow: hidden; padding-bottom: 6px; }
+.contribution-months, .contribution-body { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; min-width: 0; }
+.contribution-months > :last-child { display: grid; grid-template-columns: repeat(var(--contribution-weeks, 53), minmax(0, 1fr)); gap: 3px; min-width: 0; }
 .contribution-months { margin-bottom: 6px; color: #667085; font-size: 12px; }
-.contribution-months > div > span { overflow: visible; white-space: nowrap; }
-.contribution-weekdays { display: grid; grid-template-rows: repeat(7, 12px); gap: 3px; color: #667085; font-size: 10px; line-height: 12px; text-align: right; }
-.contribution-grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; gap: 3px; }
-.contribution-cell { display: inline-block; width: 12px; height: 12px; box-sizing: border-box; border: 1px solid rgb(27 31 36 / 6%); border-radius: 3px; background: #ebedf0; }
+.contribution-months > div > span { min-width: 0; overflow: visible; white-space: nowrap; }
+.contribution-weekdays { display: grid; grid-template-rows: repeat(7, 1fr); gap: 3px; color: #667085; font-size: 10px; line-height: 1; text-align: right; }
+.contribution-grid { display: grid; grid-auto-flow: column; grid-template-columns: repeat(var(--contribution-weeks, 53), minmax(0, 1fr)); grid-template-rows: repeat(7, auto); gap: 3px; min-width: 0; }
+.contribution-cell { display: inline-block; width: 100%; height: auto; aspect-ratio: 1; box-sizing: border-box; border: 1px solid rgb(27 31 36 / 6%); border-radius: 3px; background: #ebedf0; }
 .contribution-cell.level-1 { background: #9be9a8; }
 .contribution-cell.level-2 { background: #40c463; }
 .contribution-cell.level-3 { background: #30a14e; }
 .contribution-cell.level-4 { background: #216e39; }
 .contribution-cell.outside { border-color: transparent; background: transparent; }
-.contribution-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 100%; margin-top: 10px; font-size: 12px; }
+.contribution-calendar-mobile { display: none; }
+.contribution-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; margin-top: 10px; font-size: 12px; }
+.contribution-legend .contribution-cell { width: 12px; height: 12px; aspect-ratio: auto; }
 .image-hosting-page { display: grid; gap: 16px; min-width: 0; }
 .image-hosting-page .ant-card-extra { max-width: 100%; }
 .image-hosting-list { min-height: 180px; margin-top: 20px; }
@@ -153,14 +156,14 @@ body { color: #172033; background: #f5f7fa; }
   .config-generator .ant-space-compact .ant-input, .config-generator .ant-space-compact .ant-input-affix-wrapper, .config-generator .ant-space-compact .ant-btn { width: 100%; border-radius: 6px !important; }
   .ant-card .ant-card-body { padding: 16px; }
   .contribution-card .ant-card-head-wrapper { align-items: flex-start; flex-direction: column; padding-block: 12px; }
-  .contribution-card .ant-card-extra { margin-inline-start: 0; }
-  .contribution-scroll { width: 100%; max-width: 100%; overflow-x: hidden; }
-  .contribution-inner { width: 100%; min-width: 0; }
+  .contribution-card .ant-card-extra { width: 100%; margin-inline-start: 0; }
+  .contribution-calendar-desktop { display: none; }
+  .contribution-calendar-mobile { display: grid; gap: 14px; width: 100%; min-width: 0; }
   .contribution-months, .contribution-body { grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; }
   .contribution-months > span, .contribution-weekdays { display: none; }
   .contribution-months > :last-child { grid-template-columns: repeat(var(--contribution-weeks, 53), minmax(0, 1fr)); gap: 1px; }
   .contribution-months { font-size: 9px; }
-  .contribution-grid { grid-template-columns: repeat(var(--contribution-weeks, 53), minmax(0, 1fr)); grid-template-rows: repeat(7, minmax(0, 1fr)); grid-auto-columns: auto; gap: 1px; }
+  .contribution-grid { grid-template-columns: repeat(var(--contribution-weeks, 27), minmax(0, 1fr)); grid-template-rows: repeat(7, auto); gap: 1px; }
   .contribution-cell { width: 100%; height: auto; aspect-ratio: 1; border-radius: 1px; }
   .contribution-legend .contribution-cell { width: 9px; height: 9px; aspect-ratio: auto; }
   .image-hosting-page .ant-card-head-wrapper { align-items: flex-start; flex-direction: column; gap: 10px; padding-block: 12px; }
