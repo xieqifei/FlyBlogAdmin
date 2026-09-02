@@ -52,7 +52,7 @@ export function contributionCalendar(dates: Array<string | undefined>, current =
   const maximum = Math.max(0, ...counts.values());
   const days: ContributionDay[] = Array.from({ length: weeks * 7 }, (_, index) => {
     const date = addDays(calendarStart, index); const key = dateKey(date);
-    const inRange = date >= rangeStart && date <= rangeEnd; const count = inRange ? counts.get(key) || 0 : 0;
+    const inRange = date >= rangeStart && date <= calendarEndDate; const count = counts.get(key) || 0;
     const level = count && maximum ? Math.ceil((count / maximum) * 4) as ContributionLevel : 0;
     return { date: key, count, level, inRange };
   });
