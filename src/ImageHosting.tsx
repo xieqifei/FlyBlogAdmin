@@ -3,6 +3,7 @@ import { Alert, App as AntApp, Button, Card, Empty, Popconfirm, Select, Space, S
 import { CopyOutlined, DeleteOutlined, InboxOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { Configuration } from './SettingsGuide';
 import { useI18n } from './i18n';
+import { httpsImageUrl } from './imageUrl';
 
 const BUCKET_KEY = 'flyblog:r2bucket';
 type R2Object = { key: string; size: number; lastModified: string; url: string };
@@ -129,7 +130,7 @@ export default function ImageHosting({ configuration }: { configuration: Configu
     } catch (reason) { message.error(reason instanceof Error ? reason.message : t('error.delete')); }
   }, [bucket, message, t]);
 
-  const markdownLink = (item: R2Object) => `![${item.key.split('/').pop()?.replace(/\.[^.]+$/, '') || 'image'}](${item.url})`;
+  const markdownLink = (item: R2Object) => `![${item.key.split('/').pop()?.replace(/\.[^.]+$/, '') || 'image'}](${httpsImageUrl(item.url)})`;
   const previewLink = (item: R2Object) => `/api/r2?action=content&bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(item.key)}`;
 
   const notice = useMemo(() => configuration.r2?.publicUrl ? null : (t('ih.noPublicUrl')), [configuration.r2?.publicUrl, t]);
@@ -157,7 +158,7 @@ export default function ImageHosting({ configuration }: { configuration: Configu
             <Typography.Text type="secondary" className="image-hosting-size">{formatSize(item.size)}</Typography.Text>
             <Space wrap className="image-hosting-actions">
               <Button size="small" icon={<CopyOutlined />} onClick={() => copy(markdownLink(item), 'ih.copiedMarkdown')}>{t('ih.copyMarkdown')}</Button>
-              <Button size="small" icon={<CopyOutlined />} onClick={() => copy(item.url, 'ih.copiedUrl')}>{t('ih.copyUrl')}</Button>
+              <Button size="small" icon={<CopyOutlined />} onClick={() => copy(httpsImageUrl(item.url), 'ih.copiedUrl')}>{t('ih.copyUrl')}</Button>
               <Popconfirm title={t('ih.confirmDelete')} onConfirm={() => remove(item.key)}><Button size="small" danger icon={<DeleteOutlined />}>{t('ih.delete')}</Button></Popconfirm>
             </Space>
           </div>)}</div>

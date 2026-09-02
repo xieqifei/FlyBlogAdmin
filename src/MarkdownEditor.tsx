@@ -15,6 +15,7 @@ import { App as AntApp } from 'antd';
 import { editMarkdownTable, findMarkdownTables, markdownTableCellPosition, updateMarkdownTableCell, type MarkdownTable, type TableAction } from './markdownTable';
 import { uploadImageFile } from './ImageHosting';
 import { markdownImageUrl, privateImagePreviewUrl } from './imagePreview';
+import { httpsImageUrl } from './imageUrl';
 import { useI18n } from './i18n';
 
 type Props = { value: string; onChange: (value: string) => void; r2Configured?: boolean; defaultBucket?: string; r2PublicUrl?: string };
@@ -331,7 +332,7 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
     try {
       for (const file of images) {
         const result = await uploadImageFile(file, localStorage.getItem('flyblog:r2bucket') || defaultBucket);
-        const alt = file.name.replace(/\.[^.]+$/, '') || 'image'; links.push(`![${alt}](${result.url})`);
+        const alt = file.name.replace(/\.[^.]+$/, '') || 'image'; links.push(`![${alt}](${httpsImageUrl(result.url)})`);
       }
       const position = editor.state.selection.main.head; const prefix = position > 0 && editor.state.doc.sliceString(position - 1, position) !== '\n' ? '\n\n' : '';
       editor.dispatch({ changes: { from: position, insert: `${prefix}${links.join('\n\n')}\n` }, selection: EditorSelection.cursor(position + prefix.length + links.join('\n\n').length + 1), scrollIntoView: true });
