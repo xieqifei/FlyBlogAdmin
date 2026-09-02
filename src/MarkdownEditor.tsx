@@ -14,9 +14,10 @@ import { useEffect, useRef, useState } from 'react';
 import { App as AntApp } from 'antd';
 import { editMarkdownTable, findMarkdownTables, markdownTableCellPosition, updateMarkdownTableCell, type MarkdownTable, type TableAction } from './markdownTable';
 import { uploadImageFile } from './ImageHosting';
+import { markdownImageUrl, privateImagePreviewUrl } from './imagePreview';
 import { useI18n } from './i18n';
 
-type Props = { value: string; onChange: (value: string) => void; r2Configured?: boolean; defaultBucket?: string };
+type Props = { value: string; onChange: (value: string) => void; r2Configured?: boolean; defaultBucket?: string; r2PublicUrl?: string };
 type EditorContextMenu = { x: number; y: number; table: boolean };
 
 const languages = [
@@ -133,7 +134,7 @@ class TableWidget extends WidgetType {
   ignoreEvent() { return true; }
 }
 
-function livePreviewDecorations(state: EditorState) {
+function livePreviewDecorations(state: EditorState, resolveImageUrl: (source: string) => string = markdownImageUrl) {
   const decorations: Range<Decoration>[] = [];
   const activeLines = new Set<number>();
   for (const range of state.selection.ranges) {
@@ -177,8 +178,13 @@ function livePreviewDecorations(state: EditorState) {
       if (!active && node.name === 'LinkLabel' && parentName === 'Link') decorations.push(Decoration.replace({}).range(node.from, node.to));
       if (!active && node.name === 'LinkTitle' && (parentName === 'Link' || parentName === 'Image')) decorations.push(Decoration.replace({}).range(node.from, node.to));
       if (!active && node.name === 'Image') {
-        const matched = source.match(/^!\[([^\]]*)\]\(\s*(\S+?)(?:\s+["'][^"']*["'])?\s*\)$/);
-        if (matched) { decorations.push(Decoration.replace({ widget: new ImageWidget(node.from, source, matched[1], matched[2]) }).range(node.from, node.to)); return false; }
+        const alt = source.match(/^!\[([^\]]*)\]/)?.[1] || '';
+        const urlNode = node.node.getChild('URL');
+        if (urlNode) {
+          const url = state.doc.sliceString(urlNode.from, urlNode.to);
+          decorations.push(Decoration.replace({ widget: new ImageWidget(node.from, source, alt, resolveImageUrl(url)) }).range(node.from, node.to));
+          return false;
+        }
       }
       if (!active && /^ATXHeading|^SetextHeading/.test(node.name)) {
         const anchor = source.match(/\s*\{#[A-Za-z][\w:.-]*\}\s*$/);
@@ -210,11 +216,13 @@ function livePreviewDecorations(state: EditorState) {
   return Decoration.set(decorations, true);
 }
 
-const livePreview = StateField.define<DecorationSet>({
-  create: (state) => livePreviewDecorations(state),
-  update: (_decorations, transaction) => livePreviewDecorations(transaction.state),
-  provide: (field) => EditorView.decorations.from(field),
-});
+function livePreview(resolveImageUrl: (source: string) => string) {
+  return StateField.define<DecorationSet>({
+    create: (state) => livePreviewDecorations(state, resolveImageUrl),
+    update: (_decorations, transaction) => livePreviewDecorations(transaction.state, resolveImageUrl),
+    provide: (field) => EditorView.decorations.from(field),
+  });
+}
 
 function positionFromPointer(view: EditorView, event: MouseEvent) {
   const owner = view.dom.ownerDocument as Document & {
@@ -305,7 +313,7 @@ const toolbar = [
   { label: '—', title: '分隔线', run: (view: EditorView) => insertBlock(view, '---\n\n', undefined, true) },
 ];
 
-export default function MarkdownEditor({ value, onChange, r2Configured = false, defaultBucket = '' }: Props) {
+export default function MarkdownEditor({ value, onChange, r2Configured = false, defaultBucket = '', r2PublicUrl = '' }: Props) {
   const t = useI18n(); const { message } = AntApp.useApp();
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | undefined>(undefined);
@@ -333,6 +341,8 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
 
   useEffect(() => {
     if (!host.current) return undefined;
+    const previewBucket = r2Configured && !r2PublicUrl ? localStorage.getItem('flyblog:r2bucket') || defaultBucket : '';
+    const resolveImageUrl = (source: string) => privateImagePreviewUrl(markdownImageUrl(source), previewBucket, window.location.origin);
     const editor = new EditorView({
       parent: host.current,
       state: EditorState.create({
@@ -344,7 +354,7 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
           EditorView.lineWrapping,
           precisePointerSelection,
           EditorView.contentAttributes.of({ spellcheck: 'true', 'aria-label': 'Markdown 正文编辑器' }),
-          placeholder('开始写正文…'), livePreview,
+          placeholder('开始写正文…'), livePreview(resolveImageUrl),
           EditorView.domEventHandlers({
             drop(event, current) { const files = Array.from(event.dataTransfer?.files || []).filter((file) => file.type.startsWith('image/')); if (!files.length) return false; event.preventDefault(); void uploadRef.current(files, current); return true; },
             paste(event, current) { const files = Array.from(event.clipboardData?.files || []).filter((file) => file.type.startsWith('image/')); if (!files.length) return false; event.preventDefault(); void uploadRef.current(files, current); return true; },

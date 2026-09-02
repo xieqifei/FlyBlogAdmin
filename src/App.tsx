@@ -145,7 +145,7 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
         </Grid> }]}/>
       </div>
     </Card>
-    <div className="editor-body"><Typography.Text strong>{t('editor.body')}</Typography.Text><MarkdownEditor value={parseFrontMatter(editor.content).body} onChange={(body) => setEditor((value) => value ? { ...value, content: writeBody(value.content, body) } : value)} r2Configured={Boolean(configuration.r2?.configured)} defaultBucket={configuration.r2?.defaultBucket || ''} /></div>
+    <div className="editor-body"><Typography.Text strong>{t('editor.body')}</Typography.Text><MarkdownEditor value={parseFrontMatter(editor.content).body} onChange={(body) => setEditor((value) => value ? { ...value, content: writeBody(value.content, body) } : value)} r2Configured={Boolean(configuration.r2?.configured)} defaultBucket={configuration.r2?.defaultBucket || ''} r2PublicUrl={configuration.r2?.publicUrl || ''} /></div>
   </div> : <div className="boot"><Spin size="large" /></div>;
 
   return <Layout className="app">
@@ -168,7 +168,7 @@ export default function Root() {
     catch { setStartupError('无法读取 API 服务状态，请确认当前部署包含 Node.js API Functions 后重试。'); setAuthenticated(false); return; }
     setConfiguration(current);
     if (!current.configured) { setAuthenticated(false); return; }
-    try { await api('/api/auth/session'); setAuthenticated(true); } catch { setAuthenticated(false); }
+    try { const session = await api<{ authenticated: boolean }>('/api/auth/session'); setAuthenticated(session.authenticated === true); } catch { setAuthenticated(false); }
   })(); }, []);
   const wrap = (content: ReactNode) => <I18nProvider language={normalizeLanguage(configuration?.language)}><AntApp>{content}</AntApp></I18nProvider>;
   if (startupError) return wrap(<main className="setup-shell"><Alert showIcon type="error" message="API 服务暂时不可用" description={startupError} action={<Button onClick={() => window.location.reload()}>重新检测</Button>} /></main>);

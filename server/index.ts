@@ -180,7 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       setSessionCookie(res, signSession(config().username), config().sessionAge); return res.status(200).json({ ok: true });
     }
     if (method === 'POST' && path === '/api/auth/logout') { setSessionCookie(res, '', 0); return res.status(200).json({ ok: true }); }
-    if (method === 'GET' && path === '/api/auth/session') { const authenticated = isAuthenticated(req); return res.status(authenticated ? 200 : 401).json({ authenticated }); }
+    if (method === 'GET' && path === '/api/auth/session') return res.status(200).json({ authenticated: isAuthenticated(req) });
     if (!isAuthenticated(req)) return res.status(401).json({ error: '请先登录' });
     if (method !== 'GET' && !mutationOriginAllowed(req)) return res.status(403).json({ error: 'Invalid request origin' });
     if (method === 'GET' && path === '/api/graph') return res.status(200).json(await buildGraph());
