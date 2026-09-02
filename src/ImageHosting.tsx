@@ -124,6 +124,7 @@ export default function ImageHosting({ configuration }: { configuration: Configu
   }, [bucket, message, t]);
 
   const markdownLink = (item: R2Object) => `![${item.key.split('/').pop()?.replace(/\.[^.]+$/, '') || 'image'}](${item.url})`;
+  const previewLink = (item: R2Object) => `/api/r2/content?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(item.key)}`;
 
   const notice = useMemo(() => configuration.r2?.publicUrl ? null : (t('ih.noPublicUrl')), [configuration.r2?.publicUrl, t]);
 
@@ -145,7 +146,7 @@ export default function ImageHosting({ configuration }: { configuration: Configu
       <div className="image-hosting-list">
         {loading && objects.length === 0 ? <div className="image-hosting-loading"><Spin /></div> : objects.length ? <>
           <div className="image-hosting-grid">{objects.map((item) => <div className="image-hosting-item" key={item.key}>
-            <div className="image-hosting-thumb"><img src={item.url} alt={item.key} loading="lazy" onError={(event) => { (event.currentTarget as HTMLImageElement).style.display = 'none'; }} /></div>
+            <div className="image-hosting-thumb"><img src={previewLink(item)} alt={item.key} loading="lazy" onError={(event) => { (event.currentTarget as HTMLImageElement).style.display = 'none'; }} /></div>
             <div className="image-hosting-name" title={item.key}>{item.key.split('/').pop()}</div>
             <Typography.Text type="secondary" className="image-hosting-size">{formatSize(item.size)}</Typography.Text>
             <Space wrap className="image-hosting-actions">

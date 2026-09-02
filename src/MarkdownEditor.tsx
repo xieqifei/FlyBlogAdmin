@@ -6,8 +6,8 @@ import { javascript } from '@codemirror/lang-javascript';
 import { markdown } from '@codemirror/lang-markdown';
 import { python } from '@codemirror/lang-python';
 import { LanguageDescription, syntaxTree } from '@codemirror/language';
-import { EditorSelection, EditorState, type Range } from '@codemirror/state';
-import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, placeholder, type DecorationSet, type ViewUpdate } from '@codemirror/view';
+import { EditorSelection, EditorState, StateField, type Range } from '@codemirror/state';
+import { Decoration, EditorView, WidgetType, keymap, placeholder, type DecorationSet } from '@codemirror/view';
 import { redo, undo } from '@codemirror/commands';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef, useState } from 'react';
@@ -71,40 +71,40 @@ class TableWidget extends WidgetType {
   ignoreEvent() { return false; }
 }
 
-function livePreviewDecorations(view: EditorView) {
+function livePreviewDecorations(state: EditorState) {
   const decorations: Range<Decoration>[] = [];
   const activeLines = new Set<number>();
-  for (const range of view.state.selection.ranges) {
-    const fromLine = view.state.doc.lineAt(range.from).number;
-    const toLine = view.state.doc.lineAt(range.to).number;
+  for (const range of state.selection.ranges) {
+    const fromLine = state.doc.lineAt(range.from).number;
+    const toLine = state.doc.lineAt(range.to).number;
     for (let line = fromLine; line <= toLine; line += 1) activeLines.add(line);
   }
-  const tables = findMarkdownTables(view.state.doc.toString());
-  const previewTables = tables.filter((table) => !view.state.selection.ranges.some((range) => range.empty
+  const tables = findMarkdownTables(state.doc.toString());
+  const previewTables = tables.filter((table) => !state.selection.ranges.some((range) => range.empty
     ? range.from >= table.from && range.from < table.to
     : range.from < table.to && range.to > table.from));
-  syntaxTree(view.state).iterate({
+  syntaxTree(state).iterate({
     from: 0,
-    to: view.state.doc.length,
+    to: state.doc.length,
     enter(node) {
       if (previewTables.some((table) => node.from >= table.from && node.to <= table.to)) return false;
       const className = nodeClasses[node.name];
       if (className && node.from < node.to) decorations.push(Decoration.mark({ class: className }).range(node.from, node.to));
-      const lineNumber = view.state.doc.lineAt(node.from).number;
+      const lineNumber = state.doc.lineAt(node.from).number;
       if (hiddenMarkers.has(node.name) && node.from < node.to && !activeLines.has(lineNumber)) decorations.push(Decoration.replace({}).range(node.from, node.to));
       if (node.name === 'ListMark' && node.from < node.to && !activeLines.has(lineNumber)) {
-        const marker = view.state.doc.sliceString(node.from, node.to);
+        const marker = state.doc.sliceString(node.from, node.to);
         if (/^[-*+]$/.test(marker)) decorations.push(Decoration.replace({ widget: new BulletWidget() }).range(node.from, node.to));
       }
       if (node.name === 'TaskMarker' && node.from < node.to && !activeLines.has(lineNumber)) {
-        const marker = view.state.doc.sliceString(node.from, node.to);
+        const marker = state.doc.sliceString(node.from, node.to);
         decorations.push(Decoration.replace({ widget: new TaskWidget(node.from, node.to, /x/i.test(marker)) }).range(node.from, node.to));
       }
       if (node.name === 'FencedCode') {
-        const first = view.state.doc.lineAt(node.from).number;
-        const last = view.state.doc.lineAt(Math.max(node.from, node.to - 1)).number;
+        const first = state.doc.lineAt(node.from).number;
+        const last = state.doc.lineAt(Math.max(node.from, node.to - 1)).number;
         for (let number = first; number <= last; number += 1) {
-          const line = view.state.doc.line(number);
+          const line = state.doc.line(number);
           const extra = number === first ? ' cm-live-code-first' : number === last ? ' cm-live-code-last' : '';
           decorations.push(Decoration.line({ class: `cm-live-code-line${extra}` }).range(line.from));
         }
@@ -115,11 +115,11 @@ function livePreviewDecorations(view: EditorView) {
   return Decoration.set(decorations, true);
 }
 
-const livePreview = ViewPlugin.fromClass(class {
-  decorations: DecorationSet;
-  constructor(view: EditorView) { this.decorations = livePreviewDecorations(view); }
-  update(update: ViewUpdate) { if (update.docChanged || update.viewportChanged || update.selectionSet) this.decorations = livePreviewDecorations(update.view); }
-}, { decorations: (plugin) => plugin.decorations });
+const livePreview = StateField.define<DecorationSet>({
+  create: (state) => livePreviewDecorations(state),
+  update: (_decorations, transaction) => livePreviewDecorations(transaction.state),
+  provide: (field) => EditorView.decorations.from(field),
+});
 
 function wrap(view: EditorView, before: string, after = before, fallback = '文字') {
   const range = view.state.selection.main;

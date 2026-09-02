@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash, createHmac, pbkdf2Sync, timingSafeEqual } from 'node:crypto';
 import { posix } from 'node:path';
 import { configurationStatus } from './configuration.js';
-import { R2Error, buildObjectKey, contentTypeFor, deleteObject, listBuckets, listObjects, putObject, r2Configuration, validateBucketName, validateObjectKey } from './r2.js';
+import { R2Error, buildObjectKey, contentTypeFor, deleteObject, getObject, listBuckets, listObjects, putObject, r2Configuration, validateBucketName, validateObjectKey } from './r2.js';
 import { parseFrontMatter, values, writeFrontMatter } from '../shared/frontMatter.js';
 import { automaticArticleDates, currentDateTime, normalizeDateTime } from '../shared/dateTime.js';
 
@@ -185,6 +185,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ suggestion: await optimizeArticle(jsonBody(req)) });
     }
     if (method === 'GET' && path === '/api/r2/buckets') return res.status(200).json({ buckets: await listBuckets() });
+    if (method === 'GET' && path === '/api/r2/content') {
+      const bucket = validateBucketName(req.query.bucket); const key = validateObjectKey(req.query.key);
+      const object = await getObject(bucket, key);
+      res.setHeader('Content-Type', object.contentType); res.setHeader('Content-Length', String(object.body.length));
+      return res.status(200).send(object.body);
+    }
     if (method === 'GET' && path === '/api/r2/objects') {
       const bucket = validateBucketName(req.query.bucket);
       const prefix = typeof req.query.prefix === 'string' ? req.query.prefix.replace(/^\/+/, '') : '';

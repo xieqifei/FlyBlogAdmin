@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, ListBucketsCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, ListBucketsCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { posix } from 'node:path';
 
 export class R2Error extends Error {
@@ -77,6 +77,14 @@ export async function listObjects(bucket: string, prefix: string, continuationTo
     })),
     next: result.IsTruncated ? result.NextContinuationToken || '' : '',
   };
+}
+
+export async function getObject(bucket: string, key: string) {
+  const client = requireR2Client();
+  const result = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  const bytes = await result.Body?.transformToByteArray();
+  if (!bytes) throw new R2Error('图片内容为空', 404);
+  return { body: Buffer.from(bytes), contentType: result.ContentType || contentTypeFor(key) };
 }
 
 export async function putObject(input: { bucket: string; key: string; body: Buffer; contentType?: string }) {
