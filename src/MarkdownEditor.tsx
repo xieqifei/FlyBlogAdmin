@@ -5,7 +5,7 @@ import { html } from '@codemirror/lang-html';
 import { javascript } from '@codemirror/lang-javascript';
 import { markdown } from '@codemirror/lang-markdown';
 import { python } from '@codemirror/lang-python';
-import { LanguageDescription, syntaxTree } from '@codemirror/language';
+import { defaultHighlightStyle, HighlightStyle, LanguageDescription, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { EditorSelection, EditorState, StateField, type Range } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType, keymap, placeholder, type DecorationSet } from '@codemirror/view';
 import { redo, undo } from '@codemirror/commands';
@@ -37,6 +37,10 @@ const nodeClasses: Record<string, string> = {
 };
 
 const hiddenMarkers = new Set(['HeaderMark', 'EmphasisMark', 'CodeMark', 'LinkMark', 'StrikethroughMark']);
+
+const editorHighlightStyle = HighlightStyle.define(defaultHighlightStyle.specs.map((style) => style.textDecoration === 'underline' && style.fontWeight === 'bold'
+  ? { ...style, textDecoration: 'none' }
+  : style));
 
 class BulletWidget extends WidgetType {
   toDOM() { const bullet = document.createElement('span'); bullet.className = 'cm-live-bullet'; bullet.textContent = '•'; return bullet; }
@@ -332,6 +336,7 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
         doc: value,
         extensions: [
           basicSetup,
+          syntaxHighlighting(editorHighlightStyle),
           markdown({ codeLanguages: languages, extensions: [Strikethrough, TaskList, Table] }),
           EditorView.lineWrapping,
           precisePointerSelection,
