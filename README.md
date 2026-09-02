@@ -2,24 +2,36 @@
 
 FlyBlogAdmin 是一个面向 Hexo 等 Git 仓库博客的无数据库管理后台。文章直接通过 GitHub Contents API 读取和提交，前端使用 React、TypeScript 与 Ant Design，服务端使用 Vercel Node.js Functions。项目完全使用 Node.js/TypeScript，不包含 Python 或 Django 运行时。API 按功能合并入口以控制 Serverless Function 数量，同时避免刷新或无痕访问时被前端路由误接管。
 
+登录后即可在首页查看文章、分类、标签、写作贡献和最近更新，也可以继续管理文章、浏览关系图谱、使用 S3 兼容图床，以及按需启用 AI 写作辅助。桌面端与手机端共用同一套响应式界面。
+
 首次访问时，必需环境变量未齐全会一直显示设置引导页；配置齐全并重新部署后进入登录页。设置页会逐项显示必需与可选变量的实际配置状态。
 设置页内置仅在浏览器本地运行的 `SECRET_KEY` 与 `ADMIN_PASSWORD_HASH` 生成器，并提供细粒度 `GITHUB_TOKEN` 的创建和最小权限配置教程。
 AI 接口变量始终是可选项，不参与引导页判断；即使完全不配置 AI，也可以正常登录并管理文章。
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fxieqifei%2FFlyBlogAdmin&env=SECRET_KEY,ADMIN_USERNAME,ADMIN_PASSWORD,GITHUB_TOKEN,GITHUB_REPOSITORY&envDescription=FlyBlogAdmin%20%E8%BF%90%E8%A1%8C%E6%89%80%E9%9C%80%E7%9A%84%E7%99%BB%E5%BD%95%E4%B8%8E%20GitHub%20%E9%85%8D%E7%BD%AE&project-name=fly-blog-admin&repository-name=fly-blog-admin)
 
-![FlyBlogAdmin 首页内容看板](docs/screenshots/home-dashboard.png)
+## 界面预览
+
+![FlyBlogAdmin 桌面端首页内容看板](docs/screenshots/home-desktop.png)
+
+<p align="center">
+  <img src="docs/screenshots/home-mobile.png" width="390" alt="FlyBlogAdmin 手机端首页内容看板">
+</p>
 
 ## 功能
 
-- 首页内容看板：文章、分类、标签统计及最近文章。
-- 文章支持标题、分类和标签搜索及多列排序；编辑保存时自动刷新编辑时间。
-- Obsidian 风格单栏实时预览编辑器支持准确的长文光标定位、浅色语法高亮、表格即时预览与行列编辑、Markdown 工具栏、快捷键及浏览器草稿恢复。
+- 首页内容看板：汇总文章、分类、标签和已标注日期数量，展示分类分布、常用标签、按年份切换的写作贡献日历及最近文章。
+- 文章管理：支持按标题、分类和标签搜索，多列排序，新建、编辑及删除文章，并在保存后立即刷新列表。
+- Obsidian 风格单栏实时预览编辑器：支持浅色语法高亮、标题、列表、任务、引用、代码、脚注、图片及表格预览，长文光标定位保持准确。
+- Markdown 高效编辑：提供吸顶工具栏、快捷键和右键菜单；表格可直接编辑单元格，并可插入或删除行列、设置列对齐。
+- 图片写作体验：可拖入或粘贴图片并自动上传到默认图床；公开图片和需要鉴权的私有图片都能在编辑器中预览。
 - 首次发布时自动写入发布日期，每次保存时自动刷新编辑日期，均精确到秒且不在编辑器中手动修改（旧文章缺少时间时补为 `00:00:00`）；列表只展示日期。
 - Obsidian 风格文章关系图谱，支持拖拽、缩放、筛选和局部图谱。
-- 可选 AI 文章校对与改写，先对比预览再手动应用，不会自动覆盖文章。
-- 单管理员 Cookie 登录及环境变量配置引导。
-- 响应式布局，可在桌面和手机浏览器使用。
+- S3 兼容图床：支持 Cloudflare R2 等对象存储的存储桶浏览、图片上传、Markdown 链接复制、分页加载及删除。
+- 可选 AI 写作辅助：支持生成标题和内容、校对、改善结构、精简及优化大纲；先对比预览再手动应用，不会自动覆盖文章。
+- 浏览器本地草稿自动恢复；单管理员 Cookie 登录及写请求安全校验。
+- 完整的环境变量配置引导，并内置 `SECRET_KEY` 与 `ADMIN_PASSWORD_HASH` 本地生成器。
+- 中文、英文和德文界面；桌面端与手机端响应式布局，移动端菜单、表格、编辑器和贡献日历均针对窄屏适配。
 
 ## 本地运行
 
@@ -92,9 +104,9 @@ npm run preview
 
 这一流程借鉴 Obsidian Smart Composer 的 Apply Edit 与提示模板体验：让用户控制上下文、预览建议并明确应用，而不是让模型直接改写远端文件。
 
-## Cloudflare R2 图床
+## S3 兼容图床
 
-配置 `S3_ENDPOINT`、`S3_ACCESS_KEY_ID` 和 `S3_SECRET_ACCESS_KEY` 后，左侧“图床”会通过标准 AWS S3 SDK 自动读取存储桶，支持上传、浏览、复制 Markdown 链接和删除图片。建议同时设置 `S3_BUCKET` 与 `S3_PUBLIC_URL`；编辑器会把拖入或粘贴的图片上传到默认桶，并在光标处插入 Markdown 图片链接。
+配置 `S3_ENDPOINT`、`S3_ACCESS_KEY_ID` 和 `S3_SECRET_ACCESS_KEY` 后，左侧“图床”会通过标准 AWS S3 SDK 连接 Cloudflare R2 等 S3 兼容对象存储，支持存储桶切换、上传、分页浏览、复制 Markdown 链接和删除图片。建议同时设置 `S3_BUCKET` 与 `S3_PUBLIC_URL`；编辑器会把拖入或粘贴的图片上传到默认桶，并在光标处插入 Markdown 图片链接。
 
 ## 安全说明
 
