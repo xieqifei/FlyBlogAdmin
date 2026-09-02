@@ -46,6 +46,11 @@ body { color: #172033; background: #f5f7fa; }
 .markdown-toolbar .strong { font-weight: 850; }
 .markdown-toolbar .emphasis { font-style: italic; }
 .markdown-toolbar .strike { text-decoration: line-through; }
+.markdown-context-menu { position: fixed; z-index: 1200; display: grid; width: 240px; max-height: min(520px, calc(100vh - 16px)); overflow-y: auto; box-sizing: border-box; padding: 6px; border: 1px solid #d9dce3; border-radius: 10px; background: rgb(255 255 255 / 98%); box-shadow: 0 16px 48px rgb(23 32 51 / 22%); backdrop-filter: blur(12px); }
+.markdown-context-menu button { width: 100%; min-height: 34px; padding: 7px 10px; border: 0; border-radius: 6px; color: #252a34; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.markdown-context-menu button:hover, .markdown-context-menu button:focus-visible { color: #315efb; background: #eef2ff; outline: none; }
+.markdown-context-label { padding: 6px 10px 4px; color: #8a909c; font-size: 12px; font-weight: 700; }
+.markdown-context-separator { height: 1px; margin: 5px 4px; background: #eceef2; }
 .markdown-editor { min-height: 560px; width: 100%; margin-bottom: 0 !important; border: 1px solid #d9d9d9; border-radius: 10px; overflow: hidden; background: #fff; transition: border-color .2s, box-shadow .2s; }
 .markdown-workspace-editor .markdown-editor { border-radius: 0 0 10px 10px; }
 .markdown-editor:focus-within { border-color: #597ef7; box-shadow: 0 0 0 2px rgb(49 94 251 / 10%); }

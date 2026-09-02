@@ -17,6 +17,7 @@ import { uploadImageFile } from './ImageHosting';
 import { useI18n } from './i18n';
 
 type Props = { value: string; onChange: (value: string) => void; r2Configured?: boolean; defaultBucket?: string };
+type EditorContextMenu = { x: number; y: number; table: boolean };
 
 const languages = [
   LanguageDescription.of({ name: 'JavaScript', alias: ['js', 'jsx'], load: async () => javascript({ jsx: true }) }),
@@ -103,6 +104,7 @@ class TableWidget extends WidgetType {
     const editableCell = (tag: 'th' | 'td', value: string, rowIndex: number, columnIndex: number) => {
       const cell = document.createElement(tag);
       cell.contentEditable = 'plaintext-only'; cell.spellcheck = true; cell.textContent = value;
+      cell.dataset.tableFrom = String(this.from); cell.dataset.tableRow = String(rowIndex); cell.dataset.tableColumn = String(columnIndex);
       cell.style.textAlign = this.parsed.alignments[columnIndex];
       cell.addEventListener('focus', () => {
         const position = markdownTableCellPosition(view.state.doc.toString(), this.from, rowIndex, columnIndex);
@@ -311,6 +313,7 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
   const uploadRef = useRef<(files: File[], editor: EditorView) => Promise<void>>(async () => undefined);
   const syncing = useRef(false);
   const [codeLanguage, setCodeLanguage] = useState('javascript');
+  const [contextMenu, setContextMenu] = useState<EditorContextMenu | null>(null);
   onChangeRef.current = onChange;
   uploadRef.current = async (files, editor) => {
     const images = files.filter((file) => file.type.startsWith('image/'));
@@ -358,10 +361,41 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
     });
     const resizeObserver = new ResizeObserver(() => editor.requestMeasure());
     resizeObserver.observe(editor.contentDOM);
+    const openContextMenu = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const cell = target?.closest<HTMLElement>('.cm-table-preview [data-table-row][data-table-column]');
+      if (cell) {
+        const tableFrom = Number(cell.dataset.tableFrom); const row = Number(cell.dataset.tableRow); const column = Number(cell.dataset.tableColumn);
+        const position = markdownTableCellPosition(editor.state.doc.toString(), tableFrom, row, column);
+        if (position !== undefined) editor.dispatch({ selection: EditorSelection.cursor(position) });
+      } else {
+        const position = positionFromPointer(editor, event) ?? editor.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+        if (position !== null) editor.dispatch({ selection: EditorSelection.cursor(position) });
+      }
+      event.preventDefault();
+      const menuHeight = Math.min(520, window.innerHeight - 16);
+      setContextMenu({
+        x: Math.max(8, Math.min(event.clientX, window.innerWidth - 252)),
+        y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
+        table: Boolean(cell),
+      });
+    };
+    host.current.addEventListener('contextmenu', openContextMenu);
     void document.fonts?.ready.then(() => editor.requestMeasure());
     view.current = editor;
-    return () => { resizeObserver.disconnect(); editor.destroy(); view.current = undefined; };
+    return () => { host.current?.removeEventListener('contextmenu', openContextMenu); resizeObserver.disconnect(); editor.destroy(); view.current = undefined; };
   }, []);
+
+  useEffect(() => {
+    if (!contextMenu) return undefined;
+    const close = (event: Event) => {
+      if (event.target instanceof Element && event.target.closest('.markdown-context-menu')) return;
+      setContextMenu(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setContextMenu(null); };
+    window.addEventListener('pointerdown', close); window.addEventListener('scroll', close, true); window.addEventListener('resize', close); window.addEventListener('keydown', closeOnEscape);
+    return () => { window.removeEventListener('pointerdown', close); window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close); window.removeEventListener('keydown', closeOnEscape); };
+  }, [contextMenu]);
 
   useEffect(() => {
     const editor = view.current;
@@ -372,6 +406,7 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
   }, [value]);
 
   const run = (command: (editor: EditorView) => boolean) => { if (view.current) command(view.current); };
+  const contextAction = (command: (editor: EditorView) => boolean) => { run(command); setContextMenu(null); };
   return <div className="markdown-workspace-editor">
     <div className="markdown-toolbar" role="toolbar" aria-label="Markdown 格式工具栏">
       <button type="button" title="撤销（Ctrl/⌘+Z）" aria-label="撤销" onClick={() => run(undo)}>↶</button>
@@ -381,5 +416,38 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
       <span className="table-tools" aria-label="表格行列操作"><button type="button" title="在当前行后添加一行" aria-label="添加表格行" className="icon-tool" onClick={() => run((editor) => editTable(editor, 'add-row'))}><InsertRowBelowOutlined /></button><button type="button" title="删除当前行" aria-label="删除表格行" className="icon-tool" onClick={() => run((editor) => editTable(editor, 'delete-row'))}><DeleteRowOutlined /></button><button type="button" title="在当前列后添加一列" aria-label="添加表格列" className="icon-tool" onClick={() => run((editor) => editTable(editor, 'add-column'))}><InsertRowRightOutlined /></button><button type="button" title="删除当前列（至少保留两列）" aria-label="删除表格列" className="icon-tool" onClick={() => run((editor) => editTable(editor, 'delete-column'))}><DeleteColumnOutlined /></button></span>
     </div>
     <div ref={host} className="markdown-editor obsidian-editor" />
+    {contextMenu && <div className="markdown-context-menu" role="menu" aria-label="Markdown 右键菜单" style={{ left: contextMenu.x, top: contextMenu.y }} onContextMenu={(event) => event.preventDefault()}>
+      {contextMenu.table && <>
+        <div className="markdown-context-label">表格</div>
+        <button type="button" role="menuitem" onClick={() => contextAction((editor) => editTable(editor, 'add-row-before'))}>在上方插入行</button>
+        <button type="button" role="menuitem" onClick={() => contextAction((editor) => editTable(editor, 'add-row-after'))}>在下方插入行</button>
+        <button type="button" role="menuitem" onClick={() => contextAction((editor) => editTable(editor, 'delete-row'))}>删除当前行</button>
+        <div className="markdown-context-separator" />
+        <button type="button" role="menuitem" onClick={() => contextAction((editor) => editTable(editor, 'add-column-before'))}>在左侧插入列</button>
+        <button type="button" role="menuitem" onClick={() => contextAction((editor) => editTable(editor, 'add-column-after'))}>在右侧插入列</button>
+        <button type="button" role="menuitem" onClick={() => contextAction((editor) => editTable(editor, 'delete-column'))}>删除当前列</button>
+        <div className="markdown-context-separator" />
+        <button type="button" role="menuitem" onClick={() => contextAction((editor) => editTable(editor, 'align-left'))}>本列左对齐</button>
+        <button type="button" role="menuitem" onClick={() => contextAction((editor) => editTable(editor, 'align-center'))}>本列居中</button>
+        <button type="button" role="menuitem" onClick={() => contextAction((editor) => editTable(editor, 'align-right'))}>本列右对齐</button>
+        <div className="markdown-context-separator" />
+      </>}
+      <div className="markdown-context-label">插入与格式</div>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => prefixLines(editor, '# '))}>一级标题</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => prefixLines(editor, '## '))}>二级标题</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => prefixLines(editor, '### '))}>三级标题</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => wrap(editor, '**'))}>加粗</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => wrap(editor, '*'))}>斜体</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => wrap(editor, '~~'))}>删除线</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => prefixLines(editor, '> '))}>引用</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => prefixLines(editor, '- '))}>无序列表</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => prefixLines(editor, '1. '))}>有序列表</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => prefixLines(editor, '- [ ] '))}>任务列表</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => wrap(editor, '[', '](https://)', '链接文字'))}>链接</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => wrap(editor, '![', '](https://)', '图片说明'))}>图片</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => insertBlock(editor, `\`\`\`${codeLanguage}\n$SELECTION\n\`\`\``, '代码'))}>{codeLanguage} 代码块</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => insertBlock(editor, '| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |\n\n', undefined, true))}>表格</button>
+      <button type="button" role="menuitem" onClick={() => contextAction((editor) => insertBlock(editor, '---\n\n', undefined, true))}>分隔线</button>
+    </div>}
   </div>;
 }

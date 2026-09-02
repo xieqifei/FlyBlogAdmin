@@ -62,3 +62,16 @@ test('maps rendered cells back to their markdown positions for toolbar operation
   const added = editMarkdownTable(source, position!, 'add-column');
   assert.deepEqual(parseMarkdownTable(added!.content)?.headers, ['姓名', '年龄', '新列']);
 });
+
+test('supports contextual row, column, and alignment actions', () => {
+  const withRows = `${source}\n| 小红 | 20 |\n| 小刚 | 22 |`;
+  const selected = markdownTableCellPosition(withRows, 0, 1, 1)!;
+  const before = editMarkdownTable(withRows, selected, 'add-row-before')!;
+  assert.deepEqual(parseMarkdownTable(before.content)?.rows.map((row) => row[0]), ['小明', '内容', '小红', '小刚']);
+  const after = editMarkdownTable(withRows, selected, 'add-row-after')!;
+  assert.deepEqual(parseMarkdownTable(after.content)?.rows.map((row) => row[0]), ['小明', '小红', '内容', '小刚']);
+  const left = editMarkdownTable(withRows, selected, 'add-column-before')!;
+  assert.deepEqual(parseMarkdownTable(left.content)?.headers, ['姓名', '新列', '年龄']);
+  const centered = editMarkdownTable(withRows, selected, 'align-center')!;
+  assert.deepEqual(parseMarkdownTable(centered.content)?.alignments, ['left', 'center']);
+});

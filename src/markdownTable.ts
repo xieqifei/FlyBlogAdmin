@@ -1,4 +1,7 @@
-export type TableAction = 'add-row' | 'delete-row' | 'add-column' | 'delete-column';
+export type TableAction =
+  | 'add-row' | 'add-row-before' | 'add-row-after' | 'delete-row'
+  | 'add-column' | 'add-column-before' | 'add-column-after' | 'delete-column'
+  | 'align-left' | 'align-center' | 'align-right';
 
 export type MarkdownTable = {
   headers: string[];
@@ -137,13 +140,15 @@ export function editMarkdownTable(content: string, position: number, action: Tab
   const leadingPipe = line.trimStart().startsWith('|') ? 1 : 0;
   const columnIndex = Math.max(0, Math.min(table.headers.length - 1, pipeOffsets(beforeCursor).length - leadingPipe));
 
-  if (action === 'add-row') table.rows.splice(Math.min(rowIndex + 1, table.rows.length), 0, table.headers.map(() => '内容'));
+  const selectedRow = Math.min(Math.max(0, rowIndex - 1), Math.max(0, table.rows.length - 1));
+  if (action === 'add-row' || action === 'add-row-after') table.rows.splice(Math.min(selectedRow + 1, table.rows.length), 0, table.headers.map(() => '内容'));
+  if (action === 'add-row-before') table.rows.splice(selectedRow, 0, table.headers.map(() => '内容'));
   if (action === 'delete-row') {
     if (!table.rows.length) return undefined;
-    table.rows.splice(Math.min(Math.max(0, rowIndex - 1), table.rows.length - 1), 1);
+    table.rows.splice(selectedRow, 1);
   }
-  if (action === 'add-column') {
-    const insertAt = columnIndex + 1;
+  if (action === 'add-column' || action === 'add-column-after' || action === 'add-column-before') {
+    const insertAt = action === 'add-column-before' ? columnIndex : columnIndex + 1;
     table.headers.splice(insertAt, 0, '新列'); table.alignments.splice(insertAt, 0, 'left');
     table.rows.forEach((row) => row.splice(insertAt, 0, '内容'));
   }
@@ -152,6 +157,9 @@ export function editMarkdownTable(content: string, position: number, action: Tab
     table.headers.splice(columnIndex, 1); table.alignments.splice(columnIndex, 1);
     table.rows.forEach((row) => row.splice(columnIndex, 1));
   }
+  if (action === 'align-left') table.alignments[columnIndex] = 'left';
+  if (action === 'align-center') table.alignments[columnIndex] = 'center';
+  if (action === 'align-right') table.alignments[columnIndex] = 'right';
 
   const replacement = serialize(table);
   return { content: `${content.slice(0, range.from)}${replacement}${content.slice(range.to)}`, from: range.from, to: range.from + replacement.length };
