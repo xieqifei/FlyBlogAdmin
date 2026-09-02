@@ -52,12 +52,12 @@ const zh: Dictionary = {
   'graph.hint': '拖拽节点或画布，滚轮缩放，双击文章进入编辑',
   'cc.title': '近一年创作贡献', 'cc.total': '共创作 {total} 篇', 'cc.weekdays': '一,三,五', 'cc.aria': '近一年每日创作数量',
   'cc.dayAria': '{date}，创作 {count} 篇', 'cc.dayTitle': '{date}：{count} 篇创作', 'cc.none': '无创作', 'cc.less': '少', 'cc.more': '多', 'cc.months': '1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月',
-  'ih.notConfiguredTitle': '图床未配置', 'ih.notConfiguredDesc': '在部署平台配置 R2_ACCOUNT_ID、R2_ACCESS_KEY_ID 和 R2_SECRET_ACCESS_KEY 后重新部署，即可自动加载 R2 存储桶。',
+  'ih.notConfiguredTitle': '图床未配置', 'ih.notConfiguredDesc': '在部署平台配置 S3_ACCOUNT_ID、S3_ACCESS_KEY_ID 和 S3_SECRET_ACCESS_KEY 后重新部署，即可自动加载 R2 存储桶。',
   'ih.bucket': '存储桶', 'ih.selectBucket': '选择存储桶', 'ih.refresh': '刷新', 'ih.upload': '上传图片', 'ih.dragUpload': '拖拽或点击上传图片',
   'ih.uploading': '正在上传…', 'ih.objects': '图片列表', 'ih.emptyObjects': '暂无图片，拖拽或点击上传', 'ih.loadMore': '加载更多',
   'ih.copyMarkdown': '复制 Markdown 链接', 'ih.copyUrl': '复制 URL', 'ih.delete': '删除', 'ih.confirmDelete': '确定删除这张图片？',
   'ih.copiedMarkdown': '已复制 Markdown 链接', 'ih.copiedUrl': '已复制 URL', 'ih.deleted': '图片已删除', 'ih.loadFailed': '图片列表载入失败',
-  'ih.uploadFailed': '上传失败：{error}', 'ih.deleteFailed': '删除失败：{error}', 'ih.noPublicUrl': '未设置 R2_PUBLIC_URL，链接使用 S3 端点生成，可能无法公开访问。',
+  'ih.uploadFailed': '上传失败：{error}', 'ih.deleteFailed': '删除失败：{error}', 'ih.noPublicUrl': '未设置 S3_PUBLIC_URL，链接使用 S3 端点生成，可能无法公开访问。',
   'sg.ready': '必需配置已齐全', 'sg.missingWarning': '请先补齐环境变量并重新部署', 'sg.readyDescription': '此页面只显示配置状态，不会读取或显示 Token、密码和密钥。', 'sg.missingDescription': '尚缺少：{names}',
   'sg.stepsTitle': 'Vercel 配置步骤', 'sg.step1': '打开 Vercel 项目，进入 Settings → Environment Variables。', 'sg.step2': '按下表添加变量，并选择 Production / Preview 环境。', 'sg.step3': '保存后重新部署；变量变更不会自动应用到旧部署。', 'sg.step4': '完成后回到此页检查状态，再使用左下角的退出与登录功能验证账号。',
   'sg.generatorTitle': '密钥与密码哈希生成器', 'sg.generatorInfo': '所有计算只在当前浏览器中完成', 'sg.generatorDescription': '生成结果不会发送给 FlyBlog Admin。复制到 Vercel 后请关闭页面，不要将结果提交到代码仓库。',
@@ -76,8 +76,8 @@ const zh: Dictionary = {
   'sg.var.LANGUAGE': '界面语言：zh（中文）、en（English）、de（Deutsch），默认 zh。', 'sg.var.LLM_API_KEY': '大模型服务的 API Key；仅由服务端读取。',
   'sg.var.LLM_MODEL': '用于文章优化的模型名称。', 'sg.var.LLM_BASE_URL': 'OpenAI 兼容接口地址，默认 https://api.openai.com/v1。',
   'sg.var.LLM_API_STYLE': 'auto、chat 或 responses；默认 auto，会在接口不兼容时自动回退。',
-  'sg.var.R2_ACCOUNT_ID': 'Cloudflare 账户 ID，用于构造 R2 S3 端点。', 'sg.var.R2_ACCESS_KEY_ID': 'R2 API Token 的 Access Key ID。', 'sg.var.R2_SECRET_ACCESS_KEY': 'R2 API Token 的 Secret Access Key，仅由服务端读取。',
-  'sg.var.R2_BUCKET': '默认存储桶；拖拽上传的图片会写入此桶。', 'sg.var.R2_ENDPOINT': '可选，R2 S3 端点，默认 https://<ACCOUNT_ID>.r2.cloudflarestorage.com。', 'sg.var.R2_PUBLIC_URL': '可选，公开访问地址，例如自定义域名或 pub-*.r2.dev；用于生成 Markdown 图片链接。',
+  'sg.var.S3_ACCOUNT_ID': 'Cloudflare 账户 ID，用于构造 R2 S3 端点。', 'sg.var.S3_ACCESS_KEY_ID': 'R2 API Token 的 Access Key ID。', 'sg.var.S3_SECRET_ACCESS_KEY': 'R2 API Token 的 Secret Access Key，仅由服务端读取。',
+  'sg.var.S3_BUCKET': '默认存储桶；拖拽上传的图片会写入此桶。', 'sg.var.S3_ENDPOINT': '可选，R2 S3 端点，默认 https://<ACCOUNT_ID>.r2.cloudflarestorage.com。', 'sg.var.S3_PUBLIC_URL': '可选，公开访问地址，例如自定义域名或 pub-*.r2.dev；用于生成 Markdown 图片链接。',
 };
 
 const en: Dictionary = {
@@ -116,12 +116,12 @@ const en: Dictionary = {
   'graph.hint': 'Drag nodes or the canvas, scroll to zoom, double-click a post to edit',
   'cc.title': 'Writing contributions (last 12 months)', 'cc.total': '{total} posts', 'cc.weekdays': 'M,W,F', 'cc.aria': 'Daily writing count for the last 12 months',
   'cc.dayAria': '{date}: {count} posts', 'cc.dayTitle': '{date}: {count} posts', 'cc.none': 'no posts', 'cc.less': 'Less', 'cc.more': 'More', 'cc.months': 'Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec',
-  'ih.notConfiguredTitle': 'Image hosting is not configured', 'ih.notConfiguredDesc': 'Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY in your deployment and redeploy to load R2 buckets automatically.',
+  'ih.notConfiguredTitle': 'Image hosting is not configured', 'ih.notConfiguredDesc': 'Add S3_ACCOUNT_ID, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY in your deployment and redeploy to load R2 buckets automatically.',
   'ih.bucket': 'Bucket', 'ih.selectBucket': 'Select bucket', 'ih.refresh': 'Refresh', 'ih.upload': 'Upload images', 'ih.dragUpload': 'Drag & drop or click to upload images',
   'ih.uploading': 'Uploading…', 'ih.objects': 'Images', 'ih.emptyObjects': 'No images yet — upload some', 'ih.loadMore': 'Load more',
   'ih.copyMarkdown': 'Copy Markdown link', 'ih.copyUrl': 'Copy URL', 'ih.delete': 'Delete', 'ih.confirmDelete': 'Delete this image?',
   'ih.copiedMarkdown': 'Markdown link copied', 'ih.copiedUrl': 'URL copied', 'ih.deleted': 'Image deleted', 'ih.loadFailed': 'Failed to load images',
-  'ih.uploadFailed': 'Upload failed: {error}', 'ih.deleteFailed': 'Delete failed: {error}', 'ih.noPublicUrl': 'R2_PUBLIC_URL is not set — links use the S3 endpoint and may not be publicly accessible.',
+  'ih.uploadFailed': 'Upload failed: {error}', 'ih.deleteFailed': 'Delete failed: {error}', 'ih.noPublicUrl': 'S3_PUBLIC_URL is not set — links use the S3 endpoint and may not be publicly accessible.',
   'sg.ready': 'Required configuration complete', 'sg.missingWarning': 'Complete the environment variables and redeploy', 'sg.readyDescription': 'This page only shows configuration status; it never reads or displays tokens, passwords or keys.', 'sg.missingDescription': 'Missing: {names}',
   'sg.stepsTitle': 'Vercel configuration steps', 'sg.step1': 'Open the Vercel project and go to Settings → Environment Variables.', 'sg.step2': 'Add the variables below and select Production / Preview environments.', 'sg.step3': 'Save and redeploy; variable changes do not apply to existing deployments.', 'sg.step4': 'Then return here to check the status and verify your account with the logout/login controls.',
   'sg.generatorTitle': 'Secret & password hash generator', 'sg.generatorInfo': 'All computation happens in your browser', 'sg.generatorDescription': 'Generated values never leave your browser. Copy them into Vercel, close the page and never commit them to the repository.',
@@ -140,8 +140,8 @@ const en: Dictionary = {
   'sg.var.LANGUAGE': 'UI language: zh (Chinese), en (English), de (German); default zh.', 'sg.var.LLM_API_KEY': 'API key for the LLM service; read server-side only.',
   'sg.var.LLM_MODEL': 'Model name used for article optimization.', 'sg.var.LLM_BASE_URL': 'OpenAI-compatible endpoint, default https://api.openai.com/v1.',
   'sg.var.LLM_API_STYLE': 'auto, chat or responses; default auto, falls back when the endpoint is incompatible.',
-  'sg.var.R2_ACCOUNT_ID': 'Cloudflare account ID used to build the R2 S3 endpoint.', 'sg.var.R2_ACCESS_KEY_ID': 'Access Key ID of the R2 API token.', 'sg.var.R2_SECRET_ACCESS_KEY': 'Secret Access Key of the R2 API token; read server-side only.',
-  'sg.var.R2_BUCKET': 'Default bucket; drag-and-drop uploads are written here.', 'sg.var.R2_ENDPOINT': 'Optional R2 S3 endpoint, default https://<ACCOUNT_ID>.r2.cloudflarestorage.com.', 'sg.var.R2_PUBLIC_URL': 'Optional public base URL, e.g. a custom domain or pub-*.r2.dev; used for Markdown image links.',
+  'sg.var.S3_ACCOUNT_ID': 'Cloudflare account ID used to build the R2 S3 endpoint.', 'sg.var.S3_ACCESS_KEY_ID': 'Access Key ID of the R2 API token.', 'sg.var.S3_SECRET_ACCESS_KEY': 'Secret Access Key of the R2 API token; read server-side only.',
+  'sg.var.S3_BUCKET': 'Default bucket; drag-and-drop uploads are written here.', 'sg.var.S3_ENDPOINT': 'Optional R2 S3 endpoint, default https://<ACCOUNT_ID>.r2.cloudflarestorage.com.', 'sg.var.S3_PUBLIC_URL': 'Optional public base URL, e.g. a custom domain or pub-*.r2.dev; used for Markdown image links.',
 };
 
 const de: Dictionary = {
@@ -180,12 +180,12 @@ const de: Dictionary = {
   'graph.hint': 'Knoten oder Zeichenfläche ziehen, mit dem Mausrad zoomen, Artikel per Doppelklick bearbeiten',
   'cc.title': 'Schreibleistung der letzten 12 Monate', 'cc.total': '{total} Beiträge', 'cc.weekdays': 'Mo,Mi,Fr', 'cc.aria': 'Tägliche Schreibleistung der letzten 12 Monate',
   'cc.dayAria': '{date}: {count} Beiträge', 'cc.dayTitle': '{date}: {count} Beiträge', 'cc.none': 'keine Beiträge', 'cc.less': 'Weniger', 'cc.more': 'Mehr', 'cc.months': 'Jan,Feb,Mär,Apr,Mai,Jun,Jul,Aug,Sep,Okt,Nov,Dez',
-  'ih.notConfiguredTitle': 'Bildablage nicht konfiguriert', 'ih.notConfiguredDesc': 'R2_ACCOUNT_ID, R2_ACCESS_KEY_ID und R2_SECRET_ACCESS_KEY in der Bereitstellung hinterlegen und neu bereitstellen, um R2-Buckets automatisch zu laden.',
+  'ih.notConfiguredTitle': 'Bildablage nicht konfiguriert', 'ih.notConfiguredDesc': 'S3_ACCOUNT_ID, S3_ACCESS_KEY_ID und S3_SECRET_ACCESS_KEY in der Bereitstellung hinterlegen und neu bereitstellen, um R2-Buckets automatisch zu laden.',
   'ih.bucket': 'Bucket', 'ih.selectBucket': 'Bucket auswählen', 'ih.refresh': 'Aktualisieren', 'ih.upload': 'Bilder hochladen', 'ih.dragUpload': 'Bilder ziehen oder klicken zum Hochladen',
   'ih.uploading': 'Wird hochgeladen…', 'ih.objects': 'Bilder', 'ih.emptyObjects': 'Noch keine Bilder — hochladen', 'ih.loadMore': 'Mehr laden',
   'ih.copyMarkdown': 'Markdown-Link kopieren', 'ih.copyUrl': 'URL kopieren', 'ih.delete': 'Löschen', 'ih.confirmDelete': 'Dieses Bild löschen?',
   'ih.copiedMarkdown': 'Markdown-Link kopiert', 'ih.copiedUrl': 'URL kopiert', 'ih.deleted': 'Bild gelöscht', 'ih.loadFailed': 'Bilder konnten nicht geladen werden',
-  'ih.uploadFailed': 'Upload fehlgeschlagen: {error}', 'ih.deleteFailed': 'Löschen fehlgeschlagen: {error}', 'ih.noPublicUrl': 'R2_PUBLIC_URL ist nicht gesetzt — Links nutzen den S3-Endpunkt und sind möglicherweise nicht öffentlich zugänglich.',
+  'ih.uploadFailed': 'Upload fehlgeschlagen: {error}', 'ih.deleteFailed': 'Löschen fehlgeschlagen: {error}', 'ih.noPublicUrl': 'S3_PUBLIC_URL ist nicht gesetzt — Links nutzen den S3-Endpunkt und sind möglicherweise nicht öffentlich zugänglich.',
   'sg.ready': 'Erforderliche Konfiguration vollständig', 'sg.missingWarning': 'Umgebungsvariablen ergänzen und neu bereitstellen', 'sg.readyDescription': 'Diese Seite zeigt nur den Konfigurationsstatus; Token, Passwörter und Schlüssel werden nie gelesen oder angezeigt.', 'sg.missingDescription': 'Fehlend: {names}',
   'sg.stepsTitle': 'Vercel-Konfigurationsschritte', 'sg.step1': 'Vercel-Projekt öffnen und zu Settings → Environment Variables gehen.', 'sg.step2': 'Variablen laut Tabelle hinzufügen und Production-/Preview-Umgebungen wählen.', 'sg.step3': 'Speichern und neu bereitstellen; Änderungen gelten nicht für bestehende Deployments.', 'sg.step4': 'Danach hierher zurückkehren, den Status prüfen und das Konto mit Abmelden/Anmelden verifizieren.',
   'sg.generatorTitle': 'Generator für Secret und Passwort-Hash', 'sg.generatorInfo': 'Alle Berechnungen erfolgen in Ihrem Browser', 'sg.generatorDescription': 'Generierte Werte verlassen Ihren Browser nicht. In Vercel einfügen, die Seite schließen und niemals committen.',
@@ -204,8 +204,8 @@ const de: Dictionary = {
   'sg.var.LANGUAGE': 'UI-Sprache: zh (Chinesisch), en (Englisch), de (Deutsch); Standard zh.', 'sg.var.LLM_API_KEY': 'API-Schlüssel für den LLM-Dienst; nur serverseitig gelesen.',
   'sg.var.LLM_MODEL': 'Modellname für die Artikeloptimierung.', 'sg.var.LLM_BASE_URL': 'OpenAI-kompatibler Endpunkt, Standard https://api.openai.com/v1.',
   'sg.var.LLM_API_STYLE': 'auto, chat oder responses; Standard auto, mit automatischem Fallback bei inkompatiblen Endpunkten.',
-  'sg.var.R2_ACCOUNT_ID': 'Cloudflare-Konto-ID für den R2-S3-Endpunkt.', 'sg.var.R2_ACCESS_KEY_ID': 'Access Key ID des R2-API-Tokens.', 'sg.var.R2_SECRET_ACCESS_KEY': 'Secret Access Key des R2-API-Tokens; nur serverseitig gelesen.',
-  'sg.var.R2_BUCKET': 'Standard-Bucket; Drag-and-Drop-Uploads werden hier gespeichert.', 'sg.var.R2_ENDPOINT': 'Optionaler R2-S3-Endpunkt, Standard https://<ACCOUNT_ID>.r2.cloudflarestorage.com.', 'sg.var.R2_PUBLIC_URL': 'Optionale öffentliche Basis-URL, z. B. eigene Domain oder pub-*.r2.dev; für Markdown-Bildlinks.',
+  'sg.var.S3_ACCOUNT_ID': 'Cloudflare-Konto-ID für den R2-S3-Endpunkt.', 'sg.var.S3_ACCESS_KEY_ID': 'Access Key ID des R2-API-Tokens.', 'sg.var.S3_SECRET_ACCESS_KEY': 'Secret Access Key des R2-API-Tokens; nur serverseitig gelesen.',
+  'sg.var.S3_BUCKET': 'Standard-Bucket; Drag-and-Drop-Uploads werden hier gespeichert.', 'sg.var.S3_ENDPOINT': 'Optionaler R2-S3-Endpunkt, Standard https://<ACCOUNT_ID>.r2.cloudflarestorage.com.', 'sg.var.S3_PUBLIC_URL': 'Optionale öffentliche Basis-URL, z. B. eigene Domain oder pub-*.r2.dev; für Markdown-Bildlinks.',
 };
 
 export const dictionaries: Record<Language, Dictionary> = { zh, en, de };
