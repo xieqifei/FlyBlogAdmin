@@ -33,9 +33,9 @@ test('defaults to Chinese and accepts the built-in language values', () => {
 });
 
 test('reports optional S3-prefixed image-hosting configuration without exposing secrets', () => {
-  assert.deepEqual(r2Status({ S3_ACCOUNT_ID: 'account', S3_ACCESS_KEY_ID: 'key', S3_SECRET_ACCESS_KEY: 'secret', S3_BUCKET: 'images', S3_PUBLIC_URL: 'https://img.example.com/' }), {
+  assert.deepEqual(r2Status({ S3_ENDPOINT: 'https://account.r2.cloudflarestorage.com', S3_ACCESS_KEY_ID: 'key', S3_SECRET_ACCESS_KEY: 'secret', S3_BUCKET: 'images', S3_PUBLIC_URL: 'https://img.example.com/' }), {
     configured: true, publicUrl: 'https://img.example.com/', defaultBucket: 'images',
   });
-  assert.equal(r2Status({ S3_ACCOUNT_ID: 'account' }).configured, false);
-  assert.equal(r2Status({ R2_ACCOUNT_ID: 'account', R2_ACCESS_KEY_ID: 'key', R2_SECRET_ACCESS_KEY: 'secret' }).configured, false);
+  assert.equal(r2Status({ S3_ENDPOINT: 'https://account.r2.cloudflarestorage.com' }).configured, false);
+  assert.equal('S3_ACCOUNT_ID' in configurationStatus(required).status, false);
 });

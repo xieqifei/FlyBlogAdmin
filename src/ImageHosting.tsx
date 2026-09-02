@@ -112,7 +112,7 @@ export default function ImageHosting({ configuration }: { configuration: Configu
   if (!configured) {
     return <div className="image-hosting-page">
       <Alert showIcon type="warning" message={t('ih.notConfiguredTitle')} description={t('ih.notConfiguredDesc')} />
-      <Card title={t('menu.images')}><Typography.Paragraph type="secondary">{t('sg.var.S3_ACCOUNT_ID')}</Typography.Paragraph><Typography.Paragraph type="secondary">{t('sg.var.S3_ACCESS_KEY_ID')}</Typography.Paragraph><Typography.Paragraph type="secondary">{t('sg.var.S3_SECRET_ACCESS_KEY')}</Typography.Paragraph></Card>
+      <Card title={t('menu.images')}><Typography.Paragraph type="secondary">{t('sg.var.S3_ENDPOINT')}</Typography.Paragraph><Typography.Paragraph type="secondary">{t('sg.var.S3_ACCESS_KEY_ID')}</Typography.Paragraph><Typography.Paragraph type="secondary">{t('sg.var.S3_SECRET_ACCESS_KEY')}</Typography.Paragraph></Card>
     </div>;
   }
 

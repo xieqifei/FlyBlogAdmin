@@ -7,18 +7,17 @@ export class R2Error extends Error {
 }
 
 export function r2Configuration() {
-  const accountId = process.env.S3_ACCOUNT_ID?.trim() || '';
   const accessKeyId = process.env.S3_ACCESS_KEY_ID?.trim() || '';
   const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY?.trim() || '';
   const defaultBucket = process.env.S3_BUCKET?.trim() || '';
-  const endpoint = process.env.S3_ENDPOINT?.trim() || (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : '');
+  const endpoint = process.env.S3_ENDPOINT?.trim() || '';
   const publicUrl = process.env.S3_PUBLIC_URL?.trim() || '';
-  return { accountId, accessKeyId, secretAccessKey, defaultBucket, endpoint, publicUrl };
+  return { accessKeyId, secretAccessKey, defaultBucket, endpoint, publicUrl };
 }
 
 export function requireR2Client() {
   const config = r2Configuration();
-  if (!config.accountId || !config.accessKeyId || !config.secretAccessKey) throw new R2Error('图床未配置：请先设置 S3_ACCOUNT_ID、S3_ACCESS_KEY_ID 和 S3_SECRET_ACCESS_KEY', 503);
+  if (!config.endpoint || !config.accessKeyId || !config.secretAccessKey) throw new R2Error('图床未配置：请先设置 S3_ENDPOINT、S3_ACCESS_KEY_ID 和 S3_SECRET_ACCESS_KEY', 503);
   return new S3Client({ region: 'auto', endpoint: config.endpoint, credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey } });
 }
 
