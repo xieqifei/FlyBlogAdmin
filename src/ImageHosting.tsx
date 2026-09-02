@@ -43,7 +43,7 @@ function fileToBase64(file: File) {
 
 export async function uploadImageFile(file: File, bucket = '') {
   const content = await fileToBase64(file);
-  return api<{ key: string; url: string; bucket: string }>('/api/r2/upload', {
+  return api<{ key: string; url: string; bucket: string }>('/api/r2?action=upload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ bucket: bucket || undefined, filename: file.name, contentType: file.type, content }),
@@ -76,7 +76,7 @@ export default function ImageHosting({ configuration }: { configuration: Configu
     if (!configured) return;
     setLoadingBuckets(true); setLoadError('');
     try {
-      const data = await api<unknown>('/api/r2/buckets');
+      const data = await api<unknown>('/api/r2?action=buckets');
       const names = bucketNames(data);
       setBuckets(names);
       setBucket((current) => current || names[0] || '');
@@ -89,9 +89,9 @@ export default function ImageHosting({ configuration }: { configuration: Configu
     if (!selected) return;
     setLoading(true); setLoadError('');
     try {
-      const query = new URLSearchParams({ bucket: selected });
+      const query = new URLSearchParams({ action: 'objects', bucket: selected });
       if (token) query.set('next', token);
-      const data = objectPage(await api<unknown>(`/api/r2/objects?${query}`));
+      const data = objectPage(await api<unknown>(`/api/r2?${query}`));
       setObjects((current) => token ? [...current, ...data.objects] : data.objects);
       setNext(data.next);
     } catch (reason) { const error = reason instanceof Error ? reason.message : t('ih.loadFailed'); setLoadError(error); message.error(error); } finally { setLoading(false); }
@@ -117,14 +117,14 @@ export default function ImageHosting({ configuration }: { configuration: Configu
 
   const remove = useCallback(async (key: string) => {
     try {
-      await api(`/api/r2/objects?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(key)}`, { method: 'DELETE' });
+      await api(`/api/r2?action=objects&bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(key)}`, { method: 'DELETE' });
       message.success(t('ih.deleted'));
       setObjects((current) => current.filter((item) => item.key !== key));
     } catch (reason) { message.error(reason instanceof Error ? reason.message : t('error.delete')); }
   }, [bucket, message, t]);
 
   const markdownLink = (item: R2Object) => `![${item.key.split('/').pop()?.replace(/\.[^.]+$/, '') || 'image'}](${item.url})`;
-  const previewLink = (item: R2Object) => `/api/r2/content?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(item.key)}`;
+  const previewLink = (item: R2Object) => `/api/r2?action=content&bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(item.key)}`;
 
   const notice = useMemo(() => configuration.r2?.publicUrl ? null : (t('ih.noPublicUrl')), [configuration.r2?.publicUrl, t]);
 

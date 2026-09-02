@@ -82,6 +82,8 @@ class ImageWidget extends WidgetType {
   eq(other: ImageWidget) { return this.from === other.from && this.source === other.source; }
   toDOM(view: EditorView) {
     const image = document.createElement('img'); image.className = 'cm-live-image-preview'; image.src = this.url; image.alt = this.alt; image.title = this.alt;
+    image.addEventListener('load', () => view.requestMeasure());
+    image.addEventListener('error', () => view.requestMeasure());
     image.addEventListener('click', () => { view.dispatch({ selection: EditorSelection.cursor(this.from), scrollIntoView: true }); view.focus(); });
     return image;
   }
@@ -91,7 +93,6 @@ class ImageWidget extends WidgetType {
 class TableWidget extends WidgetType {
   constructor(readonly from: number, readonly source: string, readonly parsed: MarkdownTable) { super(); }
   eq(other: TableWidget) { return this.from === other.from && this.source === other.source; }
-  get estimatedHeight() { return 52 + this.parsed.rows.length * 42; }
   toDOM(view: EditorView) {
     const shell = document.createElement('div'); const wrapper = document.createElement('div');
     shell.className = 'cm-table-preview-shell'; wrapper.className = 'cm-table-preview'; wrapper.title = '点击表格可编辑单元格'; shell.append(wrapper);
@@ -297,8 +298,11 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
         ],
       }),
     });
+    const resizeObserver = new ResizeObserver(() => editor.requestMeasure());
+    resizeObserver.observe(editor.contentDOM);
+    void document.fonts?.ready.then(() => editor.requestMeasure());
     view.current = editor;
-    return () => { editor.destroy(); view.current = undefined; };
+    return () => { resizeObserver.disconnect(); editor.destroy(); view.current = undefined; };
   }, []);
 
   useEffect(() => {

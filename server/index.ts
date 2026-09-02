@@ -165,6 +165,9 @@ function responseStatus(error: unknown) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store'); const path = requestPath(req); const method = req.method || 'GET';
+  const imageAction = path === '/api/r2' && typeof req.query.action === 'string'
+    ? req.query.action
+    : path.startsWith('/api/r2/') ? path.slice('/api/r2/'.length) : '';
   try {
     if (method === 'GET' && path === '/api/health') return res.status(200).json({ ok: true, runtime: 'node', ...configurationStatus() });
     if (method === 'GET' && path === '/api/config') return res.status(200).json(configurationStatus());
@@ -184,20 +187,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { optimizeArticle } = await import('./llm.js');
       return res.status(200).json({ suggestion: await optimizeArticle(jsonBody(req)) });
     }
-    if (method === 'GET' && path === '/api/r2/buckets') return res.status(200).json({ buckets: await listBuckets() });
-    if (method === 'GET' && path === '/api/r2/content') {
+    if (method === 'GET' && imageAction === 'buckets') return res.status(200).json({ buckets: await listBuckets() });
+    if (method === 'GET' && imageAction === 'content') {
       const bucket = validateBucketName(req.query.bucket); const key = validateObjectKey(req.query.key);
       const object = await getObject(bucket, key);
       res.setHeader('Content-Type', object.contentType); res.setHeader('Content-Length', String(object.body.length));
       return res.status(200).send(object.body);
     }
-    if (method === 'GET' && path === '/api/r2/objects') {
+    if (method === 'GET' && imageAction === 'objects') {
       const bucket = validateBucketName(req.query.bucket);
       const prefix = typeof req.query.prefix === 'string' ? req.query.prefix.replace(/^\/+/, '') : '';
       const next = typeof req.query.next === 'string' ? req.query.next : '';
       return res.status(200).json(await listObjects(bucket, prefix, next));
     }
-    if (method === 'POST' && path === '/api/r2/upload') {
+    if (method === 'POST' && imageAction === 'upload') {
       const body = jsonBody<{ bucket?: unknown; key?: unknown; filename?: unknown; content?: unknown; contentType?: unknown }>(req);
       const bucket = validateBucketName(body.bucket || r2Configuration().defaultBucket);
       const content = typeof body.content === 'string' ? body.content : '';
@@ -210,7 +213,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const result = await putObject({ bucket, key, body: buffer, contentType: typeof body.contentType === 'string' && body.contentType ? body.contentType : contentTypeFor(filename) });
       return res.status(200).json({ ...result, bucket });
     }
-    if (method === 'DELETE' && path === '/api/r2/objects') {
+    if (method === 'DELETE' && imageAction === 'objects') {
       const bucket = validateBucketName(req.query.bucket);
       const key = validateObjectKey(req.query.key);
       await deleteObject(bucket, key);
