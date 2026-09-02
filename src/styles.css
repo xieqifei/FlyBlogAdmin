@@ -36,8 +36,8 @@ body { color: #172033; background: #f5f7fa; }
 .editor-page-heading h3 { margin: 0; }
 .editor-body { display: grid; gap: 8px; min-width: 0; }
 .editor-metadata-card .ant-card-body { padding-bottom: 8px; }
-.markdown-workspace-editor { width: 100%; min-width: 0; max-width: 100%; overflow: hidden; border-radius: 10px; box-shadow: 0 8px 30px rgb(23 32 51 / 7%); }
-.markdown-toolbar { position: sticky; top: 0; z-index: 8; display: flex; align-items: center; gap: 3px; overflow-x: auto; padding: 8px 10px; border: 1px solid #d9d9d9; border-bottom: 0; border-radius: 10px 10px 0 0; background: rgb(255 255 255 / 96%); backdrop-filter: blur(12px); scrollbar-width: thin; }
+.markdown-workspace-editor { width: 100%; min-width: 0; max-width: 100%; overflow: visible; border-radius: 10px; box-shadow: 0 8px 30px rgb(23 32 51 / 7%); }
+.markdown-toolbar { position: sticky; top: 0; z-index: 15; display: flex; align-items: center; gap: 3px; overflow-x: auto; padding: 8px 10px; border: 1px solid #d9d9d9; border-bottom: 0; border-radius: 10px 10px 0 0; background: rgb(255 255 255 / 96%); box-shadow: 0 4px 14px rgb(23 32 51 / 8%); backdrop-filter: blur(12px); scrollbar-width: thin; }
 .markdown-toolbar button { flex: 0 0 auto; min-width: 32px; height: 32px; padding: 0 7px; border: 0; border-radius: 6px; color: #414754; background: transparent; font: 600 14px/32px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; cursor: pointer; }
 .markdown-toolbar button:hover { color: #315efb; background: #eef2ff; }
 .markdown-toolbar .icon-tool { font-family: inherit; font-size: 17px; }
