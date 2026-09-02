@@ -150,6 +150,8 @@ body { color: #172033; background: #f5f7fa; }
   .editor-page-heading > .ant-space:last-child { width: 100%; }
 }
 @media (max-width: 640px) {
+  input, textarea, select, .ant-input, .ant-input-number-input, .ant-picker-input > input, .ant-select-selection-search-input { font-size: 16px !important; }
+  .ant-select-selector, .ant-select-selection-item, .ant-select-selection-placeholder { font-size: 16px !important; }
   .setup-shell { width: min(100% - 24px, 1040px); margin: 18px auto; }
   .setup-heading { align-items: flex-start; }
   .config-generator .ant-space-compact { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
@@ -181,7 +183,7 @@ body { color: #172033; background: #f5f7fa; }
   .welcome .ant-btn { width: 100%; }
   .markdown-editor, .obsidian-editor .cm-editor, .obsidian-editor .cm-content { min-height: 480px; }
   .obsidian-editor .cm-gutters { display: none; }
-  .obsidian-editor .cm-content { width: 100%; padding: 22px 18px 72px; font-size: 15px; }
+  .obsidian-editor .cm-content { width: 100%; padding: 22px 18px 72px; font-size: 16px; }
   .obsidian-editor .cm-live-h1 { font-size: 1.7em; }
   .obsidian-editor .cm-live-h2 { font-size: 1.45em; }
   .ai-controls, .ai-preview { grid-template-columns: 1fr; }
