@@ -8,7 +8,7 @@ AI 接口变量始终是可选项，不参与引导页判断；即使完全不�
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fxieqifei%2FFlyBlogAdmin&env=SECRET_KEY,ADMIN_USERNAME,ADMIN_PASSWORD,GITHUB_TOKEN,GITHUB_REPOSITORY&envDescription=FlyBlogAdmin%20%E8%BF%90%E8%A1%8C%E6%89%80%E9%9C%80%E7%9A%84%E7%99%BB%E5%BD%95%E4%B8%8E%20GitHub%20%E9%85%8D%E7%BD%AE&project-name=fly-blog-admin&repository-name=fly-blog-admin)
 
-![FlyBlogAdmin 设置引导](docs/screenshots/setup-guide.png)
+![FlyBlogAdmin 首页内容看板](docs/screenshots/home-dashboard.png)
 
 ## 功能
 
