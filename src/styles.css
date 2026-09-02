@@ -69,8 +69,8 @@ body { color: #172033; background: #f5f7fa; }
 .obsidian-editor .cm-live-strike { color: #777; text-decoration: line-through; }
 .obsidian-editor .cm-live-code { padding: 2px 5px; border-radius: 4px; color: #d6336c; background: #f4f4f5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
 .obsidian-editor .cm-live-code-line { padding-inline: 18px; color: #24292f; background: #f6f8fa; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; line-height: 1.65; }
-.obsidian-editor .cm-live-code-first { padding-top: 10px; border-radius: 8px 8px 0 0; }
-.obsidian-editor .cm-live-code-last { padding-bottom: 10px; border-radius: 0 0 8px 8px; }
+.obsidian-editor .cm-live-code-first { border-radius: 8px 8px 0 0; }
+.obsidian-editor .cm-live-code-last { border-radius: 0 0 8px 8px; }
 .obsidian-editor .cm-live-code-line .tok-keyword, .obsidian-editor .cm-live-code-line .tok-operator { color: #cf222e; }
 .obsidian-editor .cm-live-code-line .tok-string, .obsidian-editor .cm-live-code-line .tok-regexp { color: #0a3069; }
 .obsidian-editor .cm-live-code-line .tok-number, .obsidian-editor .cm-live-code-line .tok-bool, .obsidian-editor .cm-live-code-line .tok-null { color: #0550ae; }

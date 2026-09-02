@@ -165,9 +165,10 @@ function responseStatus(error: unknown) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store'); const path = requestPath(req); const method = req.method || 'GET';
-  const imageAction = path === '/api/r2' && typeof req.query.action === 'string'
+  const requestedImageAction = path === '/api/r2' && typeof req.query.action === 'string'
     ? req.query.action
     : path.startsWith('/api/r2/') ? path.slice('/api/r2/'.length) : '';
+  const imageAction = requestedImageAction === 'bucket' ? 'buckets' : requestedImageAction === 'object' ? 'objects' : requestedImageAction;
   try {
     if (method === 'GET' && path === '/api/health') return res.status(200).json({ ok: true, runtime: 'node', ...configurationStatus() });
     if (method === 'GET' && path === '/api/config') return res.status(200).json(configurationStatus());

@@ -18,7 +18,12 @@ export function r2Configuration() {
 export function requireR2Client() {
   const config = r2Configuration();
   if (!config.endpoint || !config.accessKeyId || !config.secretAccessKey) throw new R2Error('图床未配置：请先设置 S3_ENDPOINT、S3_ACCESS_KEY_ID 和 S3_SECRET_ACCESS_KEY', 503);
-  return new S3Client({ region: 'auto', endpoint: config.endpoint, credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey } });
+  return new S3Client({
+    region: 'auto',
+    endpoint: config.endpoint,
+    forcePathStyle: true,
+    credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
+  });
 }
 
 export function validateBucketName(value: unknown) {
@@ -63,6 +68,10 @@ export function buildObjectKey(filename: string) {
 }
 
 export async function listBuckets() {
+  const configuredBucket = r2Configuration().defaultBucket;
+  // Bucket-scoped tokens commonly cannot call ListBuckets. A configured default
+  // bucket is already enough for browsing and uploading, so don't require that permission.
+  if (configuredBucket) return [{ name: configuredBucket, creationDate: '' }];
   const client = requireR2Client();
   const result = await client.send(new ListBucketsCommand({}));
   return (result.Buckets || []).map((bucket) => ({ name: bucket.Name || '', creationDate: bucket.CreationDate?.toISOString() || '' })).sort((left, right) => left.name.localeCompare(right.name));

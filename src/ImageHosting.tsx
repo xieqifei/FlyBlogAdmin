@@ -76,12 +76,18 @@ export default function ImageHosting({ configuration }: { configuration: Configu
     if (!configured) return;
     setLoadingBuckets(true); setLoadError('');
     try {
+      const configuredBucket = configuration.r2?.defaultBucket || '';
+      if (configuredBucket) {
+        setBuckets([configuredBucket]);
+        setBucket(configuredBucket);
+        return;
+      }
       const data = await api<unknown>('/api/r2?action=buckets');
       const names = bucketNames(data);
       setBuckets(names);
       setBucket((current) => current || names[0] || '');
     } catch (reason) { const error = reason instanceof Error ? reason.message : t('ih.loadFailed'); setLoadError(error); message.error(error); } finally { setLoadingBuckets(false); }
-  }, [configured, message, t]);
+  }, [configured, configuration.r2?.defaultBucket, message, t]);
 
   useEffect(() => { loadBuckets(); }, [loadBuckets]);
 

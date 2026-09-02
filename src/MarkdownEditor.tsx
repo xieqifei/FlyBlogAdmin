@@ -193,6 +193,41 @@ const livePreview = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+function positionFromPointer(view: EditorView, event: MouseEvent) {
+  const owner = view.dom.ownerDocument as Document & {
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+    caretRangeFromPoint?: (x: number, y: number) => { startContainer: Node; startOffset: number } | null;
+  };
+  const caret = owner.caretPositionFromPoint?.(event.clientX, event.clientY);
+  const range = caret ? null : owner.caretRangeFromPoint?.(event.clientX, event.clientY);
+  const node = caret?.offsetNode || range?.startContainer;
+  const offset = caret?.offset ?? range?.startOffset;
+  if (!node || offset === undefined || !view.contentDOM.contains(node)) return null;
+  try { return view.posAtDOM(node, offset); } catch { return null; }
+}
+
+const precisePointerSelection = EditorView.mouseSelectionStyle.of((current, event) => {
+  if (event.button !== 0 || event.detail !== 1) return null;
+  const initialAnchor = positionFromPointer(current, event);
+  if (initialAnchor === null) return null;
+  let anchor: number = initialAnchor;
+  let initialSelection = current.state.selection;
+  return {
+    update(update) {
+      if (!update.docChanged) return;
+      anchor = update.changes.mapPos(anchor);
+      initialSelection = initialSelection.map(update.changes);
+    },
+    get(pointer, extend, multiple) {
+      const head = positionFromPointer(current, pointer) ?? current.posAtCoords({ x: pointer.clientX, y: pointer.clientY }, false) ?? anchor;
+      const range = EditorSelection.range(anchor, head);
+      if (extend) return initialSelection.replaceRange(initialSelection.main.extend(range.from, range.to, range.assoc));
+      if (multiple) return initialSelection.addRange(range);
+      return EditorSelection.create([range]);
+    },
+  };
+});
+
 function wrap(view: EditorView, before: string, after = before, fallback = '文字') {
   const range = view.state.selection.main;
   const selected = view.state.sliceDoc(range.from, range.to);
@@ -282,6 +317,7 @@ export default function MarkdownEditor({ value, onChange, r2Configured = false, 
           basicSetup,
           markdown({ codeLanguages: languages, extensions: [Strikethrough, TaskList, Table] }),
           EditorView.lineWrapping,
+          precisePointerSelection,
           EditorView.contentAttributes.of({ spellcheck: 'true', 'aria-label': 'Markdown 正文编辑器' }),
           placeholder('开始写正文…'), livePreview,
           EditorView.domEventHandlers({
