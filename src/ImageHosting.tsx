@@ -7,6 +7,23 @@ import { useI18n } from './i18n';
 const BUCKET_KEY = 'flyblog:r2bucket';
 type R2Object = { key: string; size: number; lastModified: string; url: string };
 
+function bucketNames(value: unknown) {
+  if (!value || typeof value !== 'object' || !Array.isArray((value as { buckets?: unknown }).buckets)) return [];
+  return (value as { buckets: unknown[] }).buckets.flatMap((item) => item && typeof item === 'object' && typeof (item as { name?: unknown }).name === 'string' ? [(item as { name: string }).name] : []);
+}
+
+function objectPage(value: unknown): { objects: R2Object[]; next: string } {
+  if (!value || typeof value !== 'object') return { objects: [], next: '' };
+  const page = value as { objects?: unknown; next?: unknown };
+  const objects = Array.isArray(page.objects) ? page.objects.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const candidate = item as Partial<R2Object>;
+    if (typeof candidate.key !== 'string' || typeof candidate.url !== 'string') return [];
+    return [{ key: candidate.key, url: candidate.url, size: Number(candidate.size) || 0, lastModified: typeof candidate.lastModified === 'string' ? candidate.lastModified : '' }];
+  }) : [];
+  return { objects, next: typeof page.next === 'string' ? page.next : '' };
+}
+
 export function rememberedBucket() { try { return localStorage.getItem(BUCKET_KEY) || ''; } catch { return ''; } }
 export function rememberBucket(bucket: string) { try { localStorage.setItem(BUCKET_KEY, bucket); } catch { /* ignore */ } }
 
@@ -49,6 +66,7 @@ export default function ImageHosting({ configuration }: { configuration: Configu
   const [loading, setLoading] = useState(false);
   const [loadingBuckets, setLoadingBuckets] = useState(false);
   const [uploading, setUploading] = useState(0);
+  const [loadError, setLoadError] = useState('');
 
   const copy = async (text: string, successKey: string) => {
     try { await navigator.clipboard.writeText(text); message.success(t(successKey)); } catch { message.error(t('error.requestFailed')); }
@@ -56,27 +74,27 @@ export default function ImageHosting({ configuration }: { configuration: Configu
 
   const loadBuckets = useCallback(async () => {
     if (!configured) return;
-    setLoadingBuckets(true);
+    setLoadingBuckets(true); setLoadError('');
     try {
-      const data = await api<{ buckets: Array<{ name: string }> }>('/api/r2/buckets');
-      const names = data.buckets.map((item) => item.name);
+      const data = await api<unknown>('/api/r2/buckets');
+      const names = bucketNames(data);
       setBuckets(names);
       setBucket((current) => current || names[0] || '');
-    } catch (reason) { message.error(reason instanceof Error ? reason.message : t('ih.loadFailed')); } finally { setLoadingBuckets(false); }
+    } catch (reason) { const error = reason instanceof Error ? reason.message : t('ih.loadFailed'); setLoadError(error); message.error(error); } finally { setLoadingBuckets(false); }
   }, [configured, message, t]);
 
   useEffect(() => { loadBuckets(); }, [loadBuckets]);
 
   const loadObjects = useCallback(async (selected: string, token = '') => {
     if (!selected) return;
-    setLoading(true);
+    setLoading(true); setLoadError('');
     try {
       const query = new URLSearchParams({ bucket: selected });
       if (token) query.set('next', token);
-      const data = await api<{ objects: R2Object[]; next: string }>(`/api/r2/objects?${query}`);
+      const data = objectPage(await api<unknown>(`/api/r2/objects?${query}`));
       setObjects((current) => token ? [...current, ...data.objects] : data.objects);
       setNext(data.next);
-    } catch (reason) { message.error(reason instanceof Error ? reason.message : t('ih.loadFailed')); } finally { setLoading(false); }
+    } catch (reason) { const error = reason instanceof Error ? reason.message : t('ih.loadFailed'); setLoadError(error); message.error(error); } finally { setLoading(false); }
   }, [message, t]);
 
   useEffect(() => { setObjects([]); setNext(''); if (bucket) loadObjects(bucket); }, [bucket, loadObjects]);
@@ -118,6 +136,7 @@ export default function ImageHosting({ configuration }: { configuration: Configu
 
   return <div className="image-hosting-page">
     {notice && <Alert showIcon type="info" message={notice} />}
+    {loadError && <Alert showIcon closable type="error" message={t('ih.loadFailed')} description={loadError} onClose={() => setLoadError('')} />}
     <Card title={t('menu.images')} extra={<Space><Select aria-label={t('ih.bucket')} value={bucket || undefined} placeholder={t('ih.selectBucket')} loading={loadingBuckets} style={{ minWidth: 220 }} options={buckets.map((name) => ({ value: name, label: name }))} onChange={(value) => { rememberBucket(value); setBucket(value); }} /><Button icon={<ReloadOutlined />} onClick={() => { loadBuckets(); if (bucket) loadObjects(bucket); }}>{t('ih.refresh')}</Button></Space>}>
       <Upload.Dragger accept="image/*" multiple showUploadList={false} disabled={uploading > 0 || !bucket} customRequest={({ file, onSuccess, onError }) => { upload([file as File]).then(() => onSuccess?.(null)).catch(onError); }}>
         <p className="ant-upload-drag-icon"><InboxOutlined /></p>

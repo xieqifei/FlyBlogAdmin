@@ -51,7 +51,7 @@ function serialize(table: MarkdownTable) {
   return [table.headers, alignment, ...table.rows].map((row) => `| ${row.join(' | ')} |`).join('\n');
 }
 
-export type MarkdownTableRange = { from: number; to: number; source: string };
+export type MarkdownTableRange = { from: number; to: number; source: string; table: MarkdownTable };
 
 function tableRanges(content: string) {
   const lines = content.split('\n');
@@ -79,7 +79,10 @@ function tableRanges(content: string) {
 }
 
 export function findMarkdownTables(content: string): MarkdownTableRange[] {
-  return tableRanges(content).ranges.map(({ from, to }) => ({ from, to, source: content.slice(from, to) }));
+  return tableRanges(content).ranges.flatMap(({ from, to }) => {
+    const source = content.slice(from, to); const table = parseMarkdownTable(source);
+    return table ? [{ from, to, source, table }] : [];
+  });
 }
 
 export function editMarkdownTable(content: string, position: number, action: TableAction) {

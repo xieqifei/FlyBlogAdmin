@@ -12,7 +12,7 @@ import { redo, undo } from '@codemirror/commands';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef, useState } from 'react';
 import { App as AntApp } from 'antd';
-import { editMarkdownTable, findMarkdownTables, parseMarkdownTable, type TableAction } from './markdownTable';
+import { editMarkdownTable, findMarkdownTables, type MarkdownTable, type TableAction } from './markdownTable';
 import { uploadImageFile } from './ImageHosting';
 import { useI18n } from './i18n';
 
@@ -54,17 +54,16 @@ class TaskWidget extends WidgetType {
 }
 
 class TableWidget extends WidgetType {
-  constructor(readonly from: number, readonly source: string) { super(); }
+  constructor(readonly from: number, readonly source: string, readonly parsed: MarkdownTable) { super(); }
   eq(other: TableWidget) { return this.from === other.from && this.source === other.source; }
-  get estimatedHeight() { const parsed = parseMarkdownTable(this.source); return parsed ? 52 + parsed.rows.length * 42 : 48; }
+  get estimatedHeight() { return 52 + this.parsed.rows.length * 42; }
   toDOM(view: EditorView) {
-    const parsed = parseMarkdownTable(this.source); const shell = document.createElement('div'); const wrapper = document.createElement('div');
+    const shell = document.createElement('div'); const wrapper = document.createElement('div');
     shell.className = 'cm-table-preview-shell'; wrapper.className = 'cm-table-preview'; wrapper.title = '点击表格可编辑单元格'; shell.append(wrapper);
-    if (!parsed) return shell;
     const table = document.createElement('table'); const head = document.createElement('thead'); const headRow = document.createElement('tr');
-    parsed.headers.forEach((value, index) => { const cell = document.createElement('th'); cell.textContent = value; cell.style.textAlign = parsed.alignments[index]; headRow.append(cell); });
+    this.parsed.headers.forEach((value, index) => { const cell = document.createElement('th'); cell.textContent = value || '\u00a0'; cell.style.textAlign = this.parsed.alignments[index]; headRow.append(cell); });
     head.append(headRow); table.append(head);
-    if (parsed.rows.length) { const body = document.createElement('tbody'); parsed.rows.forEach((row) => { const tableRow = document.createElement('tr'); row.forEach((value, index) => { const cell = document.createElement('td'); cell.textContent = value; cell.style.textAlign = parsed.alignments[index]; tableRow.append(cell); }); body.append(tableRow); }); table.append(body); }
+    if (this.parsed.rows.length) { const body = document.createElement('tbody'); this.parsed.rows.forEach((row) => { const tableRow = document.createElement('tr'); row.forEach((value, index) => { const cell = document.createElement('td'); cell.textContent = value || '\u00a0'; cell.style.textAlign = this.parsed.alignments[index]; tableRow.append(cell); }); body.append(tableRow); }); table.append(body); }
     wrapper.append(table);
     wrapper.addEventListener('click', () => { view.dispatch({ selection: EditorSelection.cursor(this.from), scrollIntoView: true }); view.focus(); });
     return shell;
@@ -112,7 +111,7 @@ function livePreviewDecorations(view: EditorView) {
       }
     },
   });
-  previewTables.forEach((table) => decorations.push(Decoration.replace({ widget: new TableWidget(table.from, table.source), block: true }).range(table.from, table.to)));
+  previewTables.forEach((table) => decorations.push(Decoration.replace({ widget: new TableWidget(table.from, table.source, table.table), block: true }).range(table.from, table.to)));
   return Decoration.set(decorations, true);
 }
 
