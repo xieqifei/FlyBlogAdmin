@@ -39,15 +39,19 @@ function safeEqual(left: string, right: string) {
 }
 
 function verifyPassword(candidate: string) {
-  const { password, passwordHash } = config();
-  if (passwordHash.startsWith('pbkdf2_sha256$')) {
-    const [, iterationsText, salt, expected] = passwordHash.split('$'); const iterations = Number(iterationsText);
-    if (!iterations || !salt || !expected) return false;
-    const length = Buffer.from(expected, 'base64').length;
-    return length > 0 && safeEqual(pbkdf2Sync(candidate, salt, iterations, length, 'sha256').toString('base64'), expected);
+  try {
+    const { password, passwordHash } = config();
+    if (passwordHash.startsWith('pbkdf2_sha256$')) {
+      const [, iterationsText, salt, expected] = passwordHash.split('$'); const iterations = Number(iterationsText);
+      if (!iterations || !salt || !expected) return false;
+      const length = Buffer.from(expected, 'base64').length;
+      return length > 0 && safeEqual(pbkdf2Sync(candidate, salt, iterations, length, 'sha256').toString('base64'), expected);
+    }
+    if (passwordHash.startsWith('sha256$')) return safeEqual(createHash('sha256').update(candidate).digest('hex'), passwordHash.slice(7));
+    return Boolean(password) && safeEqual(candidate, password);
+  } catch {
+    return false;
   }
-  if (passwordHash.startsWith('sha256$')) return safeEqual(createHash('sha256').update(candidate).digest('hex'), passwordHash.slice(7));
-  return Boolean(password) && safeEqual(candidate, password);
 }
 
 function credentialFingerprint() {
@@ -82,7 +86,8 @@ function setSessionCookie(res: VercelResponse, value: string, maxAge: number) {
 }
 
 function requestPath(req: VercelRequest) {
-  const route = Array.isArray(req.query.route) ? req.query.route[0] : req.query.route;
+  const query = req.query || {};
+  const route = Array.isArray(query.route) ? query.route[0] : query.route;
   return route ? `/api/${String(route).replace(/^\/+|\/+$/g, '')}` : new URL(req.url || '/', 'http://localhost').pathname.replace(/\/+$/, '') || '/';
 }
 function mutationOriginAllowed(req: VercelRequest) {
@@ -199,8 +204,9 @@ function responseStatus(error: unknown) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store'); const path = requestPath(req); const method = req.method || 'GET';
-  const requestedImageAction = path === '/api/r2' && typeof req.query.action === 'string'
-    ? req.query.action
+  const query = req.query || {};
+  const requestedImageAction = path === '/api/r2' && typeof query.action === 'string'
+    ? query.action
     : path.startsWith('/api/r2/') ? path.slice('/api/r2/'.length) : '';
   const imageAction = requestedImageAction === 'bucket' ? 'buckets' : requestedImageAction === 'object' ? 'objects' : requestedImageAction;
   try {
