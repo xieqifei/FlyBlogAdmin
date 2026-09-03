@@ -25,9 +25,9 @@ function config() {
     linksPagePath: (process.env.LINKS_PAGE_PATH?.trim() || 'source/links/index.md').replace(/^\/+|\/+$/g, ''),
     aboutPagePath: (process.env.ABOUT_PAGE_PATH?.trim() || 'source/about/index.md').replace(/^\/+|\/+$/g, ''),
     extensions: (process.env.POST_EXTENSIONS || '.md,.markdown').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean),
-    username: process.env.ADMIN_USERNAME || '',
-    password: process.env.ADMIN_PASSWORD || '',
-    passwordHash: process.env.ADMIN_PASSWORD_HASH || '',
+    username: process.env.ADMIN_USERNAME?.trim() || '',
+    password: process.env.ADMIN_PASSWORD?.trim() || '',
+    passwordHash: process.env.ADMIN_PASSWORD_HASH?.trim() || '',
     secret: process.env.SECRET_KEY || '',
     sessionAge: Math.max(300, Number(process.env.SESSION_AGE) || 604800),
   };

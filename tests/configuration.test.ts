@@ -19,6 +19,20 @@ test('password hash can replace the plain-text password', () => {
   assert.equal(configurationStatus({ ...withoutPassword, ADMIN_PASSWORD_HASH: 'sha256$hash' }).configured, true);
 });
 
+test('whitespace around authentication variables does not make a configured app unusable', () => {
+  const result = configurationStatus({
+    ...required,
+    SECRET_KEY: ' secret ',
+    ADMIN_USERNAME: ' admin ',
+    ADMIN_PASSWORD: ' password ',
+    GITHUB_TOKEN: ' token ',
+    GITHUB_REPOSITORY: ' owner/repo ',
+  });
+  assert.equal(result.configured, true);
+  assert.equal(result.status.ADMIN_USERNAME, true);
+  assert.equal(result.status.ADMIN_PASSWORD, true);
+});
+
 test('reports every missing required value without treating optional values as required', () => {
   const result = configurationStatus({ GITHUB_BRANCH: 'main', LLM_MODEL: 'model' });
   assert.equal(result.configured, false);
