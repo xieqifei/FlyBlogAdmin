@@ -14,10 +14,6 @@ AI 接口变量始终是可选项，不参与引导页判断；即使完全不�
 
 ![FlyBlogAdmin 桌面端首页内容看板](docs/screenshots/home-desktop.png)
 
-<p align="center">
-  <img src="docs/screenshots/home-mobile.png" width="390" alt="FlyBlogAdmin 手机端首页内容看板">
-</p>
-
 ## 功能
 
 - 首页内容看板：汇总文章、分类、标签和已标注日期数量，展示分类分布、常用标签、按年份切换的写作贡献日历及最近文章。
