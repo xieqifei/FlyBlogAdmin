@@ -9,6 +9,8 @@ test('only required variables decide whether setup is complete', () => {
   assert.equal(result.configured, true);
   assert.deepEqual(result.missing, []);
   assert.equal(result.status.GITHUB_BRANCH, false);
+  assert.equal(result.status.LINKS_PAGE_PATH, false);
+  assert.equal(result.status.ABOUT_PAGE_PATH, false);
   assert.equal(result.status.LLM_API_KEY, false);
 });
 

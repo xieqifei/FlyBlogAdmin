@@ -23,6 +23,9 @@ body { color: #172033; background: #f5f7fa; }
 .setup-shell { width: min(1040px, calc(100% - 40px)); margin: 32px auto; }
 .setup-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .settings-page, .graph-page { display: grid; gap: 16px; }
+.special-page { display: grid; gap: 16px; min-width: 0; }
+.special-page-loading { min-height: 50vh; display: grid; place-items: center; }
+.page-title-field { display: grid; max-width: 640px; gap: 8px; margin-bottom: 18px; font-weight: 650; }
 .guide-steps { display: grid; gap: 10px; padding-left: 22px; }
 .config-generators { display: grid; gap: 22px; margin-top: 18px; }
 .config-generator { display: grid; gap: 10px; min-width: 0; }

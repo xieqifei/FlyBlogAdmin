@@ -2,7 +2,7 @@
 
 FlyBlogAdmin 是一个面向 Hexo 等 Git 仓库博客的无数据库管理后台。文章直接通过 GitHub Contents API 读取和提交，前端使用 React、TypeScript 与 Ant Design，服务端使用 Vercel Node.js Functions。项目完全使用 Node.js/TypeScript，不包含 Python 或 Django 运行时。API 按功能合并入口以控制 Serverless Function 数量，同时避免刷新或无痕访问时被前端路由误接管。
 
-登录后即可在首页查看文章、分类、标签、写作贡献和最近更新，也可以继续管理文章、浏览关系图谱、使用 S3 兼容图床，以及按需启用 AI 写作辅助。桌面端与手机端共用同一套响应式界面。
+登录后即可在首页查看文章、分类、标签、写作贡献和最近更新，也可以继续管理文章、友链和关于页面，浏览关系图谱、使用 S3 兼容图床，以及按需启用 AI 写作辅助。桌面端与手机端共用同一套响应式界面。
 
 首次访问时，必需环境变量未齐全会一直显示设置引导页；配置齐全并重新部署后进入登录页。设置页会逐项显示必需与可选变量的实际配置状态。
 设置页内置仅在浏览器本地运行的 `SECRET_KEY` 与 `ADMIN_PASSWORD_HASH` 生成器，并提供细粒度 `GITHUB_TOKEN` 的创建和最小权限配置教程。
@@ -18,6 +18,7 @@ AI 接口变量始终是可选项，不参与引导页判断；即使完全不�
 
 - 首页内容看板：汇总文章、分类、标签和已标注日期数量，展示分类分布、常用标签、按年份切换的写作贡献日历及最近文章。
 - 文章管理：支持按标题、分类和标签搜索，多列排序，新建、编辑及删除文章，并在保存后立即刷新列表。
+- Hexo 独立页面管理：友链可逐条新增、编辑和删除，并保存为通用 Markdown 表格；关于页面使用完整 Markdown 编辑器。默认对应 `source/links/index.md` 与 `source/about/index.md`，也可自定义路径。
 - Obsidian 风格单栏实时预览编辑器：支持浅色语法高亮、标题、列表、任务、引用、代码、脚注、图片及表格预览，长文光标定位保持准确。
 - Markdown 高效编辑：提供吸顶工具栏、快捷键和右键菜单；表格可直接编辑单元格，并可插入或删除行列、设置列对齐。
 - 图片写作体验：可拖入或粘贴图片并自动上传到默认图床；公开图片和需要鉴权的私有图片都能在编辑器中预览。
@@ -64,6 +65,8 @@ npm run preview
 | `GITHUB_BRANCH` | 否 | 文章分支，默认 `main` |
 | `POSTS_PATH` | 否 | 文章目录，默认 `source/_posts` |
 | `POST_EXTENSIONS` | 否 | 可编辑扩展名，默认 `.md,.markdown` |
+| `LINKS_PAGE_PATH` | 否 | 友链 Markdown 文件路径，默认 `source/links/index.md` |
+| `ABOUT_PAGE_PATH` | 否 | 关于 Markdown 文件路径，默认 `source/about/index.md` |
 | `SESSION_AGE` | 否 | 登录有效秒数，默认 7 天 |
 | `LANGUAGE` | 否 | 界面语言：`zh`、`en` 或 `de`，默认 `zh` |
 | `LLM_API_KEY` | AI 可选 | OpenAI 兼容大模型服务的 API Key |

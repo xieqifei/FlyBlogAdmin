@@ -15,7 +15,7 @@ export type Configuration = {
 const variables = [
   ['SECRET_KEY', 'required'], ['ADMIN_USERNAME', 'required'], ['ADMIN_PASSWORD_HASH', 'either'], ['ADMIN_PASSWORD', 'either'],
   ['GITHUB_TOKEN', 'required'], ['GITHUB_REPOSITORY', 'required'], ['GITHUB_BRANCH', 'optional'], ['POSTS_PATH', 'optional'],
-  ['POST_EXTENSIONS', 'optional'], ['SESSION_AGE', 'optional'], ['COOKIE_SECURE', 'optional'], ['LANGUAGE', 'optional'],
+  ['POST_EXTENSIONS', 'optional'], ['LINKS_PAGE_PATH', 'optional'], ['ABOUT_PAGE_PATH', 'optional'], ['SESSION_AGE', 'optional'], ['COOKIE_SECURE', 'optional'], ['LANGUAGE', 'optional'],
   ['LLM_API_KEY', 'aiOptional'], ['LLM_MODEL', 'aiOptional'], ['LLM_BASE_URL', 'aiOptional'], ['LLM_API_STYLE', 'aiOptional'],
   ['S3_ENDPOINT', 'r2Optional'], ['S3_ACCESS_KEY_ID', 'r2Optional'], ['S3_SECRET_ACCESS_KEY', 'r2Optional'],
   ['S3_BUCKET', 'r2Optional'], ['S3_PUBLIC_URL', 'r2Optional'],

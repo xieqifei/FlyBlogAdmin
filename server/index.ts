@@ -5,9 +5,12 @@ import { configurationStatus } from './configuration.js';
 import { R2Error, buildObjectKey, contentTypeFor, deleteObject, getObject, listBuckets, listObjects, putObject, r2Configuration, validateBucketName, validateObjectKey } from './r2.js';
 import { parseFrontMatter, values, writeFrontMatter } from '../shared/frontMatter.js';
 import { automaticArticleDates, currentDateTime, normalizeDateTime } from '../shared/dateTime.js';
+import { createHexoPage } from '../shared/hexoPages.js';
 
 type GitHubFile = { name: string; path: string; sha: string; type: 'file' | 'dir'; content?: string };
 type Post = { name: string; path?: string; sha?: string; content?: string; clientTime?: string };
+type PageKind = 'links' | 'about';
+type PageInput = { kind?: PageKind; sha?: string; content?: string };
 type GraphNode = { id: string; label: string; type: 'article' | 'category' | 'tag'; path?: string; degree: number };
 type GraphEdge = { source: string; target: string; type: 'link' | 'category' | 'tag'; directed?: boolean };
 
@@ -19,6 +22,8 @@ function config() {
     repository: process.env.GITHUB_REPOSITORY?.trim(),
     branch: process.env.GITHUB_BRANCH?.trim() || 'main',
     postsPath: (process.env.POSTS_PATH?.trim() || 'source/_posts').replace(/^\/+|\/+$/g, ''),
+    linksPagePath: (process.env.LINKS_PAGE_PATH?.trim() || 'source/links/index.md').replace(/^\/+|\/+$/g, ''),
+    aboutPagePath: (process.env.ABOUT_PAGE_PATH?.trim() || 'source/about/index.md').replace(/^\/+|\/+$/g, ''),
     extensions: (process.env.POST_EXTENSIONS || '.md,.markdown').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean),
     username: process.env.ADMIN_USERNAME || '',
     password: process.env.ADMIN_PASSWORD || '',
@@ -94,12 +99,41 @@ async function github(method: string, apiPath: string, body?: unknown) {
   });
   if (!response.ok) {
     const detail = await response.json().catch(() => ({})) as { message?: string };
-    throw new Error(detail.message || `GitHub request failed (${response.status})`);
+    throw Object.assign(new Error(detail.message || `GitHub request failed (${response.status})`), { status: response.status });
   }
   return response.status === 204 ? null : response.json();
 }
 
 function encodeRepositoryPath(path: string) { return path.split('/').map(encodeURIComponent).join('/'); }
+function pageKind(value: unknown): PageKind {
+  if (value === 'links' || value === 'about') return value;
+  throw Object.assign(new Error('Invalid page kind'), { status: 400 });
+}
+function pagePath(kind: PageKind) {
+  const configured = kind === 'links' ? config().linksPagePath : config().aboutPagePath;
+  const normalized = posix.normalize(configured);
+  if (!configured || normalized === '.' || normalized.startsWith('../') || posix.isAbsolute(normalized) || !/\.(?:md|markdown)$/i.test(normalized)) throw Object.assign(new Error('Invalid Hexo page path'), { status: 500 });
+  return normalized;
+}
+async function readPage(kind: PageKind) {
+  const current = config(); const path = pagePath(kind);
+  try {
+    const result = await github('GET', `/repos/${current.repository}/contents/${encodeRepositoryPath(path)}?ref=${encodeURIComponent(current.branch)}`) as GitHubFile;
+    if (Array.isArray(result) || result.type !== 'file') throw Object.assign(new Error('Hexo page path is not a file'), { status: 409 });
+    return { kind, path, sha: result.sha, content: Buffer.from(result.content || '', 'base64').toString('utf8') };
+  } catch (error) {
+    if (responseStatus(error) !== 404) throw error;
+    return { kind, path, content: createHexoPage(kind) };
+  }
+}
+async function savePage(input: PageInput) {
+  const kind = pageKind(input.kind); const path = pagePath(kind);
+  if (typeof input.content !== 'string') throw Object.assign(new Error('content is required'), { status: 400 });
+  if (Buffer.byteLength(input.content) > 2 * 1024 * 1024) throw Object.assign(new Error('Page content is too large'), { status: 413 });
+  const payload = { message: `${input.sha ? 'Update' : 'Create'} ${kind} page`, content: Buffer.from(input.content).toString('base64'), branch: config().branch, ...(input.sha ? { sha: input.sha } : {}) };
+  const result = await github('PUT', `/repos/${config().repository}/contents/${encodeRepositoryPath(path)}`, payload) as { content: GitHubFile };
+  return { kind, path, sha: result.content.sha, content: input.content };
+}
 function relativePostPath(value: unknown) {
   const cleaned = String(value || '').replace(/^\/+/, ''); const normalized = posix.normalize(cleaned);
   if (!cleaned || normalized === '.' || normalized.startsWith('../') || posix.isAbsolute(normalized)) throw new Error('Invalid article path');
@@ -184,6 +218,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isAuthenticated(req)) return res.status(401).json({ error: '请先登录' });
     if (method !== 'GET' && !mutationOriginAllowed(req)) return res.status(403).json({ error: 'Invalid request origin' });
     if (method === 'GET' && path === '/api/graph') return res.status(200).json(await buildGraph());
+    if (path === '/api/pages') {
+      if (method === 'GET') return res.status(200).json({ page: await readPage(pageKind(req.query.kind)) });
+      if (method === 'PUT') return res.status(200).json({ page: await savePage(jsonBody<PageInput>(req)) });
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
     if (method === 'POST' && path === '/api/ai/optimize') {
       const { optimizeArticle } = await import('./llm.js');
       return res.status(200).json({ suggestion: await optimizeArticle(jsonBody(req)) });

@@ -17,7 +17,7 @@ export function normalizeLanguage(value?: string): Language {
 type Dictionary = Record<string, string>;
 
 const zh: Dictionary = {
-  'menu.home': '首页', 'menu.posts': '文章管理', 'menu.graph': '关系图谱', 'menu.images': '图床', 'menu.settings': '设置',
+  'menu.home': '首页', 'menu.posts': '文章管理', 'menu.links': '友链管理', 'menu.about': '关于管理', 'menu.graph': '关系图谱', 'menu.images': '图床', 'menu.settings': '设置',
   'header.logout': '退出登录', 'header.closeMenu': '关闭菜单',
   'login.title': '登录', 'login.username': '用户名', 'login.password': '密码', 'login.submit': '登录', 'login.failed': '登录失败',
   'error.requestFailed': '请求失败', 'error.loadPosts': '文章载入失败', 'error.save': '保存失败', 'error.delete': '删除失败', 'error.aiOptimize': 'AI 优化失败',
@@ -41,6 +41,9 @@ const zh: Dictionary = {
   'posts.titleCol': '标题', 'posts.categoriesCol': '分类', 'posts.tagsCol': '标签', 'posts.editDateCol': '编辑日期', 'posts.actionsCol': '操作',
   'posts.edit': '编辑', 'posts.delete': '删除', 'posts.loading': '正在从 GitHub 加载文章', 'posts.noMatch': '没有匹配的文章', 'posts.empty': '暂无文章',
   'posts.editAria': '编辑 {title}', 'posts.deleteAria': '删除 {title}',
+  'pages.loadFailed': '页面载入失败', 'pages.saveFailed': '页面保存失败', 'pages.saved': '页面已提交到 GitHub', 'pages.refresh': '刷新', 'pages.save': '保存并提交', 'pages.path': 'Hexo 文件：{path}', 'pages.titleLabel': '页面标题',
+  'links.title': '友情链接', 'links.defaultTitle': '友情链接', 'links.compatibility': '友链按标准 Markdown 表格保存，Hexo 无需主题专用插件即可渲染；表格之外的原有内容会保留。', 'links.add': '新增友链', 'links.edit': '编辑友链', 'links.delete': '删除友链', 'links.deleteConfirm': '从列表中删除这条友链？保存后将提交到 GitHub。', 'links.empty': '暂无友链，点击“新增友链”逐条添加', 'links.name': '名称', 'links.url': '网址', 'links.urlInvalid': '请输入以 http:// 或 https:// 开头的网址', 'links.description': '简介', 'links.avatar': '头像 URL',
+  'about.title': '关于页面', 'about.compatibility': '使用 Hexo 标准独立页面和 Markdown 正文；front matter 会保留并写入 layout: page。',
   'setup.errorTitle': 'API 服务暂时不可用', 'setup.errorDescription': '无法读取 API 服务状态，请确认当前部署包含 Node.js API Functions 后重试。', 'setup.retry': '重新检测', 'setup.title': 'FlyBlog Admin 设置',
   'md.placeholder': '开始写正文…', 'md.undo': '撤销（Ctrl/⌘+Z）', 'md.redo': '重做（Ctrl/⌘+Shift+Z）',
   'md.bulletList': '无序列表', 'md.orderedList': '有序列表', 'md.taskList': '任务列表', 'md.link': '链接（Ctrl/⌘+K）', 'md.insertImage': '插入图片', 'md.insertTable': '插入表格', 'md.divider': '分隔线',
@@ -72,6 +75,7 @@ const zh: Dictionary = {
   'sg.var.ADMIN_PASSWORD_HASH': '推荐使用下方工具由登录密码生成 PBKDF2-SHA256 哈希。', 'sg.var.ADMIN_PASSWORD': '无法生成哈希时可使用登录明文密码；请仅保存在部署平台加密环境变量中。',
   'sg.var.GITHUB_TOKEN': '仅授予目标博客仓库 Contents 读写权限的细粒度 GitHub Token，获取步骤见下方教程。', 'sg.var.GITHUB_REPOSITORY': '目标仓库，格式 owner/repository。',
   'sg.var.GITHUB_BRANCH': '文章写入分支，默认 main。', 'sg.var.POSTS_PATH': '文章目录，默认 source/_posts。', 'sg.var.POST_EXTENSIONS': '可编辑扩展名，默认 .md,.markdown。',
+  'sg.var.LINKS_PAGE_PATH': '友链 Markdown 文件路径，默认 source/links/index.md。', 'sg.var.ABOUT_PAGE_PATH': '关于 Markdown 文件路径，默认 source/about/index.md。',
   'sg.var.SESSION_AGE': '登录有效秒数，默认 604800（7 天）。', 'sg.var.COOKIE_SECURE': 'Vercel 自动启用安全 Cookie；其他 HTTPS 环境可设为 1。',
   'sg.var.LANGUAGE': '界面语言：zh（中文）、en（English）、de（Deutsch），默认 zh。', 'sg.var.LLM_API_KEY': '大模型服务的 API Key；仅由服务端读取。',
   'sg.var.LLM_MODEL': '用于文章优化的模型名称。', 'sg.var.LLM_BASE_URL': 'OpenAI 兼容接口地址，默认 https://api.openai.com/v1。',
@@ -81,7 +85,7 @@ const zh: Dictionary = {
 };
 
 const en: Dictionary = {
-  'menu.home': 'Home', 'menu.posts': 'Posts', 'menu.graph': 'Graph', 'menu.images': 'Image Hosting', 'menu.settings': 'Settings',
+  'menu.home': 'Home', 'menu.posts': 'Posts', 'menu.links': 'Friend Links', 'menu.about': 'About', 'menu.graph': 'Graph', 'menu.images': 'Image Hosting', 'menu.settings': 'Settings',
   'header.logout': 'Log out', 'header.closeMenu': 'Close menu',
   'login.title': 'Log in', 'login.username': 'Username', 'login.password': 'Password', 'login.submit': 'Log in', 'login.failed': 'Login failed',
   'error.requestFailed': 'Request failed', 'error.loadPosts': 'Failed to load posts', 'error.save': 'Save failed', 'error.delete': 'Delete failed', 'error.aiOptimize': 'AI optimization failed',
@@ -105,6 +109,9 @@ const en: Dictionary = {
   'posts.titleCol': 'Title', 'posts.categoriesCol': 'Categories', 'posts.tagsCol': 'Tags', 'posts.editDateCol': 'Edited', 'posts.actionsCol': 'Actions',
   'posts.edit': 'Edit', 'posts.delete': 'Delete', 'posts.loading': 'Loading posts from GitHub…', 'posts.noMatch': 'No matching posts', 'posts.empty': 'No posts',
   'posts.editAria': 'Edit {title}', 'posts.deleteAria': 'Delete {title}',
+  'pages.loadFailed': 'Failed to load page', 'pages.saveFailed': 'Failed to save page', 'pages.saved': 'Page committed to GitHub', 'pages.refresh': 'Refresh', 'pages.save': 'Save & commit', 'pages.path': 'Hexo file: {path}', 'pages.titleLabel': 'Page title',
+  'links.title': 'Friend links', 'links.defaultTitle': 'Friends', 'links.compatibility': 'Links are stored as a standard Markdown table that Hexo can render without a theme-specific plugin. Existing content outside the table is preserved.', 'links.add': 'Add link', 'links.edit': 'Edit link', 'links.delete': 'Delete link', 'links.deleteConfirm': 'Remove this link? The change is committed after saving.', 'links.empty': 'No links yet — add them one at a time', 'links.name': 'Name', 'links.url': 'URL', 'links.urlInvalid': 'Enter a URL beginning with http:// or https://', 'links.description': 'Description', 'links.avatar': 'Avatar URL',
+  'about.title': 'About page', 'about.compatibility': 'Uses a standard Hexo standalone page with Markdown content; front matter is preserved and layout: page is set.',
   'setup.errorTitle': 'API service unavailable', 'setup.errorDescription': 'Cannot read the API status — make sure the deployment includes Node.js API Functions, then retry.', 'setup.retry': 'Re-check', 'setup.title': 'FlyBlog Admin setup',
   'md.placeholder': 'Start writing…', 'md.undo': 'Undo (Ctrl/⌘+Z)', 'md.redo': 'Redo (Ctrl/⌘+Shift+Z)',
   'md.bulletList': 'Bullet list', 'md.orderedList': 'Ordered list', 'md.taskList': 'Task list', 'md.link': 'Link (Ctrl/⌘+K)', 'md.insertImage': 'Insert image', 'md.insertTable': 'Insert table', 'md.divider': 'Divider',
@@ -136,6 +143,7 @@ const en: Dictionary = {
   'sg.var.ADMIN_PASSWORD_HASH': 'Recommended: generate a PBKDF2-SHA256 hash from the login password with the tool below.', 'sg.var.ADMIN_PASSWORD': 'Plain login password, for when you cannot generate a hash; store only in encrypted environment variables.',
   'sg.var.GITHUB_TOKEN': 'Fine-grained GitHub token with Contents read/write access to the blog repository only; see the tutorial below.', 'sg.var.GITHUB_REPOSITORY': 'Target repository in owner/repository format.',
   'sg.var.GITHUB_BRANCH': 'Branch for posts, default main.', 'sg.var.POSTS_PATH': 'Posts directory, default source/_posts.', 'sg.var.POST_EXTENSIONS': 'Editable extensions, default .md,.markdown.',
+  'sg.var.LINKS_PAGE_PATH': 'Friend-links Markdown path, default source/links/index.md.', 'sg.var.ABOUT_PAGE_PATH': 'About Markdown path, default source/about/index.md.',
   'sg.var.SESSION_AGE': 'Login validity in seconds, default 604800 (7 days).', 'sg.var.COOKIE_SECURE': 'Vercel enables secure cookies automatically; set to 1 for other HTTPS environments.',
   'sg.var.LANGUAGE': 'UI language: zh (Chinese), en (English), de (German); default zh.', 'sg.var.LLM_API_KEY': 'API key for the LLM service; read server-side only.',
   'sg.var.LLM_MODEL': 'Model name used for article optimization.', 'sg.var.LLM_BASE_URL': 'OpenAI-compatible endpoint, default https://api.openai.com/v1.',
@@ -145,7 +153,7 @@ const en: Dictionary = {
 };
 
 const de: Dictionary = {
-  'menu.home': 'Startseite', 'menu.posts': 'Beiträge', 'menu.graph': 'Graph', 'menu.images': 'Bildablage', 'menu.settings': 'Einstellungen',
+  'menu.home': 'Startseite', 'menu.posts': 'Beiträge', 'menu.links': 'Freundeslinks', 'menu.about': 'Über', 'menu.graph': 'Graph', 'menu.images': 'Bildablage', 'menu.settings': 'Einstellungen',
   'header.logout': 'Abmelden', 'header.closeMenu': 'Menü schließen',
   'login.title': 'Anmelden', 'login.username': 'Benutzername', 'login.password': 'Passwort', 'login.submit': 'Anmelden', 'login.failed': 'Anmeldung fehlgeschlagen',
   'error.requestFailed': 'Anfrage fehlgeschlagen', 'error.loadPosts': 'Beiträge konnten nicht geladen werden', 'error.save': 'Speichern fehlgeschlagen', 'error.delete': 'Löschen fehlgeschlagen', 'error.aiOptimize': 'KI-Optimierung fehlgeschlagen',
@@ -169,6 +177,9 @@ const de: Dictionary = {
   'posts.titleCol': 'Titel', 'posts.categoriesCol': 'Kategorien', 'posts.tagsCol': 'Tags', 'posts.editDateCol': 'Bearbeitet', 'posts.actionsCol': 'Aktionen',
   'posts.edit': 'Bearbeiten', 'posts.delete': 'Löschen', 'posts.loading': 'Beiträge werden von GitHub geladen…', 'posts.noMatch': 'Keine passenden Beiträge', 'posts.empty': 'Keine Beiträge',
   'posts.editAria': '{title} bearbeiten', 'posts.deleteAria': '{title} löschen',
+  'pages.loadFailed': 'Seite konnte nicht geladen werden', 'pages.saveFailed': 'Seite konnte nicht gespeichert werden', 'pages.saved': 'Seite auf GitHub gespeichert', 'pages.refresh': 'Aktualisieren', 'pages.save': 'Speichern & committen', 'pages.path': 'Hexo-Datei: {path}', 'pages.titleLabel': 'Seitentitel',
+  'links.title': 'Freundeslinks', 'links.defaultTitle': 'Freundeslinks', 'links.compatibility': 'Links werden als Standard-Markdown-Tabelle gespeichert, die Hexo ohne Theme-Plugin rendert. Inhalte außerhalb der Tabelle bleiben erhalten.', 'links.add': 'Link hinzufügen', 'links.edit': 'Link bearbeiten', 'links.delete': 'Link löschen', 'links.deleteConfirm': 'Diesen Link entfernen? Die Änderung wird beim Speichern committet.', 'links.empty': 'Noch keine Links — einzeln hinzufügen', 'links.name': 'Name', 'links.url': 'URL', 'links.urlInvalid': 'URL mit http:// oder https:// eingeben', 'links.description': 'Beschreibung', 'links.avatar': 'Avatar-URL',
+  'about.title': 'Über-Seite', 'about.compatibility': 'Verwendet eine Standard-Hexo-Einzelseite mit Markdown; Front Matter bleibt erhalten und layout: page wird gesetzt.',
   'setup.errorTitle': 'API-Dienst nicht verfügbar', 'setup.errorDescription': 'Der API-Status kann nicht gelesen werden — prüfen Sie, ob die Bereitstellung Node.js-API-Funktionen enthält, und versuchen Sie es erneut.', 'setup.retry': 'Erneut prüfen', 'setup.title': 'FlyBlog Admin-Einrichtung',
   'md.placeholder': 'Zu schreiben beginnen…', 'md.undo': 'Rückgängig (Ctrl/⌘+Z)', 'md.redo': 'Wiederholen (Ctrl/⌘+Shift+Z)',
   'md.bulletList': 'Aufzählungsliste', 'md.orderedList': 'Nummerierte Liste', 'md.taskList': 'Aufgabenliste', 'md.link': 'Link (Ctrl/⌘+K)', 'md.insertImage': 'Bild einfügen', 'md.insertTable': 'Tabelle einfügen', 'md.divider': 'Trennlinie',
@@ -200,6 +211,7 @@ const de: Dictionary = {
   'sg.var.ADMIN_PASSWORD_HASH': 'Empfohlen: mit dem Tool unten aus dem Login-Passwort einen PBKDF2-SHA256-Hash erzeugen.', 'sg.var.ADMIN_PASSWORD': 'Klartext-Login-Passwort, falls kein Hash erzeugt werden kann; nur in verschlüsselten Umgebungsvariablen speichern.',
   'sg.var.GITHUB_TOKEN': 'Feingranuliertes GitHub-Token mit Contents-Lese-/Schreibzugriff nur auf das Blog-Repository; siehe Anleitung unten.', 'sg.var.GITHUB_REPOSITORY': 'Ziel-Repository im Format owner/repository.',
   'sg.var.GITHUB_BRANCH': 'Beitrags-Branch, Standard main.', 'sg.var.POSTS_PATH': 'Beitragsverzeichnis, Standard source/_posts.', 'sg.var.POST_EXTENSIONS': 'Bearbeitbare Endungen, Standard .md,.markdown.',
+  'sg.var.LINKS_PAGE_PATH': 'Markdown-Pfad für Freundeslinks, Standard source/links/index.md.', 'sg.var.ABOUT_PAGE_PATH': 'Markdown-Pfad für die Über-Seite, Standard source/about/index.md.',
   'sg.var.SESSION_AGE': 'Gültigkeit der Anmeldung in Sekunden, Standard 604800 (7 Tage).', 'sg.var.COOKIE_SECURE': 'Vercel aktiviert sichere Cookies automatisch; für andere HTTPS-Umgebungen auf 1 setzen.',
   'sg.var.LANGUAGE': 'UI-Sprache: zh (Chinesisch), en (Englisch), de (Deutsch); Standard zh.', 'sg.var.LLM_API_KEY': 'API-Schlüssel für den LLM-Dienst; nur serverseitig gelesen.',
   'sg.var.LLM_MODEL': 'Modellname für die Artikeloptimierung.', 'sg.var.LLM_BASE_URL': 'OpenAI-kompatibler Endpunkt, Standard https://api.openai.com/v1.',

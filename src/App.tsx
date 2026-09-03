@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Alert, App as AntApp, Button, Card, Col, Collapse, Empty, Form, Input, Layout, Menu, Modal, Popconfirm, Row as Grid, Select, Space, Spin, Statistic, Table, Tag, Typography } from 'antd';
-import { ApartmentOutlined, ArrowLeftOutlined, CloseOutlined, CloudOutlined, DeleteOutlined, EditOutlined, FileAddOutlined, FileTextOutlined, FolderOutlined, HomeOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PictureOutlined, ReloadOutlined, RobotOutlined, SearchOutlined, SettingOutlined, TagsOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, ArrowLeftOutlined, CloseOutlined, CloudOutlined, DeleteOutlined, EditOutlined, FileAddOutlined, FileTextOutlined, FolderOutlined, HomeOutlined, LinkOutlined, LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PictureOutlined, ReloadOutlined, RobotOutlined, SearchOutlined, SettingOutlined, TagsOutlined, UserOutlined } from '@ant-design/icons';
 import GraphView from './GraphView';
 import ContributionCalendar from './ContributionCalendar';
 import ImageHosting from './ImageHosting';
+import FriendLinks from './FriendLinks';
+import AboutPage from './AboutPage';
 import MarkdownEditor from './MarkdownEditor';
 import SettingsGuide, { type Configuration } from './SettingsGuide';
 import { I18nProvider, normalizeLanguage, useI18n, type Translator } from './i18n';
@@ -14,6 +16,8 @@ const { Sider, Header, Content } = Layout;
 const menuItems = (t: Translator) => [
   { key: 'home', icon: <HomeOutlined />, label: t('menu.home') },
   { key: 'posts', icon: <FileTextOutlined />, label: t('menu.posts') },
+  { key: 'links', icon: <LinkOutlined />, label: t('menu.links') },
+  { key: 'about', icon: <UserOutlined />, label: t('menu.about') },
   { key: 'graph', icon: <ApartmentOutlined />, label: t('menu.graph') },
   { key: 'images', icon: <PictureOutlined />, label: t('menu.images') },
   { key: 'settings', icon: <SettingOutlined />, label: t('menu.settings') },
@@ -151,7 +155,7 @@ function Dashboard({ configuration, onLogout }: { configuration: Configuration; 
   return <Layout className="app">
     {isMobile && mobileOpen && <button className="mobile-menu-mask" aria-label={t('header.closeMenu')} onClick={() => setMobileOpen(false)} />}
     <Sider theme="light" breakpoint="lg" collapsedWidth={isMobile ? 0 : 80} collapsed={isMobile ? !mobileOpen : collapsed} onBreakpoint={(broken) => { setIsMobile(broken); setMobileOpen(false); }} trigger={null} width={240} className="sider"><div className="logo"><span>{collapsed && !isMobile ? 'FB' : 'FlyBlog Admin'}</span>{isMobile && mobileOpen && <Button className="mobile-menu-close" type="text" aria-label={t('header.closeMenu')} icon={<CloseOutlined />} onClick={() => setMobileOpen(false)} />}</div><Menu theme="light" mode="inline" selectedKeys={[section === 'editor' ? 'posts' : section]} items={items} onClick={({ key }) => { setSection(key); if (isMobile) setMobileOpen(false); }} /></Sider>
-    <Layout><Header className="header"><Button type="text" icon={(isMobile ? !mobileOpen : collapsed) ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => { if (isMobile) setMobileOpen((value) => !value); else setCollapsed((value) => !value); }} /><Typography.Title level={4}>{section === 'editor' ? t(editor?.sha ? 'editor.editTitle' : 'editor.newTitle') : title}</Typography.Title><Button className="header-logout" type="text" aria-label={t('header.logout')} icon={<LogoutOutlined />} onClick={logout}>{isMobile ? '' : t('header.logout')}</Button></Header><Content className="content"><div className="content-stack">{section === 'home' ? dashboard : section === 'posts' ? posts : section === 'editor' ? editorPage : section === 'graph' ? <GraphView onEdit={edit} /> : section === 'images' ? <ImageHosting configuration={configuration} /> : <SettingsGuide configuration={configuration} />}</div></Content></Layout>
+    <Layout><Header className="header"><Button type="text" icon={(isMobile ? !mobileOpen : collapsed) ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => { if (isMobile) setMobileOpen((value) => !value); else setCollapsed((value) => !value); }} /><Typography.Title level={4}>{section === 'editor' ? t(editor?.sha ? 'editor.editTitle' : 'editor.newTitle') : title}</Typography.Title><Button className="header-logout" type="text" aria-label={t('header.logout')} icon={<LogoutOutlined />} onClick={logout}>{isMobile ? '' : t('header.logout')}</Button></Header><Content className="content"><div className="content-stack">{section === 'home' ? dashboard : section === 'posts' ? posts : section === 'editor' ? editorPage : section === 'links' ? <FriendLinks /> : section === 'about' ? <AboutPage configuration={configuration} /> : section === 'graph' ? <GraphView onEdit={edit} /> : section === 'images' ? <ImageHosting configuration={configuration} /> : <SettingsGuide configuration={configuration} />}</div></Content></Layout>
     <Modal open={aiOpen} width={1080} title={t('ai.title')} onCancel={() => setAiOpen(false)} footer={<Space><Button onClick={() => setAiOpen(false)}>{t('ai.close')}</Button><Button disabled={!suggestion} onClick={() => { setEditor((value) => value ? { ...value, content: suggestion } : value); setAiOpen(false); message.success(t('ai.applied')); }}>{t('ai.apply')}</Button><Button type="primary" loading={optimizing} onClick={optimize}>{t('ai.generate')}</Button></Space>}>
       <Alert showIcon type="info" message={t('ai.previewFirst')} description={t('ai.previewDescription')} />
       <div className="ai-controls"><Select value={optimizeMode} onChange={setOptimizeMode} options={[{ value: 'generate', label: t('ai.modeGenerate') }, { value: 'proofread', label: t('ai.modeProofread') }, { value: 'rewrite', label: t('ai.modeRewrite') }, { value: 'concise', label: t('ai.modeConcise') }, { value: 'outline', label: t('ai.modeOutline') }]} /><Input value={instruction} onChange={(event) => setInstruction(event.target.value)} placeholder={t(optimizeMode === 'generate' ? 'ai.instructionGenerate' : 'ai.instruction')} /></div>

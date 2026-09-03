@@ -3,7 +3,7 @@ export type R2Status = { configured: boolean; publicUrl: string | null; defaultB
 export type ConfigurationStatus = { configured: boolean; status: Record<string, boolean>; missing: string[]; language: Language; r2: R2Status };
 
 const required = ['SECRET_KEY', 'ADMIN_USERNAME', 'GITHUB_TOKEN', 'GITHUB_REPOSITORY'] as const;
-const optional = ['GITHUB_BRANCH', 'POSTS_PATH', 'POST_EXTENSIONS', 'SESSION_AGE', 'COOKIE_SECURE', 'LLM_API_KEY', 'LLM_MODEL', 'LLM_BASE_URL', 'LLM_API_STYLE', 'LANGUAGE', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'S3_BUCKET', 'S3_ENDPOINT', 'S3_PUBLIC_URL'] as const;
+const optional = ['GITHUB_BRANCH', 'POSTS_PATH', 'POST_EXTENSIONS', 'LINKS_PAGE_PATH', 'ABOUT_PAGE_PATH', 'SESSION_AGE', 'COOKIE_SECURE', 'LLM_API_KEY', 'LLM_MODEL', 'LLM_BASE_URL', 'LLM_API_STYLE', 'LANGUAGE', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'S3_BUCKET', 'S3_ENDPOINT', 'S3_PUBLIC_URL'] as const;
 const languages = ['zh', 'en', 'de'] as const;
 
 export function resolveLanguage(environment: NodeJS.ProcessEnv = process.env): Language {
