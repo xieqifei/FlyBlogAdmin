@@ -34,7 +34,7 @@ export default function FriendLinks() {
       setPage(data.page); message.success(t('pages.saved'));
     } catch (reason) { message.error(reason instanceof Error ? reason.message : t('pages.saveFailed')); } finally { setSaving(false); }
   };
-  return <div className="special-page"><Alert showIcon type="info" message={t('links.compatibility')} description={page ? t('pages.path', { path: page.path }) : undefined} />
+  return <div className="special-page">
     <Card loading={loading} title={t('links.title')} extra={<Space wrap><Button icon={<ReloadOutlined />} onClick={load}>{t('pages.refresh')}</Button><Button icon={<PlusOutlined />} onClick={() => showForm()}>{t('links.add')}</Button><Button type="primary" icon={<SaveOutlined />} loading={saving} disabled={!page} onClick={save}>{t('pages.save')}</Button></Space>}>
       {error && <Alert className="table-alert" showIcon type="error" message={error} />}
       <label className="page-title-field">{t('pages.titleLabel')}<Input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
