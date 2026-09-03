@@ -1,9 +1,12 @@
-import { parseFrontMatter, writeBody, writeFrontMatter } from './frontMatter.ts';
-
 export type FriendLink = { name: string; url: string; description: string; avatar: string };
 
 const START = '<!-- flyblog-links:start -->';
 const END = '<!-- flyblog-links:end -->';
+
+function splitFrontMatter(content: string) {
+  const match = content.match(/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/);
+  return { prefix: match?.[0] || '', body: match ? content.slice(match[0].length) : content };
+}
 
 function escapeCell(value: string) {
   return value.trim().replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
@@ -27,23 +30,23 @@ export function friendLinksBlock(links: FriendLink[]) {
 }
 
 export function parseFriendLinks(content: string): FriendLink[] {
-  const body = parseFrontMatter(content).body;
+  const body = splitFrontMatter(content).body;
   const managed = body.match(new RegExp(`${START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*([\\s\\S]*?)\\s*${END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
   if (!managed) return [];
   return managed[1].split(/\r?\n/).slice(2).filter((line) => /^\s*\|/.test(line)).map(splitRow).filter((cells) => cells.length >= 2 && cells[0] && cells[1]).map(([name, url, description = '', avatar = '']) => ({ name, url: url.replace(/^<(.+)>$/, '$1'), description, avatar }));
 }
 
 export function writeFriendLinks(content: string, links: FriendLink[]) {
-  const parsed = parseFrontMatter(content); const block = friendLinksBlock(links);
+  const parsed = splitFrontMatter(content); const block = friendLinksBlock(links);
   const expression = new RegExp(`${START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
   const body = expression.test(parsed.body)
     ? parsed.body.replace(expression, block)
     : `${parsed.body.trimEnd()}${parsed.body.trim() ? '\n\n' : ''}${block}\n`;
-  return writeBody(content, body);
+  return `${parsed.prefix}${body}`;
 }
 
 export function createHexoPage(kind: 'links' | 'about') {
   const title = kind === 'links' ? '友情链接' : '关于';
-  const initial = writeFrontMatter('', { title, layout: 'page' });
+  const initial = `---\ntitle: ${title}\nlayout: page\n---\n\n`;
   return kind === 'links' ? writeFriendLinks(initial, []) : initial;
 }
